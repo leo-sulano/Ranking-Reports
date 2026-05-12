@@ -182,10 +182,6 @@ function Layout() {
     setState((s) => ({ ...s, kwFilter: val }))
   }, [])
 
-  const selectBPBrand = useCallback((name: string | null) => {
-    setBPFilterBrand(name)
-  }, [])
-
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const visibleRecords = useMemo(
@@ -234,7 +230,7 @@ function Layout() {
     onKwFilter:        setKwFilter,
     onOpenUpload:      () => setShowUpload(true),
     bpFilterBrand,
-    onSelectBPBrand:   selectBPBrand,
+    onSelectBPBrand:   setBPFilterBrand,
   }
 
   return (
@@ -258,7 +254,7 @@ function Layout() {
         onSelectOverview={selectOverview}
         onOpenUpload={() => setShowUpload(true)}
         activeBPBrand={bpFilterBrand}
-        onSelectBPBrand={selectBPBrand}
+        onSelectBPBrand={setBPFilterBrand}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">

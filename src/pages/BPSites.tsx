@@ -2,19 +2,16 @@ import { useState, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { Brand, RankingRecord, Snapshot } from '../types'
 import { BRANDS, COUNTRY_LABELS } from '../lib/brands'
+import type { RROutletContext } from './RankingReports'
 import { PosBadge } from '../components/PosBadge'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
-interface OutletCtx {
-  snapshots: Snapshot[]
-  bpFilterBrand: string | null
-}
 
 // ─── Entry ────────────────────────────────────────────────────────────────────
 
 export function BPSites() {
-  const { snapshots, bpFilterBrand } = useOutletContext<OutletCtx>()
+  const { snapshots, bpFilterBrand } = useOutletContext<RROutletContext>()
   const [activeBrand, setActiveBrand] = useState<Brand | null>(null)
 
   if (activeBrand) {
