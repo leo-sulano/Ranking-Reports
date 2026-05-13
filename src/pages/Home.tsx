@@ -437,7 +437,6 @@ export function Home() {
 
             <div className="grid grid-cols-2 gap-2.5 p-5">
               <QuickLink label="BP Sites"     hint="Brand × keyword matrix"    onClick={() => navigate('/bp-sites')} accent="#0F172A" />
-              <QuickLink label="GMB"          hint="Google My Business"         onClick={() => navigate('/gmb')} accent="#EF4444" />
               <QuickLink label="FTDs"         hint="First-time depositors"      onClick={() => navigate('/ftds')} accent="#8B5CF6" />
               <QuickLink label="Import Data"  hint="Upload an XLSX snapshot"    onClick={ctx.onOpenUpload} accent="#FBBF24" filled />
             </div>

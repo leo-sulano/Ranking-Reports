@@ -18,7 +18,6 @@ import type { ToastItem } from './types'
 
 import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
-import { GMB }          from './pages/GMB'
 import { FTDs }         from './pages/FTDs'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -176,7 +175,6 @@ function Layout() {
 
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
-    '/gmb':         ['GMB', 'Google My Business'],
     '/ftds':        ['FTDs', 'First-time depositors'],
   }
   const currentPath =
@@ -263,7 +261,6 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="/bp-sites"    element={<BPSites />} />
-        <Route path="/gmb"         element={<GMB />} />
         <Route path="/ftds"        element={<FTDs />} />
       </Route>
     </Routes>
