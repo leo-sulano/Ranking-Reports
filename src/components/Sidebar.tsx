@@ -34,7 +34,7 @@ export function Sidebar({
 
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-[#E2E8F0] shrink-0">
-        <div className="font-display text-[18px] tracking-widest text-[#F59E0B] leading-none">
+        <div className="font-display text-[18px] tracking-widest text-[#0F172A] leading-none">
           RANKING REPORTS
         </div>
         <div className="text-[10px] text-[#64748B] uppercase tracking-[0.12em] mt-1">
@@ -52,12 +52,12 @@ export function Sidebar({
               onClick={() => navigate(p.path)}
               className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-left transition-colors relative ${
                 active
-                  ? 'bg-[#F1F5F9] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-sm before:bg-[#F59E0B]'
+                  ? 'bg-[#F1F5F9] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-sm before:bg-[#0F172A]'
                   : 'hover:bg-[#F8FAFC]'
               }`}
             >
               <span
-                className={`w-5 text-center text-[12px] ${active ? 'text-[#F59E0B]' : 'text-[#94A3B8]'}`}
+                className={`w-5 text-center text-[12px] ${active ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}
               >
                 {p.icon}
               </span>
@@ -107,7 +107,7 @@ export function Sidebar({
       <div className="p-3 border-t border-[#E2E8F0] shrink-0">
         <button
           onClick={onOpenUpload}
-          className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-[#F59E0B] text-black rounded-md text-[13px] font-bold transition-colors hover:bg-[#FBB03B] active:scale-95"
+          className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-[#0F172A] text-white rounded-md text-[13px] font-bold transition-colors hover:bg-[#1E293B] active:scale-95"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

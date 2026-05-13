@@ -74,7 +74,7 @@ export function UploadSummary({ data, onClose }: Props) {
           {/* Totals row */}
           <div className="grid grid-cols-4 gap-3 mb-5">
             <Stat label="Uploaded"       value={records.length}   accent="#10B981" />
-            <Stat label="Brands matched" value={byBrand.length}   accent="#F59E0B" />
+            <Stat label="Brands matched" value={byBrand.length}   accent="#0F172A" />
             <Stat label="Domains"        value={byDomain.length}  accent="#38BDF8" />
             <Stat label="Countries"      value={byCountry.length} accent="#A78BFA" />
           </div>
@@ -125,7 +125,7 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="px-6 py-3 border-t border-[#E2E8F0] shrink-0 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#F59E0B] text-black rounded-md text-[12px] font-bold hover:bg-[#FBB03B] transition-colors"
+            className="px-4 py-1.5 bg-[#0F172A] text-white rounded-md text-[12px] font-bold hover:bg-[#1E293B] transition-colors"
           >
             Done
           </button>

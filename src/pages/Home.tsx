@@ -25,7 +25,7 @@ const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR'
 ]
 
 const TIER_COLOR: Record<'p1' | 'top3' | 'top10' | 'page2' | 'nr', string> = {
-  p1:     '#F59E0B',
+  p1:     '#0F172A',
   top3:   '#FBBF24',
   top10:  '#10B981',
   page2:  '#3B82F6',
@@ -153,13 +153,13 @@ export function Home() {
       <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
         <div className="flex flex-col items-center justify-center py-32 gap-5 text-center">
           <div className="font-display text-[88px] tracking-[0.15em] text-[#CBD5E1] leading-none">SERP</div>
-          <div className="font-display text-[22px] tracking-[0.2em] text-[#F59E0B]">NO DATA STREAM</div>
+          <div className="font-display text-[22px] tracking-[0.2em] text-[#0F172A]">NO DATA STREAM</div>
           <p className="text-[12px] text-[#64748B] max-w-sm font-mono">
             Import a ranking export to wake the terminal.
           </p>
           <button
             onClick={ctx.onOpenUpload}
-            className="mt-4 px-5 py-2 bg-[#F59E0B] text-black rounded-md text-[12px] font-bold tracking-wider hover:bg-[#FBB03B]"
+            className="mt-4 px-5 py-2 bg-[#0F172A] text-white rounded-md text-[12px] font-bold tracking-wider hover:bg-[#1E293B]"
           >
             IMPORT DATA →
           </button>
@@ -207,7 +207,7 @@ export function Home() {
           {/* Big numeric readouts */}
           <div className="grid grid-cols-4 divide-x divide-[#E2E8F0]">
             <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#E2E8F0" />
-            <HeroMetric label="BRANDS"    value={totals.brands}    accent="#F59E0B" />
+            <HeroMetric label="BRANDS"    value={totals.brands}    accent="#0F172A" />
             <HeroMetric label="COUNTRIES" value={totals.countries} accent="#10B981" />
             <HeroMetric label="RECORDS"   value={totals.records}   accent="#3B82F6" suffix="rows" />
           </div>
@@ -216,18 +216,18 @@ export function Home() {
           <div className="px-6 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">
             <div className="flex items-baseline justify-between mb-2">
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#64748B]">PAGE-1 OCCUPANCY</span>
-              <span className="font-display text-[26px] tracking-wider text-[#F59E0B] leading-none">
+              <span className="font-display text-[26px] tracking-wider text-[#0F172A] leading-none">
                 {page1Pct}<span className="text-[14px] text-[#64748B] ml-0.5">%</span>
               </span>
             </div>
             <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#10B981]"
+                className="h-full rounded-full bg-gradient-to-r from-[#0F172A] via-[#FBBF24] to-[#10B981]"
                 style={{ width: `${page1Pct}%`, transition: 'width 1s ease' }}
               />
             </div>
             <div className="flex justify-between mt-2 font-mono text-[10px] tracking-wider text-[#94A3B8]">
-              <span><span className="text-[#F59E0B]">{tier.p1}</span> @ P1</span>
+              <span><span className="text-[#0F172A]">{tier.p1}</span> @ P1</span>
               <span><span className="text-[#FBBF24]">{tier.top3}</span> Top-3</span>
               <span><span className="text-[#10B981]">{tier.top10}</span> Top-10</span>
               <span><span className="text-[#3B82F6]">{tier.page2}</span> 11–100</span>
@@ -248,7 +248,7 @@ export function Home() {
             <div className="grid grid-cols-12 gap-2 mb-2 px-1">
               <div className="col-span-10 flex items-center gap-2">
                 <div className="h-px flex-1 bg-[#E2E8F0]" />
-                <span className="font-mono text-[9px] tracking-[0.2em] text-[#F59E0B]">PAGE 1</span>
+                <span className="font-mono text-[9px] tracking-[0.2em] text-[#0F172A]">PAGE 1</span>
                 <div className="h-px flex-1 bg-[#E2E8F0]" />
               </div>
               <div className="col-span-2 flex items-center gap-2">
@@ -315,7 +315,7 @@ export function Home() {
                   <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
                     <th className="px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">#</th>
                     <th className="px-3 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">Brand</th>
-                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#F59E0B]">P1</th>
+                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#0F172A]">P1</th>
                     <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#FBBF24]">Top-3</th>
                     <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#10B981]">Top-10</th>
                     <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#64748B]">Total</th>
@@ -351,7 +351,7 @@ export function Home() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#F59E0B]">{row.p1 || '·'}</td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#0F172A]">{row.p1 || '·'}</td>
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#FBBF24]">{row.t3 || '·'}</td>
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#10B981]">{row.t10 || '·'}</td>
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#475569]">{row.total}</td>
@@ -436,7 +436,7 @@ export function Home() {
             <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
 
             <div className="grid grid-cols-2 gap-2.5 p-5">
-              <QuickLink label="BP Sites"     hint="Brand × keyword matrix"    onClick={() => navigate('/bp-sites')} accent="#F59E0B" />
+              <QuickLink label="BP Sites"     hint="Brand × keyword matrix"    onClick={() => navigate('/bp-sites')} accent="#0F172A" />
               <QuickLink label="Screenshots"  hint="Visual monitoring"          onClick={() => navigate('/screenshots')} accent="#3B82F6" />
               <QuickLink label="GMB"          hint="Google My Business"         onClick={() => navigate('/gmb')} accent="#EF4444" />
               <QuickLink label="FTDs"         hint="First-time depositors"      onClick={() => navigate('/ftds')} accent="#8B5CF6" />

@@ -71,8 +71,8 @@ export function UploadModal({ onImport, onClose }: Props) {
           <div
             className={`relative border-2 border-dashed rounded-[10px] p-10 text-center cursor-pointer transition-all ${
               dragging
-                ? 'border-[#F59E0B] bg-[rgba(245,158,11,0.12)] scale-[1.01]'
-                : 'border-[#CBD5E1] bg-[#F1F5F9] hover:border-[#F59E0B] hover:bg-[rgba(245,158,11,0.06)]'
+                ? 'border-[#0F172A] bg-[rgba(15,23,42,0.08)] scale-[1.01]'
+                : 'border-[#CBD5E1] bg-[#F1F5F9] hover:border-[#0F172A] hover:bg-[rgba(15,23,42,0.04)]'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
@@ -105,7 +105,7 @@ export function UploadModal({ onImport, onClose }: Props) {
               {['Domain', 'Keyword', 'Country', 'Position'].map((c) => (
                 <span
                   key={c}
-                  className="font-mono text-[10px] px-2 py-0.5 bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.4)] rounded text-[#B45309]"
+                  className="font-mono text-[10px] px-2 py-0.5 bg-[rgba(15,23,42,0.06)] border border-[rgba(15,23,42,0.25)] rounded text-[#0F172A]"
                 >
                   {c}
                 </span>
@@ -125,7 +125,7 @@ export function UploadModal({ onImport, onClose }: Props) {
           {parsing && (
             <div className="space-y-2">
               <div className="h-[3px] bg-[#F1F5F9] rounded-full overflow-hidden">
-                <div className="h-full bg-[#F59E0B] rounded-full animate-[progressPulse_1.2s_ease-in-out_infinite]" />
+                <div className="h-full bg-[#0F172A] rounded-full animate-[progressPulse_1.2s_ease-in-out_infinite]" />
               </div>
               <p className="text-center text-[12px] text-[#64748B]">Parsing data…</p>
             </div>

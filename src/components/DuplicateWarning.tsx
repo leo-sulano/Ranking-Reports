@@ -44,7 +44,7 @@ export function DuplicateWarning({ data, onClose, onDelete }: Props) {
           <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
             <div className="flex justify-between items-center mb-2">
               <span className="text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">Existing snapshot</span>
-              <span className="text-[11px] font-mono text-[#F59E0B]">{existing.displayDate}</span>
+              <span className="text-[11px] font-mono text-[#0F172A]">{existing.displayDate}</span>
             </div>
             <div className="flex justify-between text-[12px]">
               <span className="text-[#64748B]">Records stored</span>
