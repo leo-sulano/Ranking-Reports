@@ -18,7 +18,6 @@ import type { ToastItem } from './types'
 
 import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
-import { Screenshots }  from './pages/Screenshots'
 import { GMB }          from './pages/GMB'
 import { FTDs }         from './pages/FTDs'
 
@@ -177,7 +176,6 @@ function Layout() {
 
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
-    '/screenshots': ['Screenshots', 'Visual site monitoring'],
     '/gmb':         ['GMB', 'Google My Business'],
     '/ftds':        ['FTDs', 'First-time depositors'],
   }
@@ -265,7 +263,6 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="/bp-sites"    element={<BPSites />} />
-        <Route path="/screenshots" element={<Screenshots />} />
         <Route path="/gmb"         element={<GMB />} />
         <Route path="/ftds"        element={<FTDs />} />
       </Route>
