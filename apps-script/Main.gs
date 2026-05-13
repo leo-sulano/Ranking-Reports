@@ -51,6 +51,7 @@ function onOpen() {
     .addItem('Process RAW_IMPORT', 'processRankings')
     .addSeparator()
     .addItem('Diagnose layout (active sheet)', 'diagnoseLayout')
+    .addItem('Diagnose layout (ALL brand sheets)', 'diagnoseAllLayouts')
     .addItem('Validate CONFIG', 'validateConfig')
     .addItem('Clear ERROR_LOG', 'clearErrorLog')
     .addSeparator()
@@ -277,6 +278,91 @@ function applyImportRow(ctx, row, brand, structure, updater, config) {
 
   updater.set(targetRow, col, display);
   return { applied: true };
+}
+
+/**
+ * Run diagnoseLayout against every brand sheet referenced in CONFIG.
+ * Read-only — no dashboard cells are touched. Writes one structured INFO
+ * block per brand to ERROR_LOG and shows a summary toast.
+ */
+function diagnoseAllLayouts() {
+  const ctx = createContext();
+  try {
+    const config = loadConfig(ctx);
+    if (!config) { flushLog(ctx); return; }
+
+    const ss = SpreadsheetApp.getActive();
+    const summary = [];
+    let totalBlocks = 0, totalSections = 0, totalKeywords = 0, missingSheets = 0;
+
+    for (const [brand, sheetName] of config.brandToSheet.entries()) {
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) {
+        log(ctx, 'ERROR', `Brand sheet "${sheetName}" not found`, `brand=${brand}`);
+        summary.push(`${brand} (${sheetName}): MISSING SHEET`);
+        missingSheets++;
+        continue;
+      }
+
+      log(ctx, 'INFO', `=== Diagnose: sheet="${sheetName}" brand="${brand}" ===`);
+      const struct = parseSheetStructure(ctx, sheet, brand, config);
+      log(ctx, 'INFO',
+        `Layout anchors: domainRow=${struct.domainRow} countryHeaderRow=${struct.countryHeaderRow}`);
+
+      log(ctx, 'INFO', `Detected ${struct.blocks.length} website block(s):`);
+      struct.blocks.forEach((b, i) => {
+        const countries = Object.entries(b.countryMap)
+          .map(([k, v]) => `${k}=col${v}`)
+          .join(', ');
+        log(ctx, 'INFO',
+          `  Block #${i + 1}: type=${b.type} domain=${b.domain} ` +
+          `cols=${b.startCol}..${b.endCol} ` +
+          `countries={${countries || 'none'}}`);
+      });
+
+      log(ctx, 'INFO', `Detected ${struct.dateSections.length} date section(s):`);
+      let sheetKeywords = 0;
+      struct.dateSections.forEach((s, i) => {
+        const dateStr = s.date ? Utilities.formatDate(s.date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'null';
+        const sample = [...s.keywordRows.keys()].slice(0, 6);
+        log(ctx, 'INFO',
+          `  Section #${i + 1}: label="${s.dateLabel}" date=${dateStr} ` +
+          `rows=${s.startRow}..${s.endRow} keywords=${s.keywordRows.size}`);
+        if (sample.length) {
+          log(ctx, 'INFO', `    Keywords (first 6): ${sample.join(' | ')}`);
+        }
+        sheetKeywords += s.keywordRows.size;
+      });
+
+      // One-line per-brand summary
+      let status = 'OK';
+      if (struct.blocks.length === 0) status = 'NO BLOCKS';
+      else if (struct.dateSections.length === 0) status = 'NO SECTIONS';
+      else if (sheetKeywords === 0) status = 'NO KEYWORDS';
+      summary.push(
+        `${brand} (${sheetName}): ${status} — ` +
+        `blocks=${struct.blocks.length} sections=${struct.dateSections.length} keywords=${sheetKeywords}`
+      );
+
+      totalBlocks += struct.blocks.length;
+      totalSections += struct.dateSections.length;
+      totalKeywords += sheetKeywords;
+    }
+
+    log(ctx, 'INFO',
+      `=== SUMMARY === brands=${config.brandToSheet.size} missingSheets=${missingSheets} ` +
+      `totalBlocks=${totalBlocks} totalSections=${totalSections} totalKeywords=${totalKeywords}`);
+
+    SpreadsheetApp.getUi().alert(
+      'Diagnose ALL brand sheets',
+      summary.join('\n') + `\n\n(Full detail in ${SHEETS.ERROR_LOG}.)`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (err) {
+    log(ctx, 'ERROR', `diagnoseAllLayouts failed: ${err && err.message}`, err && err.stack);
+  } finally {
+    flushLog(ctx);
+  }
 }
 
 /** Wipe ERROR_LOG except header. */
