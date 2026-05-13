@@ -8,7 +8,7 @@ interface StatCardProps {
 function StatCard({ label, value, accent, sub }: StatCardProps) {
   return (
     <div
-      className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] px-4 py-3.5 flex flex-col gap-1 relative overflow-hidden"
+      className="bg-white border border-[#E2E8F0] rounded-[10px] px-4 py-3.5 flex flex-col gap-1 relative overflow-hidden shadow-sm"
     >
       <div
         className="absolute top-0 left-0 right-0 h-[2px] rounded-t-[10px]"

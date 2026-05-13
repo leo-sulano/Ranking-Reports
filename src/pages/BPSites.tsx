@@ -80,7 +80,7 @@ function BrandGrid({
             <button
               key={brand.name}
               onClick={() => onSelect(brand)}
-              className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#243548] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              className="bg-white border border-[#E2E8F0] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#CBD5E1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
               <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: brand.color }} />
@@ -93,7 +93,7 @@ function BrandGrid({
                   {brand.abbr}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[15px] font-bold text-[#E2E8F0]">{brand.name}</div>
+                  <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
                   <div className="text-[11px]  text-[#64748B]">{brand.mainDomain}</div>
                 </div>
                 {hasData && (
@@ -112,18 +112,18 @@ function BrandGrid({
                     key={d}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border"
                     style={{
-                      borderColor: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '50' : '#1C2B3A',
-                      background: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '0D' : '#07090F',
+                      borderColor: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '60' : '#E2E8F0',
+                      background: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '14' : '#F8FAFC',
                     }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color : '#374151', flexShrink: 0 }}>
+                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color : '#94A3B8', flexShrink: 0 }}>
                       <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
                     <span
                       className="text-[11px]  truncate"
-                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? '#E2E8F0' : '#64748B' }}
+                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? '#0F172A' : '#64748B' }}
                     >
                       {d}
                     </span>
@@ -258,7 +258,7 @@ function BrandView({
       <div className="flex items-center gap-3 px-7 pt-5 pb-3 shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#94A3B8] transition-colors mr-1"
+          className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -266,7 +266,7 @@ function BrandView({
           All brands
         </button>
 
-        <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
+        <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
       </div>
 
       {brandSnapshots.length === 0 ? (
@@ -307,7 +307,7 @@ function BrandView({
                   style={
                     active
                       ? { background: brand.color, color: '#000', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'transparent', color: '#64748B', borderColor: '#1C2B3A' }
+                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
                   }
                 >
                   {c}
@@ -315,7 +315,7 @@ function BrandView({
               )
             })}
 
-            <div className="w-px h-5 bg-[#1C2B3A] mx-1" />
+            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
 
             <div className="relative">
               <svg
@@ -331,7 +331,7 @@ function BrandView({
                 value={kwFilter}
                 onChange={(e) => setKwFilter(e.target.value)}
                 placeholder="Search keywords…"
-                className="pl-7 pr-3 py-1 bg-[#111928] border border-[#1C2B3A] rounded-full text-[12px] text-[#E2E8F0] outline-none w-44 placeholder:text-[#64748B] focus:border-[#243548] transition-colors"
+                className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />
             </div>
 

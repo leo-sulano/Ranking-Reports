@@ -14,8 +14,8 @@ function ToastEl({ toast, onRemove }: { toast: ToastItem; onRemove: (id: string)
 
   return (
     <div
-      className={`flex items-center gap-2.5 px-4 py-3 bg-[#0D1421] border rounded-md text-[13px] text-[#E2E8F0] shadow-[0_8px_24px_rgba(0,0,0,0.4)] max-w-[340px] animate-[toastIn_0.25s_ease] ${
-        toast.type === 'success' ? 'border-l-[3px] border-l-[#10B981] border-[#1C2B3A]' : 'border-l-[3px] border-l-[#F43F5E] border-[#1C2B3A]'
+      className={`flex items-center gap-2.5 px-4 py-3 bg-white border rounded-md text-[13px] text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.12)] max-w-[340px] animate-[toastIn_0.25s_ease] ${
+        toast.type === 'success' ? 'border-l-[3px] border-l-[#10B981] border-[#E2E8F0]' : 'border-l-[3px] border-l-[#F43F5E] border-[#E2E8F0]'
       }`}
     >
       {toast.message}

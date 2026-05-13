@@ -9,11 +9,11 @@
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1C2B3A; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #64748B; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: var(--font-body); background: #07090F; color: #E2E8F0; }
+body { font-family: var(--font-body); background: #F8FAFC; color: #0F172A; }
 
 /* Font utility classes */
 .font-display { font-family: var(--font-display); }
@@ -26,8 +26,8 @@ body { font-family: var(--font-body); background: #07090F; color: #E2E8F0; }
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(#1C2B3A 1px, transparent 1px),
-    linear-gradient(90deg, #1C2B3A 1px, transparent 1px);
+    linear-gradient(#E2E8F0 1px, transparent 1px),
+    linear-gradient(90deg, #E2E8F0 1px, transparent 1px);
   background-size: 40px 40px;
   opacity: 0.2;
   pointer-events: none;

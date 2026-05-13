@@ -29,7 +29,7 @@ const TIER_COLOR: Record<'p1' | 'top3' | 'top10' | 'page2' | 'nr', string> = {
   top3:   '#FBBF24',
   top10:  '#10B981',
   page2:  '#3B82F6',
-  nr:     '#475569',
+  nr:     '#94A3B8',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ export function Home() {
     return (
       <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
         <div className="flex flex-col items-center justify-center py-32 gap-5 text-center">
-          <div className="font-display text-[88px] tracking-[0.15em] text-[#1C2B3A] leading-none">SERP</div>
+          <div className="font-display text-[88px] tracking-[0.15em] text-[#CBD5E1] leading-none">SERP</div>
           <div className="font-display text-[22px] tracking-[0.2em] text-[#F59E0B]">NO DATA STREAM</div>
           <p className="text-[12px] text-[#64748B] max-w-sm font-mono">
             Import a ranking export to wake the terminal.
@@ -171,11 +171,11 @@ export function Home() {
   return (
     <div className="flex-1 overflow-auto relative">
 
-      {/* Scanline overlay — subtle CRT phosphor feel */}
+      {/* Subtle horizontal-rule texture for visual rhythm on the light surface */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] mix-blend-screen"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.06] mix-blend-multiply"
         style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, #E2E8F0 0px, #E2E8F0 1px, transparent 1px, transparent 3px)',
+          backgroundImage: 'repeating-linear-gradient(0deg, #94A3B8 0px, #94A3B8 1px, transparent 1px, transparent 5px)',
         }}
       />
 
@@ -183,11 +183,11 @@ export function Home() {
 
         {/* ─── HERO BAND ─────────────────────────────────────────────────── */}
         <section
-          className="relative overflow-hidden rounded-[14px] border border-[#1C2B3A] bg-gradient-to-b from-[#0B1220] to-[#070A12] mb-8"
+          className="relative overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-gradient-to-b from-white to-[#F8FAFC] mb-8 shadow-sm"
           style={{ animation: 'fadeUp 0.4s ease both' }}
         >
           {/* Top status strip */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-[#1C2B3A] bg-[#080C16]">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75 animate-ping" />
@@ -199,13 +199,13 @@ export function Home() {
               </span>
             </div>
             <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.14em] text-[#64748B]">
-              <span>SNAPSHOT: <span className="text-[#E2E8F0]">{latestSnapshot.displayDate}</span></span>
-              <span>SERIES: <span className="text-[#E2E8F0]">{totals.snapshots}</span></span>
+              <span>SNAPSHOT: <span className="text-[#0F172A]">{latestSnapshot.displayDate}</span></span>
+              <span>SERIES: <span className="text-[#0F172A]">{totals.snapshots}</span></span>
             </div>
           </div>
 
           {/* Big numeric readouts */}
-          <div className="grid grid-cols-4 divide-x divide-[#1C2B3A]">
+          <div className="grid grid-cols-4 divide-x divide-[#E2E8F0]">
             <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#E2E8F0" />
             <HeroMetric label="BRANDS"    value={totals.brands}    accent="#F59E0B" />
             <HeroMetric label="COUNTRIES" value={totals.countries} accent="#10B981" />
@@ -213,32 +213,32 @@ export function Home() {
           </div>
 
           {/* Page-1 progress bar */}
-          <div className="px-6 py-4 border-t border-[#1C2B3A] bg-[#080C16]">
+          <div className="px-6 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">
             <div className="flex items-baseline justify-between mb-2">
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#64748B]">PAGE-1 OCCUPANCY</span>
               <span className="font-display text-[26px] tracking-wider text-[#F59E0B] leading-none">
                 {page1Pct}<span className="text-[14px] text-[#64748B] ml-0.5">%</span>
               </span>
             </div>
-            <div className="h-1.5 bg-[#0F1A2A] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#10B981]"
                 style={{ width: `${page1Pct}%`, transition: 'width 1s ease' }}
               />
             </div>
-            <div className="flex justify-between mt-2 font-mono text-[10px] tracking-wider text-[#475569]">
+            <div className="flex justify-between mt-2 font-mono text-[10px] tracking-wider text-[#94A3B8]">
               <span><span className="text-[#F59E0B]">{tier.p1}</span> @ P1</span>
               <span><span className="text-[#FBBF24]">{tier.top3}</span> Top-3</span>
               <span><span className="text-[#10B981]">{tier.top10}</span> Top-10</span>
               <span><span className="text-[#3B82F6]">{tier.page2}</span> 11–100</span>
-              <span><span className="text-[#94A3B8]">{tier.nr}</span> NR</span>
+              <span><span className="text-[#475569]">{tier.nr}</span> NR</span>
             </div>
           </div>
         </section>
 
         {/* ─── SERP DISTRIBUTION TRACK ───────────────────────────────────── */}
         <section
-          className="rounded-[14px] border border-[#1C2B3A] bg-[#0B1220] mb-8 overflow-hidden"
+          className="rounded-[14px] border border-[#E2E8F0] bg-white mb-8 overflow-hidden"
           style={{ animation: 'fadeUp 0.5s ease 0.1s both' }}
         >
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
@@ -247,14 +247,14 @@ export function Home() {
             {/* Page-1 / Page-2 labels */}
             <div className="grid grid-cols-12 gap-2 mb-2 px-1">
               <div className="col-span-10 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[#1C2B3A]" />
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
                 <span className="font-mono text-[9px] tracking-[0.2em] text-[#F59E0B]">PAGE 1</span>
-                <div className="h-px flex-1 bg-[#1C2B3A]" />
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
               </div>
               <div className="col-span-2 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[#1C2B3A]" />
-                <span className="font-mono text-[9px] tracking-[0.2em] text-[#475569]">BEYOND</span>
-                <div className="h-px flex-1 bg-[#1C2B3A]" />
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
+                <span className="font-mono text-[9px] tracking-[0.2em] text-[#94A3B8]">BEYOND</span>
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
               </div>
             </div>
 
@@ -266,8 +266,8 @@ export function Home() {
                   className="relative flex flex-col items-center group"
                   style={{ animation: `fadeUp 0.5s ease ${0.15 + i * 0.04}s both` }}
                 >
-                  <span className="font-mono text-[11px] tabular-nums text-[#E2E8F0] mb-1">{b.count}</span>
-                  <div className="relative w-full h-full bg-[#0F1A2A] rounded-sm overflow-hidden">
+                  <span className="font-mono text-[11px] tabular-nums text-[#0F172A] mb-1">{b.count}</span>
+                  <div className="relative w-full h-full bg-[#E2E8F0] rounded-sm overflow-hidden">
                     <div
                       className="absolute bottom-0 left-0 right-0 rounded-sm"
                       style={{
@@ -304,7 +304,7 @@ export function Home() {
 
           {/* Brand Leaderboard */}
           <section
-            className="rounded-[14px] border border-[#1C2B3A] bg-[#0B1220] overflow-hidden"
+            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
             style={{ animation: 'fadeUp 0.5s ease 0.2s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
@@ -312,7 +312,7 @@ export function Home() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12px]">
                 <thead>
-                  <tr className="border-b border-[#1C2B3A] bg-[#080C16]">
+                  <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
                     <th className="px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">#</th>
                     <th className="px-3 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">Brand</th>
                     <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#F59E0B]">P1</th>
@@ -324,7 +324,7 @@ export function Home() {
                 </thead>
                 <tbody>
                   {leaderboard.length === 0 && (
-                    <tr><td colSpan={7} className="px-5 py-6 text-center text-[11px] font-mono text-[#475569]">No brand data in current snapshot.</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-6 text-center text-[11px] font-mono text-[#94A3B8]">No brand data in current snapshot.</td></tr>
                   )}
                   {leaderboard.map((row, i) => {
                     const maxT10 = leaderboard[0].t10 || 1
@@ -333,7 +333,7 @@ export function Home() {
                       <tr
                         key={row.brand.name}
                         onClick={() => { ctx.onSelectBPBrand(row.brand.name); navigate('/bp-sites') }}
-                        className="border-b border-[#101826] hover:bg-[#101826] cursor-pointer transition-colors group"
+                        className="border-b border-[#F1F5F9] hover:bg-[#F1F5F9] cursor-pointer transition-colors group"
                         style={{ animation: `fadeUp 0.4s ease ${0.25 + i * 0.04}s both` }}
                       >
                         <td className="pl-5 pr-2 py-2.5 font-mono text-[11px] text-[#64748B] tabular-nums w-12">
@@ -346,7 +346,7 @@ export function Home() {
                               style={{ background: row.brand.color }}
                             />
                             <div className="min-w-0">
-                              <div className="font-semibold text-[#E2E8F0] truncate">{row.brand.name}</div>
+                              <div className="font-semibold text-[#0F172A] truncate">{row.brand.name}</div>
                               <div className="font-mono text-[10px] text-[#64748B] truncate">{row.brand.mainDomain}</div>
                             </div>
                           </div>
@@ -354,9 +354,9 @@ export function Home() {
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#F59E0B]">{row.p1 || '·'}</td>
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#FBBF24]">{row.t3 || '·'}</td>
                         <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#10B981]">{row.t10 || '·'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#94A3B8]">{row.total}</td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#475569]">{row.total}</td>
                         <td className="pl-3 pr-5 py-2.5 w-[120px]">
-                          <div className="h-1 bg-[#0F1A2A] rounded-full overflow-hidden">
+                          <div className="h-1 bg-[#E2E8F0] rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full"
                               style={{ width: `${share * 100}%`, background: row.brand.color, transition: 'width 0.8s ease' }}
@@ -373,7 +373,7 @@ export function Home() {
 
           {/* Top Movers */}
           <section
-            className="rounded-[14px] border border-[#1C2B3A] bg-[#0B1220] overflow-hidden"
+            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
             style={{ animation: 'fadeUp 0.5s ease 0.25s both' }}
           >
             <SectionHeader title="Top Movers" subtitle="vs. previous snapshot" />
@@ -388,7 +388,7 @@ export function Home() {
                 empty="No upward movement."
               />
 
-              <div className="h-px bg-[#1C2B3A]" />
+              <div className="h-px bg-[#E2E8F0]" />
 
               <MoverColumn
                 heading="DROPPERS"
@@ -405,32 +405,32 @@ export function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-6">
 
           <section
-            className="rounded-[14px] border border-[#1C2B3A] bg-[#0B1220] overflow-hidden"
+            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
             style={{ animation: 'fadeUp 0.5s ease 0.3s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
 
             <div className="px-5 pb-5 pt-2 space-y-2.5">
               {countryBars.length === 0 && (
-                <p className="text-[11px] font-mono text-[#475569] px-1">No country data.</p>
+                <p className="text-[11px] font-mono text-[#94A3B8] px-1">No country data.</p>
               )}
               {countryBars.map((c) => (
                 <div key={c.country} className="flex items-center gap-3">
-                  <div className="w-10 font-display tracking-widest text-[15px] text-[#E2E8F0]">{c.country}</div>
-                  <div className="flex-1 h-2 bg-[#0F1A2A] rounded-full overflow-hidden">
+                  <div className="w-10 font-display tracking-widest text-[15px] text-[#0F172A]">{c.country}</div>
+                  <div className="flex-1 h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-[#3B82F6] to-[#10B981] rounded-full"
                       style={{ width: `${c.pct * 100}%`, transition: 'width 0.8s ease' }}
                     />
                   </div>
-                  <div className="w-12 text-right font-mono text-[11px] tabular-nums text-[#94A3B8]">{c.count}</div>
+                  <div className="w-12 text-right font-mono text-[11px] tabular-nums text-[#475569]">{c.count}</div>
                 </div>
               ))}
             </div>
           </section>
 
           <section
-            className="rounded-[14px] border border-[#1C2B3A] bg-gradient-to-br from-[#0B1220] to-[#0E1830] overflow-hidden"
+            className="rounded-[14px] border border-[#E2E8F0] bg-gradient-to-br from-white to-[#F1F5F9] overflow-hidden shadow-sm"
             style={{ animation: 'fadeUp 0.5s ease 0.35s both' }}
           >
             <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
@@ -446,7 +446,7 @@ export function Home() {
         </div>
 
         {/* Footer signature */}
-        <div className="mt-10 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-[#1C2B3A]">
+        <div className="mt-10 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-[#CBD5E1]">
           <span>END OF FEED ▎</span>
           <span>// {new Date().toISOString().slice(0, 10).replace(/-/g, '.')} //</span>
         </div>
@@ -467,22 +467,22 @@ function HeroMetric({
         <span className="font-display tracking-wider leading-none text-[64px]" style={{ color: accent }}>
           {value.toLocaleString()}
         </span>
-        {suffix && <span className="font-mono text-[10px] tracking-widest text-[#475569] uppercase">{suffix}</span>}
+        {suffix && <span className="font-mono text-[10px] tracking-widest text-[#94A3B8] uppercase">{suffix}</span>}
       </div>
       {/* Decorative corner ticks */}
-      <span className="absolute top-2 right-3 font-mono text-[9px] tracking-widest text-[#1C2B3A]">◇</span>
+      <span className="absolute top-2 right-3 font-mono text-[9px] tracking-widest text-[#CBD5E1]">◇</span>
     </div>
   )
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex items-end justify-between px-6 py-3 border-b border-[#1C2B3A]">
+    <div className="flex items-end justify-between px-6 py-3 border-b border-[#E2E8F0]">
       <div>
-        <h2 className="font-display text-[18px] tracking-[0.16em] text-[#E2E8F0] leading-none">{title}</h2>
+        <h2 className="font-display text-[18px] tracking-[0.16em] text-[#0F172A] leading-none">{title}</h2>
         <p className="font-mono text-[10px] tracking-[0.16em] text-[#64748B] mt-1.5">{subtitle}</p>
       </div>
-      <span className="font-mono text-[10px] tracking-widest text-[#1C2B3A]">▎▎▎</span>
+      <span className="font-mono text-[10px] tracking-widest text-[#CBD5E1]">▎▎▎</span>
     </div>
   )
 }
@@ -504,7 +504,7 @@ function MoverColumn({
         <div className="flex-1 h-px" style={{ background: `${tint}33` }} />
       </div>
       {rows.length === 0 && (
-        <p className="text-[11px] font-mono text-[#475569] pl-1">{empty}</p>
+        <p className="text-[11px] font-mono text-[#94A3B8] pl-1">{empty}</p>
       )}
       <ul className="space-y-1">
         {rows.map((m, i) => {
@@ -512,14 +512,14 @@ function MoverColumn({
           return (
             <li
               key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-md hover:bg-[#101826] transition-colors"
+              className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-md hover:bg-[#F1F5F9] transition-colors"
             >
               <span
                 className="inline-block w-1 h-5 rounded-sm shrink-0"
-                style={{ background: brand?.color ?? '#475569' }}
+                style={{ background: brand?.color ?? '#94A3B8' }}
               />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] text-[#E2E8F0] truncate">{m.record.keyword}</div>
+                <div className="text-[12px] text-[#0F172A] truncate">{m.record.keyword}</div>
                 <div className="font-mono text-[10px] text-[#64748B] truncate">
                   {m.brand} · {m.record.country} · pos {m.record.position}
                 </div>
@@ -546,15 +546,15 @@ function QuickLink({
       onClick={onClick}
       className="group text-left p-3.5 rounded-lg border transition-all duration-150 hover:-translate-y-0.5"
       style={{
-        background: filled ? accent : '#0A1120',
-        borderColor: filled ? accent : '#1C2B3A',
-        color: filled ? '#0B0F1A' : '#E2E8F0',
+        background: filled ? accent : '#FFFFFF',
+        borderColor: filled ? accent : '#E2E8F0',
+        color: filled ? '#0B0F1A' : '#0F172A',
       }}
     >
       <div className="flex items-center justify-between mb-1">
         <span
           className="font-display text-[15px] tracking-[0.12em]"
-          style={{ color: filled ? '#0B0F1A' : '#E2E8F0' }}
+          style={{ color: filled ? '#0B0F1A' : '#0F172A' }}
         >
           {label.toUpperCase()}
         </span>

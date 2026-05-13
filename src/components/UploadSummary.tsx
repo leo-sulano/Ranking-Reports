@@ -45,15 +45,15 @@ export function UploadSummary({ data, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-[rgba(7,9,15,0.85)] backdrop-blur-md z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-[#0D1421] border border-[#243548] rounded-[14px] w-[560px] max-w-[95vw] max-h-[85vh] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease] flex flex-col">
+      <div className="bg-white border border-[#CBD5E1] rounded-[14px] w-[560px] max-w-[95vw] max-h-[85vh] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#1C2B3A] shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] shrink-0">
           <div>
-            <h2 className="font-display text-[18px] tracking-wider text-[#E2E8F0]">
+            <h2 className="font-display text-[18px] tracking-wider text-[#0F172A]">
               Import Summary
             </h2>
             <p className="text-[11px] text-[#64748B] mt-0.5">
@@ -62,7 +62,7 @@ export function UploadSummary({ data, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center bg-[#111928] border border-[#1C2B3A] rounded-md text-[#64748B] hover:text-[#E2E8F0] hover:border-[#243548] transition-all text-[16px]"
+            className="w-7 h-7 flex items-center justify-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all text-[16px]"
           >
             ✕
           </button>
@@ -122,7 +122,7 @@ export function UploadSummary({ data, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-[#1C2B3A] shrink-0 flex justify-end">
+        <div className="px-6 py-3 border-t border-[#E2E8F0] shrink-0 flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-[#F59E0B] text-black rounded-md text-[12px] font-bold hover:bg-[#FBB03B] transition-colors"
@@ -137,7 +137,7 @@ export function UploadSummary({ data, onClose }: Props) {
 
 function Stat({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="bg-[#111928] border border-[#1C2B3A] rounded-md px-3 py-2.5">
+    <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md px-3 py-2.5">
       <div className="text-[10px] uppercase tracking-[0.1em] text-[#64748B] mb-0.5">{label}</div>
       <div className="text-[20px] font-bold" style={{ color: accent }}>{value}</div>
     </div>
@@ -157,13 +157,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Table({ rows, mono = false }: { rows: [string, number][]; mono?: boolean }) {
   return (
-    <div className="bg-[#07090F] border border-[#1C2B3A] rounded-md overflow-hidden">
+    <div className="bg-white border border-[#E2E8F0] rounded-md overflow-hidden">
       {rows.map(([key, count], i) => (
         <div
           key={key}
-          className={`flex items-center justify-between px-3 py-1.5 text-[12px] ${i > 0 ? 'border-t border-[#1C2B3A]' : ''}`}
+          className={`flex items-center justify-between px-3 py-1.5 text-[12px] ${i > 0 ? 'border-t border-[#E2E8F0]' : ''}`}
         >
-          <span className={`${mono ? 'font-mono' : ''} text-[#E2E8F0] truncate mr-3`}>{key}</span>
+          <span className={`${mono ? 'font-mono' : ''} text-[#0F172A] truncate mr-3`}>{key}</span>
           <span className="text-[#64748B] font-mono shrink-0">{count}</span>
         </div>
       ))}

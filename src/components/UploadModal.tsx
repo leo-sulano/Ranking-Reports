@@ -48,18 +48,18 @@ export function UploadModal({ onImport, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-[rgba(7,9,15,0.85)] backdrop-blur-md z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-[#0D1421] border border-[#243548] rounded-[14px] w-[480px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease]">
+      <div className="bg-white border border-[#CBD5E1] rounded-[14px] w-[480px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#1C2B3A]">
-          <h2 className="font-display text-[22px] tracking-wider text-[#E2E8F0]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0]">
+          <h2 className="font-display text-[22px] tracking-wider text-[#0F172A]">
             Import Ranking Data
           </h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center bg-[#111928] border border-[#1C2B3A] rounded-md text-[#64748B] hover:text-[#E2E8F0] hover:border-[#243548] transition-all text-[16px]"
+            className="w-7 h-7 flex items-center justify-center bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all text-[16px]"
           >
             ✕
           </button>
@@ -72,7 +72,7 @@ export function UploadModal({ onImport, onClose }: Props) {
             className={`relative border-2 border-dashed rounded-[10px] p-10 text-center cursor-pointer transition-all ${
               dragging
                 ? 'border-[#F59E0B] bg-[rgba(245,158,11,0.12)] scale-[1.01]'
-                : 'border-[#243548] bg-[#111928] hover:border-[#F59E0B] hover:bg-[rgba(245,158,11,0.06)]'
+                : 'border-[#CBD5E1] bg-[#F1F5F9] hover:border-[#F59E0B] hover:bg-[rgba(245,158,11,0.06)]'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
@@ -87,17 +87,17 @@ export function UploadModal({ onImport, onClose }: Props) {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
             />
             <div className="text-4xl mb-3 opacity-60">📁</div>
-            <p className="text-[15px] font-semibold text-[#E2E8F0] mb-1.5">
+            <p className="text-[15px] font-semibold text-[#0F172A] mb-1.5">
               Drop your file here or click to browse
             </p>
             <p className="text-[12px] text-[#64748B]">Supports Excel and CSV formats</p>
-            <span className="inline-block mt-2.5 px-2.5 py-0.5 bg-[#07090F] border border-[#1C2B3A] rounded-full font-mono text-[11px] text-[#64748B]">
+            <span className="inline-block mt-2.5 px-2.5 py-0.5 bg-white border border-[#E2E8F0] rounded-full font-mono text-[11px] text-[#64748B]">
               .xlsx / .xls / .csv
             </span>
           </div>
 
           {/* Expected columns */}
-          <div className="bg-[#111928] border border-[#1C2B3A] rounded-md p-3">
+          <div className="bg-[#F1F5F9] border border-[#E2E8F0] rounded-md p-3">
             <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-2">
               Expected Columns
             </p>
@@ -105,7 +105,7 @@ export function UploadModal({ onImport, onClose }: Props) {
               {['Domain', 'Keyword', 'Country', 'Position'].map((c) => (
                 <span
                   key={c}
-                  className="font-mono text-[10px] px-2 py-0.5 bg-[#07090F] border border-[#78490A] rounded text-[#F59E0B]"
+                  className="font-mono text-[10px] px-2 py-0.5 bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.4)] rounded text-[#B45309]"
                 >
                   {c}
                 </span>
@@ -113,7 +113,7 @@ export function UploadModal({ onImport, onClose }: Props) {
               {['Previous', 'Change', 'Last Check'].map((c) => (
                 <span
                   key={c}
-                  className="font-mono text-[10px] px-2 py-0.5 bg-[#07090F] border border-[#1C2B3A] rounded text-[#94A3B8]"
+                  className="font-mono text-[10px] px-2 py-0.5 bg-white border border-[#E2E8F0] rounded text-[#475569]"
                 >
                   {c}
                 </span>
@@ -124,7 +124,7 @@ export function UploadModal({ onImport, onClose }: Props) {
           {/* Parsing state */}
           {parsing && (
             <div className="space-y-2">
-              <div className="h-[3px] bg-[#111928] rounded-full overflow-hidden">
+              <div className="h-[3px] bg-[#F1F5F9] rounded-full overflow-hidden">
                 <div className="h-full bg-[#F59E0B] rounded-full animate-[progressPulse_1.2s_ease-in-out_infinite]" />
               </div>
               <p className="text-center text-[12px] text-[#64748B]">Parsing data…</p>

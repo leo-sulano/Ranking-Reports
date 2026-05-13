@@ -27,8 +27,8 @@ export function SnapshotTabs({ snapshots, activeId, onSelect }: Props) {
             onClick={() => onSelect(snap.id)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-mono border transition-all shrink-0 ${
               isActive
-                ? 'bg-[#111928] border-[#243548] text-[#E2E8F0]'
-                : 'bg-transparent border-[#1C2B3A] text-[#64748B] hover:border-[#243548] hover:text-[#94A3B8]'
+                ? 'bg-[#F1F5F9] border-[#CBD5E1] text-[#0F172A]'
+                : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:text-[#475569]'
             }`}
           >
             {snap.displayDate}

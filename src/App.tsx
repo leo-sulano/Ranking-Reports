@@ -201,20 +201,20 @@ function Layout() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#07090F] text-[#64748B] font-mono text-[12px] tracking-wider">
+      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] text-[#64748B] font-mono text-[12px] tracking-wider">
         Loading rankings…
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#07090F] relative">
+    <div className="flex h-screen overflow-hidden bg-[#F8FAFC] relative">
       {/* Background grid */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-20"
+        className="fixed inset-0 pointer-events-none z-0 opacity-60"
         style={{
           backgroundImage:
-            'linear-gradient(#1C2B3A 1px, transparent 1px), linear-gradient(90deg, #1C2B3A 1px, transparent 1px)',
+            'linear-gradient(#E2E8F0 1px, transparent 1px), linear-gradient(90deg, #E2E8F0 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />
