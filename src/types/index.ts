@@ -28,10 +28,19 @@ export type SortDir = 'asc' | 'desc'
 export interface AppState {
   snapshots: Snapshot[]
   activeSnapshotId: string | null  // null = most recent
-  activeBrand: string | null        // null = overview
-  activeCountries: string[]
-  activeDomains: string[]
-  kwFilter: string
+}
+
+// Shape of the React Router outlet context that the Layout supplies to
+// every page (Home, BPSites, …). Defined here so pages don't have to
+// reach into one another for the type.
+export interface RROutletContext {
+  snapshots: Snapshot[]
+  activeSnapshotId: string | null
+  bpFilterBrand: string | null
+  onSelectSnapshot: (id: string) => void
+  onSelectBPBrand: (name: string | null) => void
+  onOpenUpload: () => void
+  onDeleteSnapshot: (id: string) => void
 }
 
 export interface ToastItem {

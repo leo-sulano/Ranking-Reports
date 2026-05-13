@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Routes, Route, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import type { AppState, RankingRecord, Snapshot } from './types'
-import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from './lib/brands'
+import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
+import type { AppState, RROutletContext, RankingRecord, Snapshot } from './types'
+import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, extractSnapshotDate, formatDisplayDate,
 } from './lib/parser'
@@ -16,46 +16,17 @@ import { DuplicateWarning } from './components/DuplicateWarning'
 import { ToastContainer } from './components/Toast'
 import type { ToastItem } from './types'
 
-import { RankingReports } from './pages/RankingReports'
-import type { RROutletContext } from './pages/RankingReports'
 import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
 import { Screenshots }  from './pages/Screenshots'
 import { GMB }          from './pages/GMB'
 import { FTDs }         from './pages/FTDs'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getBrandRecords(brandName: string, records: RankingRecord[]): RankingRecord[] {
-  const brand = BRAND_BY_NAME[brandName]
-  if (!brand) return []
-  const set = new Set(brand.domains.map((d) => d.toLowerCase()))
-  return records.filter((r) => set.has(r.domain.toLowerCase()))
-}
-
-function getCountries(brandName: string, records: RankingRecord[]): string[] {
-  return [...new Set(getBrandRecords(brandName, records).map((r) => r.country))].sort()
-}
-
-function getDomains(brandName: string, records: RankingRecord[]): string[] {
-  const brand = BRAND_BY_NAME[brandName]
-  const found = [...new Set(getBrandRecords(brandName, records).map((r) => r.domain.toLowerCase()))]
-  return found.sort((a, b) => {
-    if (a === brand.mainDomain.toLowerCase()) return -1
-    if (b === brand.mainDomain.toLowerCase()) return 1
-    return a.localeCompare(b)
-  })
-}
-
 // ─── Initial state ────────────────────────────────────────────────────────────
 
 const INITIAL: AppState = {
   snapshots:         [],
   activeSnapshotId:  null,
-  activeBrand:       null,
-  activeCountries:   [],
-  activeDomains:     [],
-  kwFilter:          '',
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -68,7 +39,6 @@ function Layout() {
   const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -106,12 +76,8 @@ function Layout() {
     return state.snapshots.find((s) => s.id === state.activeSnapshotId) ?? state.snapshots[0]
   }, [state.snapshots, state.activeSnapshotId])
 
-  const activeRecords = activeSnapshot?.records ?? []
-
   // ── Import ────────────────────────────────────────────────────────────────
 
-  // Persist a parsed snapshot. Called by both the normal upload flow and the
-  // "Delete & replace" path of the duplicate warning modal.
   const persistSnapshot = useCallback(async (records: RankingRecord[]) => {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
@@ -128,19 +94,13 @@ function Layout() {
 
     let nextAll: Snapshot[] = []
     setState((s) => {
-      // Replace any snapshot with the same rawDate (covers the delete-and-replace
-      // path) and prepend the new one to the front.
       const filtered = s.snapshots.filter((sn) => sn.rawDate !== rawDate)
       const nextSnapshots = [newSnap, ...filtered]
       nextAll = nextSnapshots
-      const brandName = s.activeBrand
       return {
         ...s,
         snapshots:        nextSnapshots,
         activeSnapshotId: newId,
-        activeCountries:  brandName ? getCountries(brandName, records) : [],
-        activeDomains:    brandName ? getDomains(brandName, records) : [],
-        kwFilter:         '',
       }
     })
 
@@ -152,18 +112,12 @@ function Layout() {
 
   const handleImport = useCallback(async (records: RankingRecord[]) => {
     const rawDate = extractSnapshotDate(records)
-
-    // ── Duplicate-date guard ─────────────────────────────────────────────
-    // If a snapshot for this Last Check date already exists, open the
-    // duplicate-warning modal instead of saving. User can cancel or
-    // explicitly choose "Delete & replace".
     const dupe = state.snapshots.find((s) => s.rawDate === rawDate)
     if (dupe) {
       setShowUpload(false)
       setDuplicateWarning({ existing: dupe, pendingRecords: records })
       return
     }
-
     await persistSnapshot(records)
   }, [persistSnapshot, state.snapshots])
 
@@ -213,119 +167,32 @@ function Layout() {
     setState((s) => {
       const snap = s.snapshots.find((sn) => sn.id === id)
       if (!snap) return s
-      return {
-        ...s,
-        activeSnapshotId: id,
-        activeCountries: s.activeBrand ? getCountries(s.activeBrand, snap.records) : [],
-        activeDomains:   s.activeBrand ? getDomains(s.activeBrand, snap.records) : [],
-        kwFilter: '',
-      }
+      return { ...s, activeSnapshotId: id }
     })
   }, [])
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // ── Topbar title ──────────────────────────────────────────────────────────
 
-  const selectOverview = useCallback(() => {
-    setState((s) => ({ ...s, activeBrand: null, activeCountries: [], activeDomains: [], kwFilter: '' }))
-  }, [])
-
-  const selectBrand = useCallback((brandName: string) => {
-    setState((s) => {
-      const records = activeSnapshot?.records ?? []
-      return {
-        ...s,
-        activeBrand:     brandName,
-        activeCountries: getCountries(brandName, records),
-        activeDomains:   getDomains(brandName, records),
-        kwFilter:        '',
-      }
-    })
-    navigate('/ranking-reports')
-  }, [activeSnapshot, navigate])
-
-  // ── Filter ────────────────────────────────────────────────────────────────
-
-  const toggleCountry = useCallback((country: string) => {
-    setState((s) => {
-      const active = s.activeCountries
-      if (active.includes(country) && active.length === 1) return s
-      return {
-        ...s,
-        activeCountries: active.includes(country)
-          ? active.filter((c) => c !== country)
-          : [...active, country],
-      }
-    })
-  }, [])
-
-  const toggleDomain = useCallback((domain: string) => {
-    setState((s) => {
-      const active = s.activeDomains
-      if (active.includes(domain) && active.length === 1) return s
-      return {
-        ...s,
-        activeDomains: active.includes(domain)
-          ? active.filter((d) => d !== domain)
-          : [...active, domain],
-      }
-    })
-  }, [])
-
-  const setKwFilter = useCallback((val: string) => {
-    setState((s) => ({ ...s, kwFilter: val }))
-  }, [])
-
-  // ── Derived ───────────────────────────────────────────────────────────────
-
-  const visibleRecords = useMemo(
-    () => state.activeBrand ? getBrandRecords(state.activeBrand, activeRecords) : activeRecords,
-    [state.activeBrand, activeRecords],
-  )
-
-  const availableCountries = useMemo(
-    () => state.activeBrand ? getCountries(state.activeBrand, activeRecords) : [],
-    [state.activeBrand, activeRecords],
-  )
-  const availableDomains = useMemo(
-    () => state.activeBrand ? getDomains(state.activeBrand, activeRecords) : [],
-    [state.activeBrand, activeRecords],
-  )
-
-  const location       = useLocation()
-  const activeBrandObj = state.activeBrand ? BRAND_BY_NAME[state.activeBrand] : null
+  const location = useLocation()
 
   const SECTION_TITLES: Record<string, [string, string]> = {
-    '/ranking-reports': [activeBrandObj?.name ?? 'Ranking Reports', activeBrandObj ? '' : 'All brands overview'],
-    '/bp-sites':        ['BP Sites', 'Brand website management'],
-    '/screenshots':     ['Screenshots', 'Visual site monitoring'],
-    '/gmb':             ['GMB', 'Google My Business'],
-    '/ftds':            ['FTDs', 'First-time depositors'],
+    '/bp-sites':    ['BP Sites', 'Brand website management'],
+    '/screenshots': ['Screenshots', 'Visual site monitoring'],
+    '/gmb':         ['GMB', 'Google My Business'],
+    '/ftds':        ['FTDs', 'First-time depositors'],
   }
   const currentPath =
     location.pathname === '/'
       ? null
-      : Object.keys(SECTION_TITLES).find((p) => location.pathname.startsWith(p)) ?? '/bp-sites'
+      : Object.keys(SECTION_TITLES).find((p) => location.pathname.startsWith(p)) ?? null
   const [topbarTitle, topbarDomain] = currentPath
     ? SECTION_TITLES[currentPath]
-    : ['SERP Terminal', 'Command center · Rooster Partners']
+    : ['Ranking Reports', 'Command center · Rooster Partners']
 
   const rrContext: RROutletContext = {
     snapshots:         state.snapshots,
     activeSnapshotId:  state.activeSnapshotId,
-    activeBrand:       state.activeBrand,
-    activeCountries:   state.activeCountries,
-    activeDomains:     state.activeDomains,
-    kwFilter:          state.kwFilter,
-    activeRecords,
-    visibleRecords,
-    availableCountries,
-    availableDomains,
     onSelectSnapshot:  selectSnapshot,
-    onSelectBrand:     selectBrand,
-    onSelectOverview:  selectOverview,
-    onToggleCountry:   toggleCountry,
-    onToggleDomain:    toggleDomain,
-    onKwFilter:        setKwFilter,
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
     bpFilterBrand,
@@ -353,12 +220,7 @@ function Layout() {
       />
 
       <Sidebar
-        brands={BRANDS}
-        records={activeRecords}
-        activeBrand={state.activeBrand}
         uploadDate={activeSnapshot?.displayDate ?? null}
-        onSelectBrand={selectBrand}
-        onSelectOverview={selectOverview}
         onOpenUpload={() => setShowUpload(true)}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
@@ -402,11 +264,10 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="/bp-sites" element={<BPSites />} />
-        <Route path="/ranking-reports" element={<RankingReports />} />
-        <Route path="/screenshots"     element={<Screenshots />} />
-        <Route path="/gmb"             element={<GMB />} />
-        <Route path="/ftds"            element={<FTDs />} />
+        <Route path="/bp-sites"    element={<BPSites />} />
+        <Route path="/screenshots" element={<Screenshots />} />
+        <Route path="/gmb"         element={<GMB />} />
+        <Route path="/ftds"        element={<FTDs />} />
       </Route>
     </Routes>
   )

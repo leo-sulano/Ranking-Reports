@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import type { Brand, RankingRecord } from '../types'
+import { BRANDS } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: string }> = [
   { path: '/',                label: 'Home',     icon: '⌂' },
@@ -10,36 +10,20 @@ const PAGES: Array<{ path: string; label: string; icon: string }> = [
 ]
 
 interface Props {
-  brands: Brand[]
-  records: RankingRecord[]
-  activeBrand: string | null
   uploadDate: string | null
-  onSelectBrand: (name: string) => void
-  onSelectOverview: () => void
   onOpenUpload: () => void
   activeBPBrand: string | null
   onSelectBPBrand: (name: string | null) => void
 }
 
-function countBrandRecords(brand: Brand, records: RankingRecord[]): number {
-  const set = new Set(brand.domains.map((d) => d.toLowerCase()))
-  return records.filter((r) => set.has(r.domain.toLowerCase())).length
-}
-
 export function Sidebar({
-  brands,
-  records,
-  activeBrand,
   uploadDate,
-  onSelectBrand,
-  onSelectOverview,
   onOpenUpload,
   activeBPBrand,
   onSelectBPBrand,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
-  const isRankingRoute = location.pathname.startsWith('/ranking-reports')
   const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
 
   const isActivePath = (p: string) =>
@@ -51,7 +35,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-[#1C2B3A] shrink-0">
         <div className="font-display text-[18px] tracking-widest text-[#F59E0B] leading-none">
-          SERP TERMINAL
+          RANKING REPORTS
         </div>
         <div className="text-[10px] text-[#64748B] uppercase tracking-[0.12em] mt-1">
           Rooster Partners
@@ -98,7 +82,7 @@ export function Sidebar({
           </div>
 
           <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
-            {brands.map((brand) => {
+            {BRANDS.map((brand) => {
               const isActive = activeBPBrand === brand.name
               return (
                 <button
@@ -116,62 +100,8 @@ export function Sidebar({
         </>
       )}
 
-      {/* ── Ranking Reports brand list ──────────────────────────── */}
-      {isRankingRoute && (
-        <>
-          <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
-              Ranking Reports
-            </span>
-          </div>
-
-          <button
-            onClick={onSelectOverview}
-            className={`flex items-center gap-2.5 mx-2.5 mb-0.5 px-2.5 py-2 rounded-md text-left transition-colors relative ${
-              activeBrand === null
-                ? 'bg-[#111928] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:rounded-sm before:bg-[#F59E0B]'
-                : 'hover:bg-[#151F30]'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-lg bg-[#1C2B3A] flex items-center justify-center text-[#F59E0B] text-sm shrink-0">
-              ⊞
-            </div>
-            <div className="min-w-0">
-              <div className="text-[12px] font-semibold text-[#E2E8F0]">Overview</div>
-              <div className="text-[10px] text-[#64748B] font-mono">All brands</div>
-            </div>
-          </button>
-
-          <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
-            {brands.map((brand) => {
-              const isActive = activeBrand === brand.name
-              const count = countBrandRecords(brand, records)
-              return (
-                <button
-                  key={brand.name}
-                  onClick={() => onSelectBrand(brand.name)}
-                  className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
-                    isActive ? 'bg-[#111928]' : 'hover:bg-[#151F30]'
-                  }`}
-                >
-                  <div className="text-[12px] font-semibold text-[#E2E8F0] truncate flex-1">{brand.name}</div>
-                  {count > 0 && (
-                    <span className="text-[10px] font-mono text-[#64748B] bg-[#07090F] border border-[#1C2B3A] px-1.5 py-0.5 rounded-full shrink-0 ml-2">
-                      {count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Spacer for non-ranking routes */}
-      {!isRankingRoute && !isBPSitesRoute && <div className="flex-1" />}
+      {/* Spacer for non-BP routes */}
+      {!isBPSitesRoute && <div className="flex-1" />}
 
       {/* Footer */}
       <div className="p-3 border-t border-[#1C2B3A] shrink-0">

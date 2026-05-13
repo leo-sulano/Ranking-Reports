@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import type { RROutletContext } from './RankingReports'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
-import type { RankingRecord } from '../types'
+import type { RankingRecord, RROutletContext } from '../types'
 
 // ─── Tier definitions ─────────────────────────────────────────────────────────
 //
@@ -196,7 +195,7 @@ export function Home() {
               </span>
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#10B981]">LIVE</span>
               <span className="font-mono text-[10px] tracking-[0.16em] text-[#64748B] ml-2">
-                SERP.TERMINAL // ROOSTER PARTNERS
+                RANKING.REPORTS // ROOSTER PARTNERS
               </span>
             </div>
             <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.14em] text-[#64748B]">
@@ -333,7 +332,7 @@ export function Home() {
                     return (
                       <tr
                         key={row.brand.name}
-                        onClick={() => { ctx.onSelectBrand(row.brand.name) }}
+                        onClick={() => { ctx.onSelectBPBrand(row.brand.name); navigate('/bp-sites') }}
                         className="border-b border-[#101826] hover:bg-[#101826] cursor-pointer transition-colors group"
                         style={{ animation: `fadeUp 0.4s ease ${0.25 + i * 0.04}s both` }}
                       >
@@ -438,7 +437,6 @@ export function Home() {
 
             <div className="grid grid-cols-2 gap-2.5 p-5">
               <QuickLink label="BP Sites"     hint="Brand × keyword matrix"    onClick={() => navigate('/bp-sites')} accent="#F59E0B" />
-              <QuickLink label="Ranking Reports" hint="Per-brand drilldown"     onClick={() => navigate('/ranking-reports')} accent="#10B981" />
               <QuickLink label="Screenshots"  hint="Visual monitoring"          onClick={() => navigate('/screenshots')} accent="#3B82F6" />
               <QuickLink label="GMB"          hint="Google My Business"         onClick={() => navigate('/gmb')} accent="#EF4444" />
               <QuickLink label="FTDs"         hint="First-time depositors"      onClick={() => navigate('/ftds')} accent="#8B5CF6" />
