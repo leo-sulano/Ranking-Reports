@@ -13,13 +13,15 @@ interface Props {
 }
 
 function aggregate(records: RankingRecord[]) {
-  const byBrand: Record<string, number>  = {}
-  const byDomain: Record<string, number> = {}
+  const byBrand:   Record<string, number> = {}
+  const byDomain:  Record<string, number> = {}
+  const byCountry: Record<string, number> = {}
   let unknown = 0
   for (const r of records) {
     const dk = r.domain.toLowerCase()
     const brand = DOMAIN_TO_BRAND[dk]
     byDomain[dk] = (byDomain[dk] ?? 0) + 1
+    if (r.country) byCountry[r.country] = (byCountry[r.country] ?? 0) + 1
     if (brand) {
       byBrand[brand] = (byBrand[brand] ?? 0) + 1
     } else {
@@ -27,15 +29,16 @@ function aggregate(records: RankingRecord[]) {
     }
   }
   return {
-    byBrand:  Object.entries(byBrand).sort((a, b) => b[1] - a[1]),
-    byDomain: Object.entries(byDomain).sort((a, b) => b[1] - a[1]),
+    byBrand:   Object.entries(byBrand).sort((a, b) => b[1] - a[1]),
+    byDomain:  Object.entries(byDomain).sort((a, b) => b[1] - a[1]),
+    byCountry: Object.entries(byCountry).sort((a, b) => b[1] - a[1]),
     unknown,
   }
 }
 
 export function UploadSummary({ data, onClose }: Props) {
   const { displayDate, records, allSnapshots } = data
-  const { byBrand, byDomain, unknown } = aggregate(records)
+  const { byBrand, byDomain, byCountry, unknown } = aggregate(records)
 
   const totalRecordsInDb   = allSnapshots.reduce((sum, s) => sum + s.records.length, 0)
   const totalSnapshotsInDb = allSnapshots.length
@@ -69,10 +72,11 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="px-6 py-4 overflow-y-auto">
 
           {/* Totals row */}
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <Stat label="Uploaded"       value={records.length} accent="#10B981" />
-            <Stat label="Brands matched" value={byBrand.length} accent="#F59E0B" />
-            <Stat label="Domains"        value={byDomain.length} accent="#38BDF8" />
+          <div className="grid grid-cols-4 gap-3 mb-5">
+            <Stat label="Uploaded"       value={records.length}   accent="#10B981" />
+            <Stat label="Brands matched" value={byBrand.length}   accent="#F59E0B" />
+            <Stat label="Domains"        value={byDomain.length}  accent="#38BDF8" />
+            <Stat label="Countries"      value={byCountry.length} accent="#A78BFA" />
           </div>
 
           {unknown > 0 && (
@@ -96,6 +100,15 @@ export function UploadSummary({ data, onClose }: Props) {
               <p className="text-[11px] text-[#64748B] py-2">No domains.</p>
             ) : (
               <Table rows={byDomain} mono />
+            )}
+          </Section>
+
+          {/* Per-country */}
+          <Section title="Per country">
+            {byCountry.length === 0 ? (
+              <p className="text-[11px] text-[#64748B] py-2">No countries.</p>
+            ) : (
+              <Table rows={byCountry} mono />
             )}
           </Section>
 
