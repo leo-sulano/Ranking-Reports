@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import type { RankingRecord } from '../types'
-import { DOMAIN_TO_BRAND } from './brands'
+import { DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
 
 export function parseXlsx(buffer: ArrayBuffer): RankingRecord[] {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
@@ -11,6 +11,35 @@ export function parseXlsx(buffer: ArrayBuffer): RankingRecord[] {
     raw: false,
   })
   return parseRows(rows as (string | number | Date)[][])
+}
+
+/**
+ * Coerce a country cell to a 2-letter code:
+ *   "Australia"   → "AU"
+ *   "australia"   → "AU"
+ *   "AU"          → "AU"
+ *   "au"          → "AU"
+ *   "ZZ"          → "ZZ"   (unknown → uppercased pass-through so it still
+ *                            matches itself in lookups)
+ */
+function normalizeCountry(raw: unknown): string {
+  const s = String(raw ?? '').trim()
+  if (!s) return ''
+
+  // Try the literal value (handles "Australia", "AU", etc.)
+  const direct = COUNTRY_LABELS[s]
+  if (direct) return direct
+
+  // Try lowercased/normalized variants of full names
+  const norm = s.toLowerCase().replace(/\s+/g, ' ')
+  for (const [key, code] of Object.entries(COUNTRY_LABELS)) {
+    if (key.toLowerCase() === norm) return code
+  }
+
+  // Already a 2-letter code in some other case? Uppercase it.
+  if (s.length === 2) return s.toUpperCase()
+
+  return s.toUpperCase()
 }
 
 /**
@@ -73,7 +102,7 @@ function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
     records.push({
       domain,
       keyword,
-      country:  iCountry  >= 0 ? String(row[iCountry]  ?? '').trim() : '',
+      country:  iCountry  >= 0 ? normalizeCountry(row[iCountry]) : '',
       position: iPosition >= 0 ? String(row[iPosition] ?? '').trim() : '',
       previous: iPrev     >= 0 ? String(row[iPrev]     ?? '').trim() : '',
       change:   iChange   >= 0 ? String(row[iChange]   ?? '').trim() : '',

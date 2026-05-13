@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { Brand, RankingRecord, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import type { RROutletContext } from './RankingReports'
 import { PosBadge } from '../components/PosBadge'
 
@@ -186,7 +186,9 @@ function BrandView({
     return Object.keys(labels).sort().map((kl) => ({ key: kl, label: labels[kl] }))
   }, [brandSnapshots])
 
-  // Per-snapshot lookup table
+  // Per-snapshot lookup table. Country is normalized to a 2-letter code so
+  // records that arrived from earlier uploads with full names ("Australia")
+  // still match the COUNTRY_ORDER axis ("AU").
   const lookupBySnapshot = useMemo(() => {
     const map: Record<string, Lookup> = {}
     for (const snap of brandSnapshots) {
@@ -194,9 +196,10 @@ function BrandView({
       for (const r of snap.records) {
         const kk = r.keyword.toLowerCase()
         const dk = r.domain.toLowerCase()
+        const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
         if (!lookup[kk]) lookup[kk] = {}
         if (!lookup[kk][dk]) lookup[kk][dk] = {}
-        lookup[kk][dk][r.country.toUpperCase()] = r
+        lookup[kk][dk][ck] = r
       }
       map[snap.id] = lookup
     }
