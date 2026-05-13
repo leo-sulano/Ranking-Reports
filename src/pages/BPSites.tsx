@@ -270,9 +270,8 @@ function BrandView({
                         <tr>
                           <th
                             rowSpan={2}
-                            className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
+                            className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
                             style={{
-                              minWidth: 180,
                               background: STICKY_KW_BG,
                               color: '#000',
                               borderRight: borderStyle,
