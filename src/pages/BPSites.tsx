@@ -1,9 +1,12 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { Brand, RankingRecord, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import type { RROutletContext } from './RankingReports'
 import { PosBadge } from '../components/PosBadge'
+import { StatsRow } from '../components/StatsRow'
+import { SnapshotTabs } from '../components/SnapshotTabs'
+import { parsePosition, parseChange } from '../lib/parser'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
@@ -35,8 +38,9 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 // ─── Entry ────────────────────────────────────────────────────────────────────
 
 export function BPSites() {
-  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot } =
-    useOutletContext<RROutletContext>()
+  const ctx = useOutletContext<RROutletContext>()
+  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot,
+          activeSnapshotId, onSelectSnapshot } = ctx
   const activeBrand = bpFilterBrand ? BRAND_BY_NAME[bpFilterBrand] ?? null : null
 
   if (activeBrand) {
@@ -44,6 +48,8 @@ export function BPSites() {
       <BrandView
         brand={activeBrand}
         snapshots={snapshots}
+        activeSnapshotId={activeSnapshotId}
+        onSelectSnapshot={onSelectSnapshot}
         onBack={() => onSelectBPBrand(null)}
         onDeleteSnapshot={onDeleteSnapshot}
       />
@@ -146,11 +152,15 @@ function BrandGrid({
 function BrandView({
   brand,
   snapshots,
+  activeSnapshotId,
+  onSelectSnapshot,
   onBack,
   onDeleteSnapshot,
 }: {
   brand: Brand
   snapshots: Snapshot[]
+  activeSnapshotId: string | null
+  onSelectSnapshot: (id: string) => void
   onBack: () => void
   onDeleteSnapshot: (id: string) => void
 }) {
@@ -165,7 +175,7 @@ function BrandView({
     [brand, mainDomain],
   )
 
-  // Per-snapshot records, filtered to this brand only
+  // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
     () =>
       snapshots
@@ -177,47 +187,76 @@ function BrandView({
     [snapshots, brandDomainSet],
   )
 
-  // Sorted keyword list across every snapshot for this brand
+  // Pick the active snapshot — fall back to the most recent brand-snapshot if
+  // the globally-active one has no data for this brand.
+  const activeSnap = useMemo(() => {
+    if (!brandSnapshots.length) return null
+    return brandSnapshots.find((s) => s.id === activeSnapshotId) ?? brandSnapshots[0]
+  }, [brandSnapshots, activeSnapshotId])
+
+  // Local filters — independent from Rankings page
+  const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
+  const [kwFilter, setKwFilter] = useState('')
+
+  const toggleCountry = (c: string) => {
+    setActiveCountries((prev) => {
+      if (prev.includes(c) && prev.length === 1) return prev
+      return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+    })
+  }
+
+  // Stats for the active snapshot (drives the top StatsRow)
+  const stats = useMemo(() => {
+    const recs = activeSnap?.records ?? []
+    return {
+      total:      recs.length,
+      top3:       recs.filter((r) => { const p = parsePosition(r.position); return typeof p === 'number' && p <= 3 }).length,
+      improved:   recs.filter((r) => (parseChange(r.change) ?? 0) > 0).length,
+      dropped:    recs.filter((r) => (parseChange(r.change) ?? 0) < 0).length,
+      notRanking: recs.filter((r) => parsePosition(r.position) === 'NR').length,
+    }
+  }, [activeSnap])
+
+  // Sorted keyword list for the active snapshot, with kw search applied
   const keywords = useMemo(() => {
+    if (!activeSnap) return [] as Array<{ key: string; label: string }>
     const seen = new Set<string>()
     const labels: Record<string, string> = {}
-    for (const snap of brandSnapshots) {
-      for (const r of snap.records) {
-        const kl = r.keyword.toLowerCase()
-        if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
-      }
+    for (const r of activeSnap.records) {
+      const kl = r.keyword.toLowerCase()
+      if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
     }
-    return Object.keys(labels).sort().map((kl) => ({ key: kl, label: labels[kl] }))
-  }, [brandSnapshots])
+    const filter = kwFilter.trim().toLowerCase()
+    return Object.keys(labels)
+      .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
+      .sort()
+      .map((kl) => ({ key: kl, label: labels[kl] }))
+  }, [activeSnap, kwFilter])
 
-  // Per-snapshot lookup table. Country is normalized to a 2-letter code so
-  // records that arrived from earlier uploads with full names ("Australia")
-  // still match the COUNTRY_ORDER axis ("AU").
-  const lookupBySnapshot = useMemo(() => {
-    const map: Record<string, Lookup> = {}
-    for (const snap of brandSnapshots) {
-      const lookup: Lookup = {}
-      for (const r of snap.records) {
-        const kk = r.keyword.toLowerCase()
-        const dk = r.domain.toLowerCase()
-        const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
-        if (!lookup[kk]) lookup[kk] = {}
-        if (!lookup[kk][dk]) lookup[kk][dk] = {}
-        lookup[kk][dk][ck] = r
-      }
-      map[snap.id] = lookup
+  // Lookup for the active snapshot only
+  const lookup = useMemo(() => {
+    const map: Lookup = {}
+    if (!activeSnap) return map
+    for (const r of activeSnap.records) {
+      const kk = r.keyword.toLowerCase()
+      const dk = r.domain.toLowerCase()
+      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      if (!map[kk]) map[kk] = {}
+      if (!map[kk][dk]) map[kk][dk] = {}
+      map[kk][dk][ck] = r
     }
     return map
-  }, [brandSnapshots])
+  }, [activeSnap])
 
-  const mainColCount = 1 /* GSV */ + COUNTRY_ORDER.length * 3 /* country + SV + AFF */
-  const bpColCount   = COUNTRY_ORDER.length
+  // Country columns honor the chip filter, but preserve canonical order
+  const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
+  const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
+  const bpColCount   = visibleCountries.length
 
   return (
-    <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
-
+    <>
       {/* Back + brand header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 px-7 pt-5 pb-3 shrink-0">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#94A3B8] transition-colors mr-1"
@@ -228,48 +267,103 @@ function BrandView({
           All brands
         </button>
 
-        <div>
+        <div className="flex items-baseline gap-3">
           <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
-          <p className="text-[11px]  text-[#64748B] mt-0.5">{brand.mainDomain}</p>
+          <p className="text-[11px] font-mono text-[#64748B]">{brand.mainDomain}</p>
         </div>
       </div>
 
       {brandSnapshots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div className="flex flex-col items-center justify-center flex-1 text-center gap-4 px-7 pb-7">
           <p className="text-[14px] text-[#64748B] max-w-sm leading-relaxed">
             No ranking data for {brand.name} yet. Import a data export to populate this view.
           </p>
         </div>
       ) : (
         <>
-          <div className="text-[11px]  text-[#64748B] mb-3">
-            {brandSnapshots.length} snapshot{brandSnapshots.length !== 1 ? 's' : ''}
-            {' · '}{keywords.length} keyword{keywords.length !== 1 ? 's' : ''}
-            {' · '}{brand.domains.length} website{brand.domains.length !== 1 ? 's' : ''}
-            {' (1 main + ' + bpDomains.length + ' BP)'}
+          <StatsRow
+            total={stats.total}
+            top3={stats.top3}
+            improved={stats.improved}
+            dropped={stats.dropped}
+            notRanking={stats.notRanking}
+          />
+
+          <SnapshotTabs
+            snapshots={brandSnapshots}
+            activeId={activeSnap?.id ?? null}
+            onSelect={onSelectSnapshot}
+          />
+
+          {/* Inline filter bar — countries + keyword search (no domain chips
+              since BP Sites lays every domain out as a matrix column) */}
+          <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+              Countries
+            </span>
+            {COUNTRY_ORDER.map((c) => {
+              const active = activeCountries.includes(c)
+              return (
+                <button
+                  key={c}
+                  onClick={() => toggleCountry(c)}
+                  className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
+                  style={
+                    active
+                      ? { background: brand.color, color: '#000', borderColor: 'transparent', fontWeight: 700 }
+                      : { background: 'transparent', color: '#64748B', borderColor: '#1C2B3A' }
+                  }
+                >
+                  {c}
+                </button>
+              )
+            })}
+
+            <div className="w-px h-5 bg-[#1C2B3A] mx-1" />
+
+            <div className="relative">
+              <svg
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-40"
+                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                value={kwFilter}
+                onChange={(e) => setKwFilter(e.target.value)}
+                placeholder="Search keywords…"
+                className="pl-7 pr-3 py-1 bg-[#111928] border border-[#1C2B3A] rounded-full text-[12px] text-[#E2E8F0] outline-none w-44 placeholder:text-[#64748B] focus:border-[#243548] transition-colors"
+              />
+            </div>
+
+            <div className="ml-auto text-[11px] font-mono text-[#64748B]">
+              {keywords.length} keyword{keywords.length !== 1 ? 's' : ''} · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
+              {' (1 main + ' + bpDomains.length + ' BP)'}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-7">
-            {brandSnapshots.map((snap) => {
-              const lookup = lookupBySnapshot[snap.id]
+          {/* Single-snapshot matrix */}
+          <div className="flex-1 overflow-auto px-7 pb-7">
+            {activeSnap && (() => {
               const borderStyle = `1px solid ${TABLE_BORDER}`
               return (
                 <div
-                  key={snap.id}
                   className="bg-white rounded-[6px] overflow-hidden text-black"
                   style={{ border: borderStyle }}
                 >
-
                   {/* Date band */}
                   <div
                     className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
                     style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
                   >
-                    <span>{snap.displayDate}</span>
+                    <span>{activeSnap.displayDate}</span>
                     <button
-                      onClick={() => onDeleteSnapshot(snap.id)}
+                      onClick={() => onDeleteSnapshot(activeSnap.id)}
                       className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
-                      title={`Delete snapshot for ${snap.displayDate}`}
+                      title={`Delete snapshot for ${activeSnap.displayDate}`}
                     >
                       ✕ Delete
                     </button>
@@ -339,7 +433,7 @@ function BrandView({
                           >
                             GSV
                           </th>
-                          {COUNTRY_ORDER.map((c, ci) => (
+                          {visibleCountries.map((c, ci) => (
                             <Fragment key={`main-sub-${c}`}>
                               <th
                                 className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
@@ -379,7 +473,7 @@ function BrandView({
                             const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                             return (
                               <Fragment key={`bp-sub-${bp}`}>
-                                {COUNTRY_ORDER.map((c, ci) => (
+                                {visibleCountries.map((c, ci) => (
                                   <th
                                     key={`bp-sub-${bp}-${c}`}
                                     className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
@@ -387,7 +481,7 @@ function BrandView({
                                       background: palette.headerBg,
                                       color: HEADER_FG,
                                       borderLeft: ci === 0 ? borderStyle : borderStyle,
-                                      borderRight: ci === COUNTRY_ORDER.length - 1 ? borderStyle : undefined,
+                                      borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                                       borderBottom: borderStyle,
                                     }}
                                   >
@@ -431,7 +525,7 @@ function BrandView({
                             </td>
 
                             {/* MAIN — per-country triplets (country / SV / AFF) */}
-                            {COUNTRY_ORDER.map((c, ci) => {
+                            {visibleCountries.map((c, ci) => {
                               const rec = lookup?.[kw]?.[mainDomain]?.[c]
                               return (
                                 <Fragment key={`main-cell-${kw}-${c}`}>
@@ -474,7 +568,7 @@ function BrandView({
                             {bpDomains.map((bp, bpIdx) => {
                               const dk = bp.toLowerCase()
                               const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
-                              return COUNTRY_ORDER.map((c, ci) => {
+                              return visibleCountries.map((c, ci) => {
                                 const rec = lookup?.[kw]?.[dk]?.[c]
                                 return (
                                   <td
@@ -483,7 +577,7 @@ function BrandView({
                                     style={{
                                       background: palette.cellBg,
                                       borderLeft: ci === 0 ? borderStyle : borderStyle,
-                                      borderRight: ci === COUNTRY_ORDER.length - 1 ? borderStyle : undefined,
+                                      borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                                       borderBottom: borderStyle,
                                     }}
                                   >
@@ -499,10 +593,10 @@ function BrandView({
                   </div>
                 </div>
               )
-            })}
+            })()}
           </div>
         </>
       )}
-    </div>
+    </>
   )
 }
