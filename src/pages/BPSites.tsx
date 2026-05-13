@@ -64,7 +64,7 @@ function BrandGrid({
 }) {
   return (
     <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3.5">
+      <div className="grid grid-cols-3 gap-3.5">
         {BRANDS.map((brand, idx) => {
           const domainSet = new Set(brand.domains.map((d) => d.toLowerCase()))
           const hasData = snapshots.some((s) =>
