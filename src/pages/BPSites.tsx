@@ -236,15 +236,15 @@ function BrandView({
             {brandSnapshots.map((snap, snapIdx) => {
               const lookup = lookupBySnapshot[snap.id]
               return (
-                <div key={snap.id} className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] overflow-hidden">
+                <div key={snap.id} className="bg-white border border-[#D1D5DB] rounded-[10px] overflow-hidden text-black">
 
-                  {/* Date band */}
+                  {/* Date band — keeps brand-color accent for hierarchy */}
                   <div
-                    className="px-4 py-2.5 text-[13px] font-display tracking-wider font-bold flex items-center"
+                    className="px-4 py-2.5 text-[13px] font-display tracking-wider font-bold flex items-center text-black"
                     style={{
-                      background: `${brand.color}18`,
-                      color: brand.color,
+                      background: `${brand.color}22`,
                       borderLeft: `3px solid ${brand.color}`,
+                      borderBottom: '1px solid #D1D5DB',
                     }}
                   >
                     {snap.displayDate}
@@ -261,18 +261,18 @@ function BrandView({
 
                       {/* Block-header row: MAIN + BP labels with domain */}
                       <thead>
-                        <tr className="bg-[#111928]">
+                        <tr className="bg-[#F3F4F6]">
                           <th
                             rowSpan={2}
-                            className="sticky left-0 z-10 text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A] whitespace-nowrap bg-[#111928]"
+                            className="sticky left-0 z-10 text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-r border-[#D1D5DB] whitespace-nowrap bg-[#F3F4F6]"
                             style={{ minWidth: 180 }}
                           >
                             Keyword
                           </th>
                           <th
                             colSpan={mainColCount}
-                            className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#1C2B3A] whitespace-nowrap"
-                            style={{ background: `${brand.color}18`, color: brand.color }}
+                            className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#D1D5DB] whitespace-nowrap text-black"
+                            style={{ background: `${brand.color}22` }}
                           >
                             MAIN SITE — <span className="font-mono text-[11px]">{brand.mainDomain}</span>
                           </th>
@@ -280,7 +280,7 @@ function BrandView({
                             <th
                               key={`bp-h-${bp}`}
                               colSpan={bpColCount}
-                              className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#1C2B3A] whitespace-nowrap text-[#94A3B8] bg-[#0A0F1A]"
+                              className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#D1D5DB] whitespace-nowrap text-black bg-[#E5E7EB]"
                             >
                               BP SITE — <span className="font-mono text-[11px]">{bp}</span>
                             </th>
@@ -288,24 +288,22 @@ function BrandView({
                         </tr>
 
                         {/* Country / spec sub-header */}
-                        <tr className="bg-[#0A0F1A]">
-                          <th
-                            className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A]"
-                          >
+                        <tr className="bg-[#F9FAFB]">
+                          <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-r border-[#D1D5DB]">
                             GSV
                           </th>
                           {COUNTRY_ORDER.map((c, ci) => (
                             <Fragment key={`main-${c}`}>
                               <th
-                                className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-[#1C2B3A] ${ci === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
+                                className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-[#D1D5DB] ${ci === 0 ? '' : 'border-l border-[#D1D5DB]'}`}
                                 style={{ color: brand.color }}
                               >
                                 {c}
                               </th>
-                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-[#1C2B3A]">
+                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#6B7280] border-b border-[#D1D5DB]">
                                 SV
                               </th>
-                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A]">
+                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#6B7280] border-b border-r border-[#D1D5DB]">
                                 AFF
                               </th>
                             </Fragment>
@@ -315,7 +313,7 @@ function BrandView({
                               {COUNTRY_ORDER.map((c, ci) => (
                                 <th
                                   key={`bp-sub-${bp}-${c}`}
-                                  className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8] border-b border-[#1C2B3A] ${ci === 0 ? 'border-l border-[#1C2B3A]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#1C2B3A]' : ''}`}
+                                  className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-[#D1D5DB] ${ci === 0 ? 'border-l border-[#D1D5DB]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#D1D5DB]' : ''}`}
                                 >
                                   {c}
                                 </th>
@@ -325,22 +323,22 @@ function BrandView({
                         </tr>
                       </thead>
 
-                      <tbody>
+                      <tbody className="text-black">
                         {keywords.map(({ key: kw, label }, kwIdx) => {
-                          const rowBg = kwIdx % 2 === 0 ? '#0A0F1A' : '#0D1421'
+                          const rowBg = kwIdx % 2 === 0 ? '#FFFFFF' : '#F9FAFB'
                           return (
-                            <tr key={kw} style={{ background: rowBg }} className="border-b border-[#1C2B3A] hover:bg-[#151F30] group">
+                            <tr key={kw} style={{ background: rowBg }} className="border-b border-[#E5E7EB] hover:bg-[#F3F4F6] group">
 
                               {/* Keyword (sticky) */}
                               <td
-                                className="sticky left-0 z-[5] px-3 py-2 font-semibold text-[#E2E8F0] whitespace-nowrap border-r border-[#1C2B3A] group-hover:bg-[#151F30]"
+                                className="sticky left-0 z-[5] px-3 py-2 font-semibold text-black whitespace-nowrap border-r border-[#D1D5DB] group-hover:bg-[#F3F4F6]"
                                 style={{ background: rowBg }}
                               >
                                 {label}
                               </td>
 
                               {/* MAIN block */}
-                              <td className="px-2 py-1.5 text-center align-middle text-[10px] text-[#1C2B3A] font-mono border-r border-[#1C2B3A]">
+                              <td className="px-2 py-1.5 text-center align-middle text-[11px] text-[#9CA3AF] font-mono border-r border-[#E5E7EB]">
                                 –
                               </td>
                               {COUNTRY_ORDER.map((c, ci) => {
@@ -348,13 +346,13 @@ function BrandView({
                                 return (
                                   <Fragment key={`main-cell-${kw}-${c}`}>
                                     <td
-                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
-                                      style={{ background: `${brand.color}06` }}
+                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? '' : 'border-l border-[#E5E7EB]'}`}
+                                      style={{ background: `${brand.color}0A` }}
                                     >
-                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#1C2B3A] font-mono text-[10px]">–</span>}
+                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#9CA3AF] font-mono text-[11px]">–</span>}
                                     </td>
-                                    <td className="px-2 py-1.5 text-center text-[10px] text-[#1C2B3A] font-mono">–</td>
-                                    <td className="px-2 py-1.5 text-center text-[10px] text-[#1C2B3A] font-mono border-r border-[#1C2B3A]">–</td>
+                                    <td className="px-2 py-1.5 text-center text-[11px] text-[#9CA3AF] font-mono">–</td>
+                                    <td className="px-2 py-1.5 text-center text-[11px] text-[#9CA3AF] font-mono border-r border-[#E5E7EB]">–</td>
                                   </Fragment>
                                 )
                               })}
@@ -367,9 +365,9 @@ function BrandView({
                                   return (
                                     <td
                                       key={`bp-cell-${kw}-${bp}-${c}`}
-                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? 'border-l border-[#1C2B3A]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#1C2B3A]' : ''}`}
+                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? 'border-l border-[#E5E7EB]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#E5E7EB]' : ''}`}
                                     >
-                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#1C2B3A] font-mono text-[10px]">–</span>}
+                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#9CA3AF] font-mono text-[11px]">–</span>}
                                     </td>
                                   )
                                 })
