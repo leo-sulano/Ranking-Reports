@@ -176,7 +176,7 @@ function Layout() {
   const location = useLocation()
 
   const SECTION_TITLES: Record<string, [string, string]> = {
-    '/bp-sites':    ['BP Sites', 'Brand website management'],
+    '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
     '/screenshots': ['Screenshots', 'Visual site monitoring'],
     '/gmb':         ['GMB', 'Google My Business'],
     '/ftds':        ['FTDs', 'First-time depositors'],
