@@ -294,7 +294,7 @@ function Layout() {
   const activeBrandObj = state.activeBrand ? BRAND_BY_NAME[state.activeBrand] : null
 
   const SECTION_TITLES: Record<string, [string, string]> = {
-    '/ranking-reports': [activeBrandObj?.name ?? 'Ranking Reports', activeBrandObj?.mainDomain ?? 'All brands overview'],
+    '/ranking-reports': [activeBrandObj?.name ?? 'Ranking Reports', activeBrandObj ? '' : 'All brands overview'],
     '/bp-sites':        ['BP Sites', 'Brand website management'],
     '/screenshots':     ['Screenshots', 'Visual site monitoring'],
     '/gmb':             ['GMB', 'Google My Business'],
