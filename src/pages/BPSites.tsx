@@ -94,7 +94,6 @@ function BrandGrid({
                 </div>
                 <div className="min-w-0">
                   <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
-                  <div className="text-[11px]  text-[#64748B]">{brand.mainDomain}</div>
                 </div>
                 {hasData && (
                   <span
