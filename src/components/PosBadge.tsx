@@ -26,7 +26,7 @@ export function PosBadge({ record }: Props) {
   }
 
   if (pos === 'NR') {
-    return <span className="text-[11px] opacity-60 whitespace-nowrap">Not in top 100</span>
+    return <span className="text-[11px] whitespace-nowrap">Not in top 100</span>
   }
 
   const isUp   = chg !== null && chg > 0
@@ -42,7 +42,7 @@ export function PosBadge({ record }: Props) {
 
   return (
     <span
-      className="text-[11px] font-semibold whitespace-nowrap"
+      className="text-[11px] whitespace-nowrap"
       style={color ? { color } : undefined}
       title={tip || undefined}
     >
