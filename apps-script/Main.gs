@@ -50,11 +50,88 @@ function onOpen() {
     .createMenu('Rankings')
     .addItem('Process RAW_IMPORT', 'processRankings')
     .addSeparator()
+    .addItem('Diagnose layout (active sheet)', 'diagnoseLayout')
     .addItem('Validate CONFIG', 'validateConfig')
     .addItem('Clear ERROR_LOG', 'clearErrorLog')
     .addSeparator()
     .addItem('First-time setup', 'firstTimeSetup')
     .addToUi();
+}
+
+/**
+ * Parse the currently active sheet and write the detected structure to
+ * ERROR_LOG. NO dashboard cells are touched — this is read-only.
+ *
+ * Use this BEFORE the first real run to confirm the parser sees your sheet
+ * the way you expect: date sections, block boundaries, country columns,
+ * keyword rows.
+ */
+function diagnoseLayout() {
+  const ctx = createContext();
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const sheetName = sheet.getName();
+
+    if (sheetName === SHEETS.CONFIG || sheetName === SHEETS.IMPORT || sheetName === SHEETS.ERROR_LOG) {
+      SpreadsheetApp.getUi().alert(
+        'Diagnose layout',
+        `Open a brand sheet first — "${sheetName}" is a system sheet.`,
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return;
+    }
+
+    const config = loadConfig(ctx);
+    if (!config) { flushLog(ctx); return; }
+
+    // Resolve sheet → brand via CONFIG
+    let brand = null;
+    for (const [b, name] of config.brandToSheet.entries()) {
+      if (name === sheetName) { brand = b; break; }
+    }
+    if (!brand) {
+      log(ctx, 'WARN', `Sheet "${sheetName}" not in CONFIG — block→domain mapping will show "(unmapped)"`);
+      brand = '__diagnose__';
+      config.brandDomains.set(brand, { main: [], bp: [] });
+    }
+
+    log(ctx, 'INFO', `=== Diagnose: sheet="${sheetName}" brand="${brand}" ===`);
+    const struct = parseSheetStructure(ctx, sheet, brand, config);
+    log(ctx, 'INFO', `Detected ${struct.dateSections.length} date section(s).`);
+
+    struct.dateSections.forEach((s, i) => {
+      const dateStr = s.date ? Utilities.formatDate(s.date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'null';
+      log(ctx, 'INFO',
+        `Section #${i + 1}: label="${s.dateLabel}" date=${dateStr} ` +
+        `rows=${s.startRow}..${s.endRow} ` +
+        `blockHeaderRow=${s.blockHeaderRow} countryHeaderRow=${s.countryHeaderRow}`,
+        s._diagnostic || '');
+
+      s.blocks.forEach((b, bi) => {
+        const countries = Object.entries(b.countryMap)
+          .map(([k, v]) => `${k}=col${v}`)
+          .join(', ');
+        log(ctx, 'INFO',
+          `  Block #${bi + 1}: type=${b.type} domain=${b.domain || '(unmapped)'} ` +
+          `cols=${b.startCol}..${b.endCol} ` +
+          `countries={${countries || 'none'}}`);
+      });
+
+      const allKeywords = [...s.keywordRows.keys()];
+      const sample = allKeywords.slice(0, 8);
+      log(ctx, 'INFO',
+        `  Keywords (${allKeywords.length} total, first 8): ${sample.join(' | ')}`);
+    });
+
+    SpreadsheetApp.getActive().toast(
+      `Diagnose written to ${SHEETS.ERROR_LOG}. ${struct.dateSections.length} section(s) on "${sheetName}".`,
+      'Rankings', 6
+    );
+  } catch (err) {
+    log(ctx, 'ERROR', `diagnoseLayout failed: ${err && err.message}`, err && err.stack);
+  } finally {
+    flushLog(ctx);
+  }
 }
 
 /**

@@ -50,9 +50,14 @@ the dashboard layout** — only writes into country ranking cells.
 3. Create the nine files above in the editor (same names) and paste contents.
 4. Save. Reload the spreadsheet → **Rankings** menu appears.
 5. `Rankings → First-time setup` → creates the helper sheets.
-6. Fill `CONFIG`, paste a small batch into `RAW_IMPORT`.
-7. `Rankings → Process RAW_IMPORT`.
-8. Inspect `ERROR_LOG` for any `WARN` / `ERROR` rows.
+6. Fill `CONFIG`.
+7. **Open a brand sheet** and run `Rankings → Diagnose layout (active sheet)`.
+   This is read-only — it writes the detected date sections, blocks,
+   countries, and keyword counts to `ERROR_LOG` so you can confirm the parser
+   sees the dashboard the way you expect, **before any cells are touched**.
+8. Paste a small batch into `RAW_IMPORT`.
+9. `Rankings → Process RAW_IMPORT`.
+10. Inspect `ERROR_LOG` for any `WARN` / `ERROR` rows.
 
 ## Triggers
 
