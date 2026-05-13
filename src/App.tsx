@@ -7,9 +7,11 @@ import {
 } from './lib/parser'
 import { loadSnapshots, upsertSnapshot, deleteSnapshot } from './lib/storage'
 
-import { Sidebar }      from './components/Sidebar'
-import { Topbar }       from './components/Topbar'
-import { UploadModal }  from './components/UploadModal'
+import { Sidebar }       from './components/Sidebar'
+import { Topbar }        from './components/Topbar'
+import { UploadModal }   from './components/UploadModal'
+import { UploadSummary } from './components/UploadSummary'
+import type { UploadSummaryData } from './components/UploadSummary'
 import { ToastContainer } from './components/Toast'
 import type { ToastItem } from './types'
 
@@ -60,6 +62,7 @@ function Layout() {
   const [state, setState] = useState<AppState>(INITIAL)
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
+  const [uploadSummary, setUploadSummary] = useState<UploadSummaryData | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -132,8 +135,10 @@ function Layout() {
       return
     }
 
+    let nextAll: Snapshot[] = []
     setState((s) => {
       const nextSnapshots = [newSnap, ...s.snapshots]
+      nextAll = nextSnapshots
       const brandName = s.activeBrand
       return {
         ...s,
@@ -146,6 +151,7 @@ function Layout() {
     })
 
     setShowUpload(false)
+    setUploadSummary({ displayDate, records, allSnapshots: nextAll })
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
   }, [addToast, state.snapshots])
@@ -339,6 +345,10 @@ function Layout() {
 
       {showUpload && (
         <UploadModal onImport={handleImport} onClose={() => setShowUpload(false)} />
+      )}
+
+      {uploadSummary && (
+        <UploadSummary data={uploadSummary} onClose={() => setUploadSummary(null)} />
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
