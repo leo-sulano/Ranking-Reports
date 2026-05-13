@@ -4,7 +4,6 @@ import type { Brand, RankingRecord } from '../types'
 const PAGES: Array<{ path: string; label: string; icon: string }> = [
   { path: '/',                label: 'Home',     icon: '⌂' },
   { path: '/bp-sites',        label: 'BP Sites', icon: '◫' },
-  { path: '/ranking-reports', label: 'Rankings', icon: '⌗' },
   { path: '/screenshots',     label: 'Screens',  icon: '▢' },
   { path: '/gmb',             label: 'GMB',      icon: '◉' },
   { path: '/ftds',            label: 'FTDs',     icon: '◇' },
