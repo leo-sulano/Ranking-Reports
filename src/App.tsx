@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import type { AppState, RankingRecord, Snapshot } from './types'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from './lib/brands'
 import {
@@ -18,6 +18,7 @@ import type { ToastItem } from './types'
 
 import { RankingReports } from './pages/RankingReports'
 import type { RROutletContext } from './pages/RankingReports'
+import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
 import { Screenshots }  from './pages/Screenshots'
 import { GMB }          from './pages/GMB'
@@ -300,8 +301,13 @@ function Layout() {
     '/gmb':             ['GMB', 'Google My Business'],
     '/ftds':            ['FTDs', 'First-time depositors'],
   }
-  const currentPath = Object.keys(SECTION_TITLES).find((p) => location.pathname.startsWith(p)) ?? '/bp-sites'
-  const [topbarTitle, topbarDomain] = SECTION_TITLES[currentPath]
+  const currentPath =
+    location.pathname === '/'
+      ? null
+      : Object.keys(SECTION_TITLES).find((p) => location.pathname.startsWith(p)) ?? '/bp-sites'
+  const [topbarTitle, topbarDomain] = currentPath
+    ? SECTION_TITLES[currentPath]
+    : ['SERP Cockpit', 'Command center · Rooster Partners']
 
   const rrContext: RROutletContext = {
     snapshots:         state.snapshots,
@@ -395,7 +401,7 @@ export function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/bp-sites" replace />} />
+        <Route index element={<Home />} />
         <Route path="/bp-sites" element={<BPSites />} />
         <Route path="/ranking-reports" element={<RankingReports />} />
         <Route path="/screenshots"     element={<Screenshots />} />

@@ -1,5 +1,14 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { Brand, RankingRecord } from '../types'
+
+const PAGES: Array<{ path: string; label: string; icon: string }> = [
+  { path: '/',                label: 'Home',     icon: '⌂' },
+  { path: '/bp-sites',        label: 'BP Sites', icon: '◫' },
+  { path: '/ranking-reports', label: 'Rankings', icon: '⌗' },
+  { path: '/screenshots',     label: 'Screens',  icon: '▢' },
+  { path: '/gmb',             label: 'GMB',      icon: '◉' },
+  { path: '/ftds',            label: 'FTDs',     icon: '◇' },
+]
 
 interface Props {
   brands: Brand[]
@@ -30,8 +39,12 @@ export function Sidebar({
   onSelectBPBrand,
 }: Props) {
   const location = useLocation()
+  const navigate = useNavigate()
   const isRankingRoute = location.pathname.startsWith('/ranking-reports')
   const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
+
+  const isActivePath = (p: string) =>
+    p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
 
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] h-screen bg-[#0D1421] border-r border-[#1C2B3A] overflow-hidden relative z-10">
@@ -39,12 +52,39 @@ export function Sidebar({
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-[#1C2B3A] shrink-0">
         <div className="font-display text-[18px] tracking-widest text-[#F59E0B] leading-none">
-          BP SITES NAV
+          SERP COCKPIT
         </div>
         <div className="text-[10px] text-[#64748B] uppercase tracking-[0.12em] mt-1">
           Rooster Partners
         </div>
       </div>
+
+      {/* Global page nav — always visible */}
+      <nav className="px-2.5 pt-3 pb-3 border-b border-[#1C2B3A] space-y-0.5 shrink-0">
+        {PAGES.map((p) => {
+          const active = isActivePath(p.path)
+          return (
+            <button
+              key={p.path}
+              onClick={() => navigate(p.path)}
+              className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-left transition-colors relative ${
+                active
+                  ? 'bg-[#111928] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-sm before:bg-[#F59E0B]'
+                  : 'hover:bg-[#151F30]'
+              }`}
+            >
+              <span
+                className={`w-5 text-center text-[12px] ${active ? 'text-[#F59E0B]' : 'text-[#475569]'}`}
+              >
+                {p.icon}
+              </span>
+              <span className={`text-[12px] font-semibold ${active ? 'text-[#E2E8F0]' : 'text-[#94A3B8]'}`}>
+                {p.label}
+              </span>
+            </button>
+          )
+        })}
+      </nav>
 
       {isBPSitesRoute && (
         <>
