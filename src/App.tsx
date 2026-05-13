@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import type { AppState, RankingRecord, Snapshot } from './types'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, extractSnapshotDate, formatDisplayDate,
 } from './lib/parser'
-import { saveSnapshots, loadSnapshots } from './lib/storage'
+import { loadSnapshots, upsertSnapshot } from './lib/storage'
 
 import { Sidebar }      from './components/Sidebar'
 import { Topbar }       from './components/Topbar'
@@ -45,11 +45,9 @@ function getDomains(brandName: string, records: RankingRecord[]): string[] {
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
-const storedSnapshots = loadSnapshots()
-
 const INITIAL: AppState = {
-  snapshots:         storedSnapshots,
-  activeSnapshotId:  storedSnapshots[0]?.id ?? null,
+  snapshots:         [],
+  activeSnapshotId:  null,
   activeBrand:       null,
   activeCountries:   [],
   activeDomains:     [],
@@ -60,6 +58,7 @@ const INITIAL: AppState = {
 
 function Layout() {
   const [state, setState] = useState<AppState>(INITIAL)
+  const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
@@ -74,6 +73,28 @@ function Layout() {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
+  // ── Initial load from Supabase ────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    loadSnapshots()
+      .then((snaps) => {
+        if (cancelled) return
+        setState((s) => ({
+          ...s,
+          snapshots:        snaps,
+          activeSnapshotId: snaps[0]?.id ?? null,
+        }))
+        setLoading(false)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('Failed to load snapshots:', err)
+        addToast(`Load failed: ${err.message ?? err}`, 'error')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [addToast])
+
   const activeSnapshot: Snapshot | undefined = useMemo(() => {
     if (!state.snapshots.length) return undefined
     return state.snapshots.find((s) => s.id === state.activeSnapshotId) ?? state.snapshots[0]
@@ -83,21 +104,26 @@ function Layout() {
 
   // ── Import ────────────────────────────────────────────────────────────────
 
-  const handleImport = useCallback((records: RankingRecord[]) => {
+  const handleImport = useCallback(async (records: RankingRecord[]) => {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${rawDate || Date.now()}`
+    const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
+
+    try {
+      await upsertSnapshot(newSnap)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      addToast(`Save failed: ${msg}`, 'error')
+      return
+    }
 
     setState((s) => {
       const existing = s.snapshots.findIndex((snap) => snap.rawDate === rawDate)
-      const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
       const nextSnapshots =
         existing >= 0
           ? s.snapshots.map((snap, i) => (i === existing ? newSnap : snap))
           : [newSnap, ...s.snapshots]
-
-      saveSnapshots(nextSnapshots)
-
       const brandName = s.activeBrand
       return {
         ...s,
@@ -231,6 +257,14 @@ function Layout() {
     onOpenUpload:      () => setShowUpload(true),
     bpFilterBrand,
     onSelectBPBrand:   setBPFilterBrand,
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#07090F] text-[#64748B] font-mono text-[12px] tracking-wider">
+        Loading rankings…
+      </div>
+    )
   }
 
   return (
