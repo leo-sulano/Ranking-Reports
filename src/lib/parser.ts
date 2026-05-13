@@ -3,16 +3,40 @@ import type { RankingRecord } from '../types'
 import { DOMAIN_TO_BRAND } from './brands'
 
 export function parseXlsx(buffer: ArrayBuffer): RankingRecord[] {
-  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' })
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
   const ws = wb.Sheets[wb.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
+  const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(ws, {
     header: 1,
     defval: '',
+    raw: false,
   })
-  return parseRows(rows as (string | number)[][])
+  return parseRows(rows as (string | number | Date)[][])
 }
 
-function parseRows(rows: (string | number)[][]): RankingRecord[] {
+/**
+ * Coerce a cell to "yyyy-MM-dd". Handles:
+ *   - Date objects (from cellDates:true)
+ *   - Excel serial numbers (days since 1899-12-30; defensive fallback)
+ *   - ISO strings, "5/20/2026", etc. — passed through after Date round-trip
+ *   - empty / unrecognized → ''
+ */
+function normalizeDate(v: unknown): string {
+  if (v == null || v === '') return ''
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10)
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    // Excel serial → JS Date. 25569 = days between 1899-12-30 and 1970-01-01.
+    const d = new Date((v - 25569) * 86400 * 1000)
+    return isNaN(d.getTime()) ? String(v) : d.toISOString().slice(0, 10)
+  }
+  const s = String(v).trim()
+  if (!s) return ''
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10)
+}
+
+function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
   if (!rows || rows.length < 2) return []
 
   let headerIdx = 0
@@ -53,7 +77,7 @@ function parseRows(rows: (string | number)[][]): RankingRecord[] {
       position: iPosition >= 0 ? String(row[iPosition] ?? '').trim() : '',
       previous: iPrev     >= 0 ? String(row[iPrev]     ?? '').trim() : '',
       change:   iChange   >= 0 ? String(row[iChange]   ?? '').trim() : '',
-      date:     iDate     >= 0 ? String(row[iDate]     ?? '').trim() : '',
+      date:     iDate     >= 0 ? normalizeDate(row[iDate]) : '',
     })
   }
   return records
