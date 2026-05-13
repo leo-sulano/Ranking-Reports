@@ -12,20 +12,20 @@ const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 // Cell colors are the Sheets "light * 3" tier the user specified; headers use
 // the matching "light * 1" tier so the same hue reads bolder on the header.
 
-const MAIN_HEADER_BG = '#8E7CC3'   // light purple 1
+const MAIN_HEADER_BG = '#B4A7D6'   // light purple 2 (softer)
 const MAIN_CELL_BG   = '#D9D2E9'   // light purple 3 — country position cells
 const MAIN_AUX_BG    = '#CFE2F3'   // light cornflower-blue 3 — GSV / SV / AFF
 
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#999999', cellBg: '#D9D9D9' }, // BP #1 — light grey
-  { headerBg: '#F1C232', cellBg: '#FFECB2' }, // BP #2 — yellow (#ffecb2 cells)
-  { headerBg: '#6AA84F', cellBg: '#D9EAD3' }, // BP #3 — light green 3
-  { headerBg: '#A64D79', cellBg: '#EAD1DC' }, // BP #4 — light magenta 3
+  { headerBg: '#CCCCCC', cellBg: '#D9D9D9' }, // BP #1 — light grey 2 / 3
+  { headerBg: '#FFD966', cellBg: '#FFECB2' }, // BP #2 — light yellow 2 / 3
+  { headerBg: '#93C47D', cellBg: '#D9EAD3' }, // BP #3 — light green 2 / 3
+  { headerBg: '#C27BA0', cellBg: '#EAD1DC' }, // BP #4 — light magenta 2 / 3
 ]
 
 const DATE_BAND_BG  = '#5894CD'
 const DATE_BAND_FG  = '#FFFFFF'
-const HEADER_FG     = '#FFFFFF'
+const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
 
