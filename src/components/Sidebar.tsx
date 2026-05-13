@@ -65,25 +65,11 @@ export function Sidebar({
                 <button
                   key={brand.name}
                   onClick={() => onSelectBPBrand(brand.name)}
-                  className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-left transition-colors relative ${
+                  className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
                     isActive ? 'bg-[#111928]' : 'hover:bg-[#151F30]'
                   }`}
                 >
-                  {isActive && (
-                    <span
-                      className="absolute left-0 top-1 bottom-1 w-0.5 rounded-sm"
-                      style={{ background: brand.color }}
-                    />
-                  )}
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-display text-[11px] text-black shrink-0"
-                    style={{ background: brand.color, opacity: isActive ? 1 : 0.85 }}
-                  >
-                    {brand.abbr}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-semibold text-[#E2E8F0] truncate">{brand.name}</div>
-                  </div>
+                  <div className="text-[12px] font-semibold text-[#E2E8F0] truncate">{brand.name}</div>
                 </button>
               )
             })}
@@ -128,25 +114,13 @@ export function Sidebar({
                 <button
                   key={brand.name}
                   onClick={() => onSelectBrand(brand.name)}
-                  className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-left transition-colors relative ${
+                  className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
                     isActive ? 'bg-[#111928]' : 'hover:bg-[#151F30]'
                   }`}
                 >
-                  {isActive && (
-                    <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-sm" style={{ background: brand.color }} />
-                  )}
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-display text-[11px] text-black shrink-0"
-                    style={{ background: brand.color, opacity: isActive ? 1 : 0.85 }}
-                  >
-                    {brand.abbr}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-semibold text-[#E2E8F0] truncate">{brand.name}</div>
-                    <div className="text-[10px] text-[#64748B] font-mono truncate">{brand.mainDomain}</div>
-                  </div>
+                  <div className="text-[12px] font-semibold text-[#E2E8F0] truncate flex-1">{brand.name}</div>
                   {count > 0 && (
-                    <span className="text-[10px] font-mono text-[#64748B] bg-[#07090F] border border-[#1C2B3A] px-1.5 py-0.5 rounded-full shrink-0">
+                    <span className="text-[10px] font-mono text-[#64748B] bg-[#07090F] border border-[#1C2B3A] px-1.5 py-0.5 rounded-full shrink-0 ml-2">
                       {count}
                     </span>
                   )}
