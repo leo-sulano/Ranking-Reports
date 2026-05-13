@@ -266,10 +266,7 @@ function BrandView({
           All brands
         </button>
 
-        <div className="flex items-baseline gap-3">
-          <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
-          <p className="text-[11px] font-mono text-[#64748B]">{brand.mainDomain}</p>
-        </div>
+        <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
       </div>
 
       {brandSnapshots.length === 0 ? (
