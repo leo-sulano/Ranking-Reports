@@ -199,12 +199,6 @@ function BrandView({
           All brands
         </button>
 
-        <div
-          className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-black shrink-0"
-          style={{ background: brand.color }}
-        >
-          {brand.abbr}
-        </div>
         <div>
           <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
           <p className="text-[11px] font-mono text-[#64748B] mt-0.5">{brand.mainDomain}</p>
@@ -213,12 +207,6 @@ function BrandView({
 
       {brandSnapshots.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <div
-            className="w-14 h-14 rounded-[14px] flex items-center justify-center font-display text-[18px] text-black opacity-40"
-            style={{ background: brand.color }}
-          >
-            {brand.abbr}
-          </div>
           <p className="text-[14px] text-[#64748B] max-w-sm leading-relaxed">
             No ranking data for {brand.name} yet. Import a data export to populate this view.
           </p>
