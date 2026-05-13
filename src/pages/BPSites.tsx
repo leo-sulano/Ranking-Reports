@@ -87,7 +87,7 @@ function BrandGrid({
                 </div>
                 <div className="min-w-0">
                   <div className="text-[15px] font-bold text-[#E2E8F0]">{brand.name}</div>
-                  <div className="text-[11px] font-mono text-[#64748B]">{brand.mainDomain}</div>
+                  <div className="text-[11px]  text-[#64748B]">{brand.mainDomain}</div>
                 </div>
                 {hasData && (
                   <span
@@ -115,7 +115,7 @@ function BrandGrid({
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
                     <span
-                      className="text-[11px] font-mono truncate"
+                      className="text-[11px]  truncate"
                       style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? '#E2E8F0' : '#64748B' }}
                     >
                       {d}
@@ -216,7 +216,7 @@ function BrandView({
       <div className="flex items-center gap-3 mb-5">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[12px] text-[#64748B] hover:text-[#94A3B8] transition-colors mr-1"
+          className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#94A3B8] transition-colors mr-1"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -226,7 +226,7 @@ function BrandView({
 
         <div>
           <h1 className="font-display text-[20px] tracking-wider text-[#E2E8F0] leading-none">{brand.name}</h1>
-          <p className="text-[11px] font-mono text-[#64748B] mt-0.5">{brand.mainDomain}</p>
+          <p className="text-[11px]  text-[#64748B] mt-0.5">{brand.mainDomain}</p>
         </div>
       </div>
 
@@ -238,7 +238,7 @@ function BrandView({
         </div>
       ) : (
         <>
-          <div className="text-[11px] font-mono text-[#64748B] mb-3">
+          <div className="text-[11px]  text-[#64748B] mb-3">
             {brandSnapshots.length} snapshot{brandSnapshots.length !== 1 ? 's' : ''}
             {' · '}{keywords.length} keyword{keywords.length !== 1 ? 's' : ''}
             {' · '}{brand.domains.length} website{brand.domains.length !== 1 ? 's' : ''}
@@ -266,7 +266,7 @@ function BrandView({
 
                   {/* Horizontal matrix */}
                   <div className="overflow-x-auto">
-                    <table className="border-collapse text-[12px] w-max min-w-full">
+                    <table className="border-collapse text-[11px] w-max min-w-full">
 
                       {/* Row 1 — Block label row (MAIN / BP per block) */}
                       <thead>
@@ -293,7 +293,7 @@ function BrandView({
                               borderBottom: borderStyle,
                             }}
                           >
-                            MAIN — <span className="font-mono">{brand.mainDomain}</span>
+                            MAIN — <span className="">{brand.mainDomain}</span>
                           </th>
                           {bpDomains.map((bp, bpIdx) => {
                             const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
@@ -309,7 +309,7 @@ function BrandView({
                                   borderBottom: borderStyle,
                                 }}
                               >
-                                BP — <span className="font-mono">{bp}</span>
+                                BP — <span className="">{bp}</span>
                               </th>
                             )
                           })}
@@ -318,7 +318,7 @@ function BrandView({
                         {/* Row 2 — Country / spec sub-header */}
                         <tr>
                           <th
-                            className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                            className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                             style={{
                               background: MAIN_HEADER_BG,
                               color: HEADER_FG,
@@ -331,7 +331,7 @@ function BrandView({
                           {COUNTRY_ORDER.map((c, ci) => (
                             <Fragment key={`main-sub-${c}`}>
                               <th
-                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                                 style={{
                                   background: MAIN_HEADER_BG,
                                   color: HEADER_FG,
@@ -342,7 +342,7 @@ function BrandView({
                                 {c}
                               </th>
                               <th
-                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                                 style={{
                                   background: MAIN_HEADER_BG,
                                   color: HEADER_FG,
@@ -352,7 +352,7 @@ function BrandView({
                                 SV
                               </th>
                               <th
-                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                                 style={{
                                   background: MAIN_HEADER_BG,
                                   color: HEADER_FG,
@@ -371,7 +371,7 @@ function BrandView({
                                 {COUNTRY_ORDER.map((c, ci) => (
                                   <th
                                     key={`bp-sub-${bp}-${c}`}
-                                    className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                                     style={{
                                       background: palette.headerBg,
                                       color: HEADER_FG,
@@ -408,7 +408,7 @@ function BrandView({
 
                             {/* MAIN — GSV */}
                             <td
-                              className="px-2 py-1.5 text-center align-middle text-[11px] font-mono"
+                              className="px-2 py-1.5 text-center align-middle text-[11px] "
                               style={{
                                 background: MAIN_AUX_BG,
                                 color: '#6B7280',
@@ -432,10 +432,10 @@ function BrandView({
                                       borderBottom: borderStyle,
                                     }}
                                   >
-                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] font-mono text-[11px]">–</span>}
+                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                                   </td>
                                   <td
-                                    className="px-2 py-1.5 text-center text-[11px] font-mono"
+                                    className="px-2 py-1.5 text-center text-[11px] "
                                     style={{
                                       background: MAIN_AUX_BG,
                                       color: '#6B7280',
@@ -445,7 +445,7 @@ function BrandView({
                                     –
                                   </td>
                                   <td
-                                    className="px-2 py-1.5 text-center text-[11px] font-mono"
+                                    className="px-2 py-1.5 text-center text-[11px] "
                                     style={{
                                       background: MAIN_AUX_BG,
                                       color: '#6B7280',
@@ -476,7 +476,7 @@ function BrandView({
                                       borderBottom: borderStyle,
                                     }}
                                   >
-                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] font-mono text-[11px]">–</span>}
+                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                                   </td>
                                 )
                               })

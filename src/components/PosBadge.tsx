@@ -22,7 +22,7 @@ export function PosBadge({ record }: Props) {
   const chg = parseChange(record.change)
 
   if (pos === null) {
-    return <span className="font-mono text-[11px] opacity-30">–</span>
+    return <span className="text-[11px] opacity-30">–</span>
   }
 
   if (pos === 'NR') {
@@ -42,7 +42,7 @@ export function PosBadge({ record }: Props) {
 
   return (
     <span
-      className="font-mono text-[13px] font-semibold whitespace-nowrap"
+      className="text-[11px] font-semibold whitespace-nowrap"
       style={color ? { color } : undefined}
       title={tip || undefined}
     >
