@@ -7,22 +7,20 @@ import { PosBadge } from '../components/PosBadge'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
-// ─── Color palette (matches the Google Sheets dashboard) ──────────────────────
+// ─── Color palette (Google Sheets standard "light *3*" tier for cells) ───────
 //
-// MAIN block:    dark-purple header, lavender country cells, cyan GSV/SV/AFF
-// BP blocks:     cycle through white / yellow / green / pink, each with a
-//                matching darker header.
-// Date band:     uniform blue across every snapshot/brand.
+// Cell colors are the Sheets "light * 3" tier the user specified; headers use
+// the matching "light * 1" tier so the same hue reads bolder on the header.
 
-const MAIN_HEADER_BG = '#6F4F7E'   // dark lavender
-const MAIN_CELL_BG   = '#E0D5E9'   // light lavender — country position cells
-const MAIN_AUX_BG    = '#C9DFEC'   // light cyan — GSV / SV / AFF cells
+const MAIN_HEADER_BG = '#8E7CC3'   // light purple 1
+const MAIN_CELL_BG   = '#D9D2E9'   // light purple 3 — country position cells
+const MAIN_AUX_BG    = '#CFE2F3'   // light cornflower-blue 3 — GSV / SV / AFF
 
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#4C7383', cellBg: '#FFFFFF' }, // 1st BP — white
-  { headerBg: '#B68A2F', cellBg: '#FAEFD2' }, // 2nd BP — yellow
-  { headerBg: '#769E4F', cellBg: '#DBE9C7' }, // 3rd BP — green
-  { headerBg: '#B6707A', cellBg: '#EED2D5' }, // 4th BP — pink
+  { headerBg: '#999999', cellBg: '#D9D9D9' }, // BP #1 — light grey
+  { headerBg: '#F1C232', cellBg: '#FFECB2' }, // BP #2 — yellow (#ffecb2 cells)
+  { headerBg: '#6AA84F', cellBg: '#D9EAD3' }, // BP #3 — light green 3
+  { headerBg: '#A64D79', cellBg: '#EAD1DC' }, // BP #4 — light magenta 3
 ]
 
 const DATE_BAND_BG  = '#5894CD'
