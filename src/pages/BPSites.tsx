@@ -1,11 +1,13 @@
 import { Fragment, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { Brand, RankingRecord, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME } from '../lib/brands'
 import type { RROutletContext } from './RankingReports'
 import { PosBadge } from '../components/PosBadge'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
+
+// keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
 // ─── Entry ────────────────────────────────────────────────────────────────────
@@ -27,7 +29,7 @@ export function BPSites() {
   return <BrandGrid snapshots={snapshots} onSelect={(b) => onSelectBPBrand(b.name)} />
 }
 
-// ─── Brand Grid ───────────────────────────────────────────────────────────────
+// ─── Brand Grid (unchanged from prior) ────────────────────────────────────────
 
 function BrandGrid({
   snapshots,
@@ -52,10 +54,8 @@ function BrandGrid({
               className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#243548] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
-              {/* Color bar */}
               <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: brand.color }} />
 
-              {/* Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div
                   className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-black shrink-0"
@@ -77,7 +77,6 @@ function BrandGrid({
                 )}
               </div>
 
-              {/* Websites list */}
               <div className="flex flex-col gap-1">
                 {brand.domains.map((d) => (
                   <div
@@ -118,7 +117,7 @@ function BrandGrid({
   )
 }
 
-// ─── Brand Detail View ────────────────────────────────────────────────────────
+// ─── Brand Detail View — horizontal matrix per date section ───────────────────
 
 function BrandView({
   brand,
@@ -134,6 +133,13 @@ function BrandView({
     [brand],
   )
 
+  const mainDomain = brand.mainDomain.toLowerCase()
+  const bpDomains  = useMemo(
+    () => brand.domains.filter((d) => d.toLowerCase() !== mainDomain),
+    [brand, mainDomain],
+  )
+
+  // Per-snapshot records, filtered to this brand only
   const brandSnapshots = useMemo(
     () =>
       snapshots
@@ -145,31 +151,8 @@ function BrandView({
     [snapshots, brandDomainSet],
   )
 
-  const domainsWithData = useMemo(
-    () =>
-      brand.domains.filter((d) =>
-        brandSnapshots.some((snap) =>
-          snap.records.some((r) => r.domain.toLowerCase() === d.toLowerCase()),
-        ),
-      ),
-    [brand, brandSnapshots],
-  )
-
-  const domainCountries = useMemo(() => {
-    const map: Record<string, string[]> = {}
-    for (const domain of domainsWithData) {
-      const seen = new Set<string>()
-      for (const snap of brandSnapshots) {
-        for (const r of snap.records) {
-          if (r.domain.toLowerCase() === domain.toLowerCase()) seen.add(r.country)
-        }
-      }
-      map[domain] = COUNTRY_ORDER.filter((c) => seen.has(c))
-    }
-    return map
-  }, [domainsWithData, brandSnapshots])
-
-  const allKeywords = useMemo(() => {
+  // Sorted keyword list across every snapshot for this brand
+  const keywords = useMemo(() => {
     const seen = new Set<string>()
     const labels: Record<string, string> = {}
     for (const snap of brandSnapshots) {
@@ -181,6 +164,7 @@ function BrandView({
     return Object.keys(labels).sort().map((kl) => ({ key: kl, label: labels[kl] }))
   }, [brandSnapshots])
 
+  // Per-snapshot lookup table
   const lookupBySnapshot = useMemo(() => {
     const map: Record<string, Lookup> = {}
     for (const snap of brandSnapshots) {
@@ -190,12 +174,15 @@ function BrandView({
         const dk = r.domain.toLowerCase()
         if (!lookup[kk]) lookup[kk] = {}
         if (!lookup[kk][dk]) lookup[kk][dk] = {}
-        lookup[kk][dk][r.country] = r
+        lookup[kk][dk][r.country.toUpperCase()] = r
       }
       map[snap.id] = lookup
     }
     return map
   }, [brandSnapshots])
+
+  const mainColCount = 1 /* GSV */ + COUNTRY_ORDER.length * 3 /* country + SV + AFF */
+  const bpColCount   = COUNTRY_ORDER.length
 
   return (
     <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
@@ -240,134 +227,159 @@ function BrandView({
         <>
           <div className="text-[11px] font-mono text-[#64748B] mb-3">
             {brandSnapshots.length} snapshot{brandSnapshots.length !== 1 ? 's' : ''}
-            {' · '}{allKeywords.length} keyword{allKeywords.length !== 1 ? 's' : ''}
-            {' · '}{domainsWithData.length} domain{domainsWithData.length !== 1 ? 's' : ''}
+            {' · '}{keywords.length} keyword{keywords.length !== 1 ? 's' : ''}
+            {' · '}{brand.domains.length} website{brand.domains.length !== 1 ? 's' : ''}
+            {' (1 main + ' + bpDomains.length + ' BP)'}
           </div>
 
-          <div className="flex flex-col gap-6">
-            {domainsWithData.map((domain) => {
-              const isMain = domain.toLowerCase() === brand.mainDomain.toLowerCase()
-              const countries = domainCountries[domain] ?? []
-              const dk = domain.toLowerCase()
-
+          <div className="flex flex-col gap-7">
+            {brandSnapshots.map((snap, snapIdx) => {
+              const lookup = lookupBySnapshot[snap.id]
               return (
-                <div
-                  key={domain}
-                  className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] overflow-auto"
-                  style={{ borderTop: `2px solid ${isMain ? brand.color : '#1C2B3A'}` }}
-                >
-                  <table className="border-collapse text-[12px] w-full">
-                    <thead>
-                      <tr className="bg-[#0D1421]">
-                        <th
-                          className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A] whitespace-nowrap"
-                          style={{ minWidth: 200 }}
-                        >
-                          Country
-                        </th>
-                        {countries.map((country, cIdx) => (
-                          <th
-                            key={`country-${country}`}
-                            className={`px-2 py-2.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-[#1C2B3A] min-w-[80px] ${cIdx === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
-                          >
-                            {COUNTRY_LABELS[country] ?? country}
-                          </th>
-                        ))}
-                      </tr>
-                      <tr className="bg-[#111928]">
-                        <th
-                          className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A] whitespace-nowrap"
-                        >
-                          Domain
-                        </th>
-                        <th
-                          colSpan={countries.length}
-                          className="px-3 py-2.5 text-left text-[12px] font-semibold font-mono border-b border-[#1C2B3A] whitespace-nowrap"
-                          style={{
-                            color: isMain ? brand.color : '#E2E8F0',
-                            background: isMain ? `${brand.color}12` : '#111928',
-                          }}
-                        >
-                          {domain}
-                          {isMain && (
-                            <span
-                              className="ml-2 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                              style={{ background: brand.color + '30', color: brand.color }}
-                            >
-                              MAIN
-                            </span>
-                          )}
-                        </th>
-                      </tr>
-                    </thead>
+                <div key={snap.id} className="bg-[#0D1421] border border-[#1C2B3A] rounded-[10px] overflow-hidden">
 
-                    <tbody>
-                      {brandSnapshots.map((snap, snapIdx) => {
-                        const lookup = lookupBySnapshot[snap.id]
-                        return (
-                          <Fragment key={snap.id}>
-                            <tr>
-                              <td
-                                colSpan={countries.length + 1}
-                                className="px-4 py-2 text-[13px] font-display tracking-wider font-bold border-b border-t border-[#1C2B3A]"
-                                style={{
-                                  background: `${brand.color}18`,
-                                  color: brand.color,
-                                  borderLeft: `3px solid ${brand.color}`,
-                                }}
+                  {/* Date band */}
+                  <div
+                    className="px-4 py-2.5 text-[13px] font-display tracking-wider font-bold flex items-center"
+                    style={{
+                      background: `${brand.color}18`,
+                      color: brand.color,
+                      borderLeft: `3px solid ${brand.color}`,
+                    }}
+                  >
+                    {snap.displayDate}
+                    {snapIdx === 0 && (
+                      <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded-full bg-[#F59E0B] text-black font-bold">
+                        LATEST
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Horizontal matrix */}
+                  <div className="overflow-x-auto">
+                    <table className="border-collapse text-[12px] w-max min-w-full">
+
+                      {/* Block-header row: MAIN + BP labels with domain */}
+                      <thead>
+                        <tr className="bg-[#111928]">
+                          <th
+                            rowSpan={2}
+                            className="sticky left-0 z-10 text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A] whitespace-nowrap bg-[#111928]"
+                            style={{ minWidth: 180 }}
+                          >
+                            Keyword
+                          </th>
+                          <th
+                            colSpan={mainColCount}
+                            className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#1C2B3A] whitespace-nowrap"
+                            style={{ background: `${brand.color}18`, color: brand.color }}
+                          >
+                            MAIN SITE — <span className="font-mono text-[11px]">{brand.mainDomain}</span>
+                          </th>
+                          {bpDomains.map((bp) => (
+                            <th
+                              key={`bp-h-${bp}`}
+                              colSpan={bpColCount}
+                              className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#1C2B3A] whitespace-nowrap text-[#94A3B8] bg-[#0A0F1A]"
+                            >
+                              BP SITE — <span className="font-mono text-[11px]">{bp}</span>
+                            </th>
+                          ))}
+                        </tr>
+
+                        {/* Country / spec sub-header */}
+                        <tr className="bg-[#0A0F1A]">
+                          <th
+                            className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A]"
+                          >
+                            GSV
+                          </th>
+                          {COUNTRY_ORDER.map((c, ci) => (
+                            <Fragment key={`main-${c}`}>
+                              <th
+                                className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-[#1C2B3A] ${ci === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
+                                style={{ color: brand.color }}
                               >
-                                {snap.displayDate}
-                                {snapIdx === 0 && (
-                                  <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded-full bg-[#F59E0B] text-black font-bold align-middle">
-                                    LATEST
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                            <tr className="bg-[#111928]">
-                              <td className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A] whitespace-nowrap">
-                                Country
-                              </td>
-                              {countries.map((country, cIdx) => (
-                                <td
-                                  key={`sub-${country}`}
-                                  className={`px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-[#1C2B3A] ${cIdx === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
+                                {c}
+                              </th>
+                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-[#1C2B3A]">
+                                SV
+                              </th>
+                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B] border-b border-r border-[#1C2B3A]">
+                                AFF
+                              </th>
+                            </Fragment>
+                          ))}
+                          {bpDomains.map((bp) => (
+                            <Fragment key={`bp-sub-${bp}`}>
+                              {COUNTRY_ORDER.map((c, ci) => (
+                                <th
+                                  key={`bp-sub-${bp}-${c}`}
+                                  className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8] border-b border-[#1C2B3A] ${ci === 0 ? 'border-l border-[#1C2B3A]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#1C2B3A]' : ''}`}
                                 >
-                                  {COUNTRY_LABELS[country] ?? country}
-                                </td>
+                                  {c}
+                                </th>
                               ))}
-                            </tr>
-                            {allKeywords.map(({ key: kw, label }, kwIdx) => (
-                              <tr
-                                key={`${snap.id}-${kw}`}
-                                className="border-b border-[#1C2B3A] transition-colors hover:bg-[#151F30] group"
-                                style={{ background: kwIdx % 2 === 0 ? '#0A0F1A' : '#0D1421' }}
+                            </Fragment>
+                          ))}
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {keywords.map(({ key: kw, label }, kwIdx) => {
+                          const rowBg = kwIdx % 2 === 0 ? '#0A0F1A' : '#0D1421'
+                          return (
+                            <tr key={kw} style={{ background: rowBg }} className="border-b border-[#1C2B3A] hover:bg-[#151F30] group">
+
+                              {/* Keyword (sticky) */}
+                              <td
+                                className="sticky left-0 z-[5] px-3 py-2 font-semibold text-[#E2E8F0] whitespace-nowrap border-r border-[#1C2B3A] group-hover:bg-[#151F30]"
+                                style={{ background: rowBg }}
                               >
-                                <td
-                                  className="px-4 py-2 font-semibold text-[#E2E8F0] whitespace-nowrap border-r border-[#1C2B3A] group-hover:bg-[#151F30]"
-                                  style={{ background: kwIdx % 2 === 0 ? '#0A0F1A' : '#0D1421' }}
-                                >
-                                  {label}
-                                </td>
-                                {countries.map((country, cIdx) => {
-                                  const rec = lookup?.[kw]?.[dk]?.[country]
+                                {label}
+                              </td>
+
+                              {/* MAIN block */}
+                              <td className="px-2 py-1.5 text-center align-middle text-[10px] text-[#1C2B3A] font-mono border-r border-[#1C2B3A]">
+                                –
+                              </td>
+                              {COUNTRY_ORDER.map((c, ci) => {
+                                const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                                return (
+                                  <Fragment key={`main-cell-${kw}-${c}`}>
+                                    <td
+                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
+                                      style={{ background: `${brand.color}06` }}
+                                    >
+                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#1C2B3A] font-mono text-[10px]">–</span>}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center text-[10px] text-[#1C2B3A] font-mono">–</td>
+                                    <td className="px-2 py-1.5 text-center text-[10px] text-[#1C2B3A] font-mono border-r border-[#1C2B3A]">–</td>
+                                  </Fragment>
+                                )
+                              })}
+
+                              {/* BP blocks */}
+                              {bpDomains.map((bp) => {
+                                const dk = bp.toLowerCase()
+                                return COUNTRY_ORDER.map((c, ci) => {
+                                  const rec = lookup?.[kw]?.[dk]?.[c]
                                   return (
                                     <td
-                                      key={`${country}`}
-                                      className={`px-2 py-1.5 text-center align-middle ${cIdx === 0 ? '' : 'border-l border-[#1C2B3A]'}`}
-                                      style={isMain ? { background: `${brand.color}06` } : undefined}
+                                      key={`bp-cell-${kw}-${bp}-${c}`}
+                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? 'border-l border-[#1C2B3A]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#1C2B3A]' : ''}`}
                                     >
                                       {rec ? <PosBadge record={rec} /> : <span className="text-[#1C2B3A] font-mono text-[10px]">–</span>}
                                     </td>
                                   )
-                                })}
-                              </tr>
-                            ))}
-                          </Fragment>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                                })
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )
             })}
