@@ -7,6 +7,30 @@ import { PosBadge } from '../components/PosBadge'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
+// ─── Color palette (matches the Google Sheets dashboard) ──────────────────────
+//
+// MAIN block:    dark-purple header, lavender country cells, cyan GSV/SV/AFF
+// BP blocks:     cycle through white / yellow / green / pink, each with a
+//                matching darker header.
+// Date band:     uniform blue across every snapshot/brand.
+
+const MAIN_HEADER_BG = '#6F4F7E'   // dark lavender
+const MAIN_CELL_BG   = '#E0D5E9'   // light lavender — country position cells
+const MAIN_AUX_BG    = '#C9DFEC'   // light cyan — GSV / SV / AFF cells
+
+const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
+  { headerBg: '#4C7383', cellBg: '#FFFFFF' }, // 1st BP — white
+  { headerBg: '#B68A2F', cellBg: '#FAEFD2' }, // 2nd BP — yellow
+  { headerBg: '#769E4F', cellBg: '#DBE9C7' }, // 3rd BP — green
+  { headerBg: '#B6707A', cellBg: '#EED2D5' }, // 4th BP — pink
+]
+
+const DATE_BAND_BG  = '#5894CD'
+const DATE_BAND_FG  = '#FFFFFF'
+const HEADER_FG     = '#FFFFFF'
+const TABLE_BORDER  = '#B0B7BD'
+const STICKY_KW_BG  = '#FFFFFF'
+
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
@@ -221,148 +245,244 @@ function BrandView({
           </div>
 
           <div className="flex flex-col gap-7">
-            {brandSnapshots.map((snap, snapIdx) => {
+            {brandSnapshots.map((snap) => {
               const lookup = lookupBySnapshot[snap.id]
+              const borderStyle = `1px solid ${TABLE_BORDER}`
               return (
-                <div key={snap.id} className="bg-white border border-[#D1D5DB] rounded-[10px] overflow-hidden text-black">
+                <div
+                  key={snap.id}
+                  className="bg-white rounded-[6px] overflow-hidden text-black"
+                  style={{ border: borderStyle }}
+                >
 
-                  {/* Date band — keeps brand-color accent for hierarchy */}
+                  {/* Date band */}
                   <div
-                    className="px-4 py-2.5 text-[13px] font-display tracking-wider font-bold flex items-center text-black"
-                    style={{
-                      background: `${brand.color}22`,
-                      borderLeft: `3px solid ${brand.color}`,
-                      borderBottom: '1px solid #D1D5DB',
-                    }}
+                    className="px-4 py-2 text-[13px] font-bold flex items-center"
+                    style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
                   >
                     {snap.displayDate}
-                    {snapIdx === 0 && (
-                      <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded-full bg-[#F59E0B] text-black font-bold">
-                        LATEST
-                      </span>
-                    )}
                   </div>
 
                   {/* Horizontal matrix */}
                   <div className="overflow-x-auto">
                     <table className="border-collapse text-[12px] w-max min-w-full">
 
-                      {/* Block-header row: MAIN + BP labels with domain */}
+                      {/* Row 1 — Block label row (MAIN / BP per block) */}
                       <thead>
-                        <tr className="bg-[#F3F4F6]">
+                        <tr>
                           <th
                             rowSpan={2}
-                            className="sticky left-0 z-10 text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-r border-[#D1D5DB] whitespace-nowrap bg-[#F3F4F6]"
-                            style={{ minWidth: 180 }}
+                            className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
+                            style={{
+                              minWidth: 180,
+                              background: STICKY_KW_BG,
+                              color: '#000',
+                              borderRight: borderStyle,
+                              borderBottom: borderStyle,
+                            }}
                           >
                             Keyword
                           </th>
                           <th
                             colSpan={mainColCount}
-                            className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#D1D5DB] whitespace-nowrap text-black"
-                            style={{ background: `${brand.color}22` }}
+                            className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
+                            style={{
+                              background: MAIN_HEADER_BG,
+                              color: HEADER_FG,
+                              borderRight: borderStyle,
+                              borderBottom: borderStyle,
+                            }}
                           >
-                            MAIN SITE — <span className="font-mono text-[11px]">{brand.mainDomain}</span>
+                            MAIN — <span className="font-mono">{brand.mainDomain}</span>
                           </th>
-                          {bpDomains.map((bp) => (
-                            <th
-                              key={`bp-h-${bp}`}
-                              colSpan={bpColCount}
-                              className="px-3 py-2 text-center text-[11px] font-bold border-b border-r border-[#D1D5DB] whitespace-nowrap text-black bg-[#E5E7EB]"
-                            >
-                              BP SITE — <span className="font-mono text-[11px]">{bp}</span>
-                            </th>
-                          ))}
+                          {bpDomains.map((bp, bpIdx) => {
+                            const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                            return (
+                              <th
+                                key={`bp-h-${bp}`}
+                                colSpan={bpColCount}
+                                className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
+                                style={{
+                                  background: palette.headerBg,
+                                  color: HEADER_FG,
+                                  borderRight: borderStyle,
+                                  borderBottom: borderStyle,
+                                }}
+                              >
+                                BP — <span className="font-mono">{bp}</span>
+                              </th>
+                            )
+                          })}
                         </tr>
 
-                        {/* Country / spec sub-header */}
-                        <tr className="bg-[#F9FAFB]">
-                          <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-r border-[#D1D5DB]">
+                        {/* Row 2 — Country / spec sub-header */}
+                        <tr>
+                          <th
+                            className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                            style={{
+                              background: MAIN_HEADER_BG,
+                              color: HEADER_FG,
+                              borderRight: borderStyle,
+                              borderBottom: borderStyle,
+                            }}
+                          >
                             GSV
                           </th>
                           {COUNTRY_ORDER.map((c, ci) => (
-                            <Fragment key={`main-${c}`}>
+                            <Fragment key={`main-sub-${c}`}>
                               <th
-                                className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-[#D1D5DB] ${ci === 0 ? '' : 'border-l border-[#D1D5DB]'}`}
-                                style={{ color: brand.color }}
+                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                style={{
+                                  background: MAIN_HEADER_BG,
+                                  color: HEADER_FG,
+                                  borderLeft: ci === 0 ? undefined : borderStyle,
+                                  borderBottom: borderStyle,
+                                }}
                               >
                                 {c}
                               </th>
-                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#6B7280] border-b border-[#D1D5DB]">
+                              <th
+                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                style={{
+                                  background: MAIN_HEADER_BG,
+                                  color: HEADER_FG,
+                                  borderBottom: borderStyle,
+                                }}
+                              >
                                 SV
                               </th>
-                              <th className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#6B7280] border-b border-r border-[#D1D5DB]">
+                              <th
+                                className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                style={{
+                                  background: MAIN_HEADER_BG,
+                                  color: HEADER_FG,
+                                  borderRight: borderStyle,
+                                  borderBottom: borderStyle,
+                                }}
+                              >
                                 AFF
                               </th>
                             </Fragment>
                           ))}
-                          {bpDomains.map((bp) => (
-                            <Fragment key={`bp-sub-${bp}`}>
-                              {COUNTRY_ORDER.map((c, ci) => (
-                                <th
-                                  key={`bp-sub-${bp}-${c}`}
-                                  className={`px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-black border-b border-[#D1D5DB] ${ci === 0 ? 'border-l border-[#D1D5DB]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#D1D5DB]' : ''}`}
-                                >
-                                  {c}
-                                </th>
-                              ))}
-                            </Fragment>
-                          ))}
+                          {bpDomains.map((bp, bpIdx) => {
+                            const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                            return (
+                              <Fragment key={`bp-sub-${bp}`}>
+                                {COUNTRY_ORDER.map((c, ci) => (
+                                  <th
+                                    key={`bp-sub-${bp}-${c}`}
+                                    className="px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]"
+                                    style={{
+                                      background: palette.headerBg,
+                                      color: HEADER_FG,
+                                      borderLeft: ci === 0 ? borderStyle : borderStyle,
+                                      borderRight: ci === COUNTRY_ORDER.length - 1 ? borderStyle : undefined,
+                                      borderBottom: borderStyle,
+                                    }}
+                                  >
+                                    {c}
+                                  </th>
+                                ))}
+                              </Fragment>
+                            )
+                          })}
                         </tr>
                       </thead>
 
-                      <tbody className="text-black">
-                        {keywords.map(({ key: kw, label }, kwIdx) => {
-                          const rowBg = kwIdx % 2 === 0 ? '#FFFFFF' : '#F9FAFB'
-                          return (
-                            <tr key={kw} style={{ background: rowBg }} className="border-b border-[#E5E7EB] hover:bg-[#F3F4F6] group">
+                      <tbody>
+                        {keywords.map(({ key: kw, label }) => (
+                          <tr key={kw}>
 
-                              {/* Keyword (sticky) */}
-                              <td
-                                className="sticky left-0 z-[5] px-3 py-2 font-semibold text-black whitespace-nowrap border-r border-[#D1D5DB] group-hover:bg-[#F3F4F6]"
-                                style={{ background: rowBg }}
-                              >
-                                {label}
-                              </td>
+                            {/* Keyword (sticky) */}
+                            <td
+                              className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
+                              style={{
+                                background: STICKY_KW_BG,
+                                color: '#000',
+                                borderRight: borderStyle,
+                                borderBottom: borderStyle,
+                              }}
+                            >
+                              {label}
+                            </td>
 
-                              {/* MAIN block */}
-                              <td className="px-2 py-1.5 text-center align-middle text-[11px] text-[#9CA3AF] font-mono border-r border-[#E5E7EB]">
-                                –
-                              </td>
-                              {COUNTRY_ORDER.map((c, ci) => {
-                                const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                            {/* MAIN — GSV */}
+                            <td
+                              className="px-2 py-1.5 text-center align-middle text-[11px] font-mono"
+                              style={{
+                                background: MAIN_AUX_BG,
+                                color: '#6B7280',
+                                borderRight: borderStyle,
+                                borderBottom: borderStyle,
+                              }}
+                            >
+                              –
+                            </td>
+
+                            {/* MAIN — per-country triplets (country / SV / AFF) */}
+                            {COUNTRY_ORDER.map((c, ci) => {
+                              const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                              return (
+                                <Fragment key={`main-cell-${kw}-${c}`}>
+                                  <td
+                                    className="px-2 py-1.5 text-center align-middle"
+                                    style={{
+                                      background: MAIN_CELL_BG,
+                                      borderLeft: ci === 0 ? undefined : borderStyle,
+                                      borderBottom: borderStyle,
+                                    }}
+                                  >
+                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] font-mono text-[11px]">–</span>}
+                                  </td>
+                                  <td
+                                    className="px-2 py-1.5 text-center text-[11px] font-mono"
+                                    style={{
+                                      background: MAIN_AUX_BG,
+                                      color: '#6B7280',
+                                      borderBottom: borderStyle,
+                                    }}
+                                  >
+                                    –
+                                  </td>
+                                  <td
+                                    className="px-2 py-1.5 text-center text-[11px] font-mono"
+                                    style={{
+                                      background: MAIN_AUX_BG,
+                                      color: '#6B7280',
+                                      borderRight: borderStyle,
+                                      borderBottom: borderStyle,
+                                    }}
+                                  >
+                                    –
+                                  </td>
+                                </Fragment>
+                              )
+                            })}
+
+                            {/* BP blocks */}
+                            {bpDomains.map((bp, bpIdx) => {
+                              const dk = bp.toLowerCase()
+                              const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                              return COUNTRY_ORDER.map((c, ci) => {
+                                const rec = lookup?.[kw]?.[dk]?.[c]
                                 return (
-                                  <Fragment key={`main-cell-${kw}-${c}`}>
-                                    <td
-                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? '' : 'border-l border-[#E5E7EB]'}`}
-                                      style={{ background: `${brand.color}0A` }}
-                                    >
-                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#9CA3AF] font-mono text-[11px]">–</span>}
-                                    </td>
-                                    <td className="px-2 py-1.5 text-center text-[11px] text-[#9CA3AF] font-mono">–</td>
-                                    <td className="px-2 py-1.5 text-center text-[11px] text-[#9CA3AF] font-mono border-r border-[#E5E7EB]">–</td>
-                                  </Fragment>
+                                  <td
+                                    key={`bp-cell-${kw}-${bp}-${c}`}
+                                    className="px-2 py-1.5 text-center align-middle"
+                                    style={{
+                                      background: palette.cellBg,
+                                      borderLeft: ci === 0 ? borderStyle : borderStyle,
+                                      borderRight: ci === COUNTRY_ORDER.length - 1 ? borderStyle : undefined,
+                                      borderBottom: borderStyle,
+                                    }}
+                                  >
+                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] font-mono text-[11px]">–</span>}
+                                  </td>
                                 )
-                              })}
-
-                              {/* BP blocks */}
-                              {bpDomains.map((bp) => {
-                                const dk = bp.toLowerCase()
-                                return COUNTRY_ORDER.map((c, ci) => {
-                                  const rec = lookup?.[kw]?.[dk]?.[c]
-                                  return (
-                                    <td
-                                      key={`bp-cell-${kw}-${bp}-${c}`}
-                                      className={`px-2 py-1.5 text-center align-middle ${ci === 0 ? 'border-l border-[#E5E7EB]' : ''} ${ci === COUNTRY_ORDER.length - 1 ? 'border-r border-[#E5E7EB]' : ''}`}
-                                    >
-                                      {rec ? <PosBadge record={rec} /> : <span className="text-[#9CA3AF] font-mono text-[11px]">–</span>}
-                                    </td>
-                                  )
-                                })
-                              })}
-                            </tr>
-                          )
-                        })}
+                              })
+                            })}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
