@@ -159,6 +159,16 @@ function parseSheetStructure(ctx, sheet, brand, config) {
 
 /**
  * Detect whether a column-A cell starts a date section.
+ *
+ * Accepted formats:
+ *   - Date object
+ *   - "yyyy-MM-dd" anywhere in the cell  (e.g. "DATE 2026-05-13")
+ *   - "MM/DD/YY"   (e.g. "05/08/26"  → 2026-05-08)
+ *   - "MM/DD/YYYY" (e.g. "05/08/2026")
+ *   - any string starting with "DATE"   (no parseable date — section still detected)
+ *
+ * NOTE: slash dates are interpreted as MM/DD/YY (US format), to match the
+ * dashboard convention. 2-digit years expand to 2000+YY (so "26" → 2026).
  */
 function detectDateMarker(cell) {
   if (cell instanceof Date) return { label: cell.toISOString().slice(0, 10), date: cell };
@@ -168,8 +178,14 @@ function detectDateMarker(cell) {
   const iso = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (iso) return { label: `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`, date: new Date(+iso[1], +iso[2] - 1, +iso[3]) };
 
-  const slash = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (slash) return { label: s, date: new Date(+slash[3], +slash[2] - 1, +slash[1]) };
+  const slash = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (slash) {
+    const month = +slash[1];
+    const day   = +slash[2];
+    let year    = +slash[3];
+    if (year < 100) year += 2000;
+    return { label: s, date: new Date(year, month - 1, day) };
+  }
 
   if (/^DATE\b/i.test(s)) return { label: s, date: null };
 
