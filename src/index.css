@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1C2B3A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+html, body, #root { height: 100%; margin: 0; }
+body { font-family: var(--font-body); background: #07090F; color: #E2E8F0; }
+
+/* Font utility classes */
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+.font-sans    { font-family: var(--font-body); }
+
+/* Background grid texture */
+.bg-grid::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(#1C2B3A 1px, transparent 1px),
+    linear-gradient(90deg, #1C2B3A 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keyframe animations (referenced by Tailwind animate-[] classes) */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes progressPulse {
+  0%, 100% { width: 30%; margin-left: 0; }
+  50%       { width: 50%; margin-left: 20%; }
+}

@@ -58,23 +58,6 @@ export function Sidebar({
             </span>
           </div>
 
-          <button
-            onClick={() => onSelectBPBrand(null)}
-            className={`flex items-center gap-2.5 mx-2.5 mb-0.5 px-2.5 py-2 rounded-md text-left transition-colors relative ${
-              activeBPBrand === null
-                ? 'bg-[#111928] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:rounded-sm before:bg-[#F59E0B]'
-                : 'hover:bg-[#151F30]'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-lg bg-[#1C2B3A] flex items-center justify-center text-[#F59E0B] text-sm shrink-0">
-              ⊞
-            </div>
-            <div className="min-w-0">
-              <div className="text-[12px] font-semibold text-[#E2E8F0]">All Brands</div>
-              <div className="text-[10px] text-[#64748B] font-mono">{brands.length} brands</div>
-            </div>
-          </button>
-
           <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
             {brands.map((brand) => {
               const isActive = activeBPBrand === brand.name
@@ -100,7 +83,6 @@ export function Sidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[12px] font-semibold text-[#E2E8F0] truncate">{brand.name}</div>
-                    <div className="text-[10px] text-[#64748B] font-mono truncate">{brand.mainDomain}</div>
                   </div>
                 </button>
               )

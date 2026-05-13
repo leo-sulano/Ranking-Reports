@@ -1,0 +1,31 @@
+﻿# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Data files (large Excel uploads — not source code)
+*.xlsx
+*.xls
+
+# Environment & local config
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Local agent/tooling state
+.claude/
+.gitnexus/
