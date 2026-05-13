@@ -12,6 +12,7 @@ import { Topbar }        from './components/Topbar'
 import { UploadModal }   from './components/UploadModal'
 import { UploadSummary } from './components/UploadSummary'
 import type { UploadSummaryData } from './components/UploadSummary'
+import { DuplicateWarning } from './components/DuplicateWarning'
 import { ToastContainer } from './components/Toast'
 import type { ToastItem } from './types'
 
@@ -63,6 +64,7 @@ function Layout() {
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
   const [uploadSummary, setUploadSummary] = useState<UploadSummaryData | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -107,26 +109,14 @@ function Layout() {
 
   // ── Import ────────────────────────────────────────────────────────────────
 
-  const handleImport = useCallback(async (records: RankingRecord[]) => {
+  // Persist a parsed snapshot. Called by both the normal upload flow and the
+  // "Delete & replace" path of the duplicate warning modal.
+  const persistSnapshot = useCallback(async (records: RankingRecord[]) => {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${rawDate || Date.now()}`
-
-    // ── Duplicate-date guard ─────────────────────────────────────────────
-    // No duplicate snapshots allowed. If a snapshot for this Last Check
-    // date already exists, refuse the upload. The user must delete the
-    // existing snapshot first (delete button is on each date band in
-    // BPSites BrandView).
-    const dupe = state.snapshots.find((s) => s.rawDate === rawDate)
-    if (dupe) {
-      addToast(
-        `Snapshot for ${displayDate} already exists — delete it first to re-upload`,
-        'error',
-      )
-      return
-    }
-
     const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
+
     try {
       await upsertSnapshot(newSnap)
     } catch (err) {
@@ -137,7 +127,10 @@ function Layout() {
 
     let nextAll: Snapshot[] = []
     setState((s) => {
-      const nextSnapshots = [newSnap, ...s.snapshots]
+      // Replace any snapshot with the same rawDate (covers the delete-and-replace
+      // path) and prepend the new one to the front.
+      const filtered = s.snapshots.filter((sn) => sn.rawDate !== rawDate)
+      const nextSnapshots = [newSnap, ...filtered]
       nextAll = nextSnapshots
       const brandName = s.activeBrand
       return {
@@ -154,7 +147,39 @@ function Layout() {
     setUploadSummary({ displayDate, records, allSnapshots: nextAll })
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
-  }, [addToast, state.snapshots])
+  }, [addToast])
+
+  const handleImport = useCallback(async (records: RankingRecord[]) => {
+    const rawDate = extractSnapshotDate(records)
+
+    // ── Duplicate-date guard ─────────────────────────────────────────────
+    // If a snapshot for this Last Check date already exists, open the
+    // duplicate-warning modal instead of saving. User can cancel or
+    // explicitly choose "Delete & replace".
+    const dupe = state.snapshots.find((s) => s.rawDate === rawDate)
+    if (dupe) {
+      setShowUpload(false)
+      setDuplicateWarning({ existing: dupe, pendingRecords: records })
+      return
+    }
+
+    await persistSnapshot(records)
+  }, [persistSnapshot, state.snapshots])
+
+  const handleReplaceDuplicate = useCallback(async () => {
+    if (!duplicateWarning) return
+    const { existing, pendingRecords } = duplicateWarning
+    setDuplicateWarning(null)
+    try {
+      await deleteSnapshot(existing.id)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      addToast(`Delete failed: ${msg}`, 'error')
+      return
+    }
+    setState((s) => ({ ...s, snapshots: s.snapshots.filter((sn) => sn.id !== existing.id) }))
+    await persistSnapshot(pendingRecords)
+  }, [addToast, duplicateWarning, persistSnapshot])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
@@ -349,6 +374,14 @@ function Layout() {
 
       {uploadSummary && (
         <UploadSummary data={uploadSummary} onClose={() => setUploadSummary(null)} />
+      )}
+
+      {duplicateWarning && (
+        <DuplicateWarning
+          data={{ existing: duplicateWarning.existing }}
+          onClose={() => setDuplicateWarning(null)}
+          onDelete={handleReplaceDuplicate}
+        />
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
