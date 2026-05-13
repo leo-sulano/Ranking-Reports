@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, extractSnapshotDate, formatDisplayDate,
 } from './lib/parser'
-import { loadSnapshots, upsertSnapshot } from './lib/storage'
+import { loadSnapshots, upsertSnapshot, deleteSnapshot } from './lib/storage'
 
 import { Sidebar }      from './components/Sidebar'
 import { Topbar }       from './components/Topbar'
@@ -108,8 +108,22 @@ function Layout() {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${rawDate || Date.now()}`
-    const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
 
+    // ── Duplicate-date guard ─────────────────────────────────────────────
+    // No duplicate snapshots allowed. If a snapshot for this Last Check
+    // date already exists, refuse the upload. The user must delete the
+    // existing snapshot first (delete button is on each date band in
+    // BPSites BrandView).
+    const dupe = state.snapshots.find((s) => s.rawDate === rawDate)
+    if (dupe) {
+      addToast(
+        `Snapshot for ${displayDate} already exists — delete it first to re-upload`,
+        'error',
+      )
+      return
+    }
+
+    const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
     try {
       await upsertSnapshot(newSnap)
     } catch (err) {
@@ -119,11 +133,7 @@ function Layout() {
     }
 
     setState((s) => {
-      const existing = s.snapshots.findIndex((snap) => snap.rawDate === rawDate)
-      const nextSnapshots =
-        existing >= 0
-          ? s.snapshots.map((snap, i) => (i === existing ? newSnap : snap))
-          : [newSnap, ...s.snapshots]
+      const nextSnapshots = [newSnap, ...s.snapshots]
       const brandName = s.activeBrand
       return {
         ...s,
@@ -138,7 +148,32 @@ function Layout() {
     setShowUpload(false)
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
-  }, [addToast])
+  }, [addToast, state.snapshots])
+
+  const handleDeleteSnapshot = useCallback(async (id: string) => {
+    const snap = state.snapshots.find((s) => s.id === id)
+    if (!snap) return
+    if (!window.confirm(`Delete snapshot for ${snap.displayDate}? This cannot be undone.`)) return
+
+    try {
+      await deleteSnapshot(id)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      addToast(`Delete failed: ${msg}`, 'error')
+      return
+    }
+
+    setState((s) => {
+      const nextSnapshots = s.snapshots.filter((sn) => sn.id !== id)
+      return {
+        ...s,
+        snapshots:        nextSnapshots,
+        activeSnapshotId: s.activeSnapshotId === id ? (nextSnapshots[0]?.id ?? null) : s.activeSnapshotId,
+      }
+    })
+
+    addToast(`✓ Deleted snapshot for ${snap.displayDate}`)
+  }, [addToast, state.snapshots])
 
   // ── Snapshot ──────────────────────────────────────────────────────────────
 
@@ -255,6 +290,7 @@ function Layout() {
     onToggleDomain:    toggleDomain,
     onKwFilter:        setKwFilter,
     onOpenUpload:      () => setShowUpload(true),
+    onDeleteSnapshot:  handleDeleteSnapshot,
     bpFilterBrand,
     onSelectBPBrand:   setBPFilterBrand,
   }

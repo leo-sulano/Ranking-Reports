@@ -29,6 +29,7 @@ export interface RROutletContext {
   onToggleDomain: (d: string) => void
   onKwFilter: (v: string) => void
   onOpenUpload: () => void
+  onDeleteSnapshot: (id: string) => void
 }
 
 function computeStats(records: RankingRecord[]) {

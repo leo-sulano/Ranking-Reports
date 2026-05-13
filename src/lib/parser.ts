@@ -91,7 +91,9 @@ function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
 
   if (iDomain < 0 || iKeyword < 0) return []
 
-  const records: RankingRecord[] = []
+  // Dedupe by (domain, keyword, country). Within a single upload, identical
+  // (domain, keyword, country) rows replace each other — the LAST one wins.
+  const byKey = new Map<string, RankingRecord>()
   for (let r = headerIdx + 1; r < rows.length; r++) {
     const row = rows[r]
     const domain  = String(row[iDomain]  ?? '').trim()
@@ -99,17 +101,20 @@ function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
     if (!domain || !keyword) continue
     if (!DOMAIN_TO_BRAND[domain.toLowerCase()]) continue
 
-    records.push({
+    const country = iCountry >= 0 ? normalizeCountry(row[iCountry]) : ''
+    const dedupeKey = `${domain.toLowerCase()}|${keyword.toLowerCase()}|${country}`
+
+    byKey.set(dedupeKey, {
       domain,
       keyword,
-      country:  iCountry  >= 0 ? normalizeCountry(row[iCountry]) : '',
+      country,
       position: iPosition >= 0 ? String(row[iPosition] ?? '').trim() : '',
       previous: iPrev     >= 0 ? String(row[iPrev]     ?? '').trim() : '',
       change:   iChange   >= 0 ? String(row[iChange]   ?? '').trim() : '',
       date:     iDate     >= 0 ? normalizeDate(row[iDate]) : '',
     })
   }
-  return records
+  return Array.from(byKey.values())
 }
 
 // Extract the most common date value from records' date field

@@ -35,7 +35,8 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 // ─── Entry ────────────────────────────────────────────────────────────────────
 
 export function BPSites() {
-  const { snapshots, bpFilterBrand, onSelectBPBrand } = useOutletContext<RROutletContext>()
+  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot } =
+    useOutletContext<RROutletContext>()
   const activeBrand = bpFilterBrand ? BRAND_BY_NAME[bpFilterBrand] ?? null : null
 
   if (activeBrand) {
@@ -44,6 +45,7 @@ export function BPSites() {
         brand={activeBrand}
         snapshots={snapshots}
         onBack={() => onSelectBPBrand(null)}
+        onDeleteSnapshot={onDeleteSnapshot}
       />
     )
   }
@@ -145,10 +147,12 @@ function BrandView({
   brand,
   snapshots,
   onBack,
+  onDeleteSnapshot,
 }: {
   brand: Brand
   snapshots: Snapshot[]
   onBack: () => void
+  onDeleteSnapshot: (id: string) => void
 }) {
   const brandDomainSet = useMemo(
     () => new Set(brand.domains.map((d) => d.toLowerCase())),
@@ -258,10 +262,17 @@ function BrandView({
 
                   {/* Date band */}
                   <div
-                    className="px-4 py-2 text-[13px] font-bold flex items-center"
+                    className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
                     style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
                   >
-                    {snap.displayDate}
+                    <span>{snap.displayDate}</span>
+                    <button
+                      onClick={() => onDeleteSnapshot(snap.id)}
+                      className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
+                      title={`Delete snapshot for ${snap.displayDate}`}
+                    >
+                      ✕ Delete
+                    </button>
                   </div>
 
                   {/* Horizontal matrix */}
