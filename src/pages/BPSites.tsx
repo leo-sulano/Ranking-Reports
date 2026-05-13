@@ -306,7 +306,7 @@ function BrandView({
                   className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
                   style={
                     active
-                      ? { background: brand.color, color: '#000', borderColor: 'transparent', fontWeight: 700 }
+                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
                       : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
                   }
                 >

@@ -33,7 +33,7 @@ export function SnapshotTabs({ snapshots, activeId, onSelect }: Props) {
           >
             {snap.displayDate}
             {isLatest && (
-              <span className="text-[9px] font-bold uppercase tracking-widest px-1 py-0.5 rounded bg-[#F59E0B] text-black">
+              <span className="text-[9px] font-bold uppercase tracking-widest px-1 py-0.5 rounded bg-[#CBD5E1] text-[#0F172A]">
                 LATEST
               </span>
             )}
