@@ -196,7 +196,7 @@ export function Home() {
               </span>
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#10B981]">LIVE</span>
               <span className="font-mono text-[10px] tracking-[0.16em] text-[#64748B] ml-2">
-                SERP.COCKPIT // ROOSTER PARTNERS
+                SERP.TERMINAL // ROOSTER PARTNERS
               </span>
             </div>
             <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.14em] text-[#64748B]">

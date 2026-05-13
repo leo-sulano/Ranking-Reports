@@ -307,7 +307,7 @@ function Layout() {
       : Object.keys(SECTION_TITLES).find((p) => location.pathname.startsWith(p)) ?? '/bp-sites'
   const [topbarTitle, topbarDomain] = currentPath
     ? SECTION_TITLES[currentPath]
-    : ['SERP Cockpit', 'Command center · Rooster Partners']
+    : ['SERP Terminal', 'Command center · Rooster Partners']
 
   const rrContext: RROutletContext = {
     snapshots:         state.snapshots,

@@ -52,7 +52,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-[#1C2B3A] shrink-0">
         <div className="font-display text-[18px] tracking-widest text-[#F59E0B] leading-none">
-          SERP COCKPIT
+          SERP TERMINAL
         </div>
         <div className="text-[10px] text-[#64748B] uppercase tracking-[0.12em] mt-1">
           Rooster Partners
