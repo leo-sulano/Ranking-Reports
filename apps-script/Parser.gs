@@ -3,37 +3,53 @@
  * Parser.gs — Dynamic dashboard structure detection
  * ============================================================================
  *
- * Returns for one sheet:
+ * Real dashboard layout (per brand sheet):
+ *
+ *   Row 1 (country header) :  | 0       | Country | GSV | AU | SV | AFF | CA | SV | AFF | ... | AU | CA | DE | IT | NZ | ...
+ *   Row 2 (domain header)  :  |         | Domain  |     |        lucky7even.com (merged across MAIN cols)        | lucky7evencasino.com (BP) | lucky7evencasino.io (BP) | ...
+ *   Row 3 (date band)      :  |         | 05/13/26 (merged)
+ *   Row 4 (section recap)  :  |         | Country | AU | SV | AFF | CA | ...
+ *   Rows 5–10 (keywords)   :  | 1..6    | <keyword text>
+ *   Row 11 blank
+ *   Row 12 (next date)     :  |         | 05/08/26
+ *   …
+ *
+ * Key facts:
+ *   • Blocks (domain → column range) are GLOBAL — defined ONCE by row 2.
+ *   • Country header is GLOBAL — defined ONCE by row 1.
+ *   • Per date section we only detect KEYWORD ROWS.
+ *   • Keywords live in column B (column A is a 1–N row counter).
+ *   • Date markers live in column B (merged across the row for visual span).
+ *
+ * The parser detects everything dynamically:
+ *   1. Domain row    = the row (among first 20) with the most CONFIG-domain matches.
+ *   2. Country row   = the row near the domain row with the most ALLOWED_COUNTRY_CODES.
+ *   3. Blocks        = each non-empty CONFIG-domain cell in the domain row starts a block;
+ *                      block ends at the column before the next domain hit.
+ *   4. countryMap    = per block, scan the country header row inside the block range;
+ *                      keep only ALLOWED_COUNTRY_CODES; skip PROTECTED_COLUMNS_*.
+ *   5. Date sections = rows below the domain row whose col A OR col B is a date marker.
+ *   6. Keyword rows  = inside each section, col B values, normalized, skipping 'country'/'domain'.
+ *
+ * Returns:
  *   {
+ *     domainRow:        number  (1-based)
+ *     countryHeaderRow: number  (1-based)
+ *     blocks: [{
+ *       domain:   string,
+ *       type:     'main' | 'bp',
+ *       startCol: number, endCol: number,    // 1-based, inclusive
+ *       countryMap: { [code]: column1Based }
+ *     }]
  *     dateSections: [{
- *       dateLabel: string,
- *       date: Date|null,
- *       startRow: number, endRow: number,
- *       blockHeaderRow: number, countryHeaderRow: number,
- *       blocks: [{
- *         domain: string|null,
- *         type: 'main'|'bp',
- *         startCol: number, endCol: number,
- *         countryMap: { [code:string]: number }
- *       }],
- *       keywordRows: Map<normalizedKeyword, rowIndex(1-based)>
+ *       dateLabel:  string,
+ *       date:       Date | null,
+ *       startRow:   number, endRow: number,  // 1-based
+ *       keywordRows: Map<normalizedKeyword, row1Based>
  *     }]
  *   }
  *
- * Detection rules:
- *   - A date section starts at a row whose column-A cell is a Date OR a string
- *     containing a parseable date OR starts with "DATE".
- *   - Inside a section, scan HEADER_SCAN_DEPTH rows below the marker for:
- *       (a) block header row → contains MAIN/BP labels OR a CONFIG domain
- *       (b) country header row → row with ≥2 ALLOWED_COUNTRY_CODES tokens
- *   - Block boundaries: from each non-empty header cell to col-1 of the next
- *     non-empty header cell (or the last column with any value).
- *   - Country columns: only cells whose text is in ALLOWED_COUNTRY_CODES.
- *     Protected tokens (GSV/SV/AFF/URL) are deliberately excluded.
- *   - Keyword rows: rows below countryHeaderRow until the section ends. The
- *     keyword key is column A, trimmed + lowercased.
- *
- * Caching: structures are memoized per sheet on ctx._parserCache.
+ * Caching: per sheet on ctx._parserCache.
  */
 
 function parseSheetStructure(ctx, sheet, brand, config) {
@@ -43,132 +59,169 @@ function parseSheetStructure(ctx, sheet, brand, config) {
 
   const grid = sheet.getDataRange().getValues();
   const numRows = grid.length;
-  const numCols = grid.length ? grid[0].length : 0;
+  const numCols = numRows ? grid[0].length : 0;
 
-  // 1. Detect date-section marker rows
+  // ──────────────────────────────────────────────────────────────────────────
+  // 1. Find the DOMAIN ROW (most CONFIG-domain matches in first 20 rows)
+  // ──────────────────────────────────────────────────────────────────────────
+  let domainRow = -1, domainHits = [];
+  {
+    let bestScore = 0;
+    const scanLimit = Math.min(20, numRows);
+    for (let r = 0; r < scanLimit; r++) {
+      const hits = findDomainsInRow(grid[r], config.byDomain);
+      if (hits.length > bestScore) {
+        bestScore = hits.length;
+        domainRow = r;
+        domainHits = hits;
+      }
+    }
+  }
+  if (domainRow < 0 || domainHits.length === 0) {
+    log(ctx, 'ERROR',
+      'Could not find a domain header row. Make sure CONFIG domains appear ' +
+      'literally in the top 20 rows of the brand sheet (typically row 2).');
+    const empty = { blocks: [], dateSections: [], domainRow: -1, countryHeaderRow: -1 };
+    ctx._parserCache.set(cacheKey, empty);
+    return empty;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. Find the COUNTRY HEADER ROW (most ALLOWED_COUNTRY_CODES near domain row)
+  // ──────────────────────────────────────────────────────────────────────────
+  let countryHeaderRow = -1;
+  {
+    let bestScore = 0;
+    const lo = Math.max(0, domainRow - 5);
+    const hi = Math.min(domainRow + 5, numRows - 1);
+    for (let r = lo; r <= hi; r++) {
+      if (r === domainRow) continue;
+      const score = countCountryCells(grid[r]);
+      if (score > bestScore) { bestScore = score; countryHeaderRow = r; }
+    }
+  }
+  if (countryHeaderRow < 0) {
+    log(ctx, 'ERROR',
+      'Country header row not found near domain row. ' +
+      'Expected a row with country codes (AU/CA/DE/…) within 5 rows of the domain row.');
+    const empty = { blocks: [], dateSections: [], domainRow: domainRow + 1, countryHeaderRow: -1 };
+    ctx._parserCache.set(cacheKey, empty);
+    return empty;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 3. Build BLOCKS from the domain row (left to right)
+  // ──────────────────────────────────────────────────────────────────────────
+  const sortedHits = domainHits.slice().sort((a, b) => a.col - b.col);
+  const blocks = sortedHits.map((hit, i) => {
+    const startCol = hit.col + 1;
+    const next = sortedHits[i + 1];
+    const endCol = next ? next.col : numCols - 1;
+    return {
+      domain: hit.domain,
+      type: hit.type,
+      startCol,
+      endCol: endCol + 1,
+      countryMap: {}
+    };
+  });
+
+  // 3a. Per-block country map (scan only within each block's column range)
+  const countryRowVals = grid[countryHeaderRow];
+  for (const b of blocks) {
+    const protectedSet = b.type === 'main' ? PROTECTED_COLUMNS_MAIN : PROTECTED_COLUMNS_BP;
+    for (let c = b.startCol - 1; c <= b.endCol - 1 && c < numCols; c++) {
+      const token = String(countryRowVals[c] || '').trim().toUpperCase();
+      if (!token) continue;
+      if (protectedSet.has(token)) continue;
+      if (!ALLOWED_COUNTRY_CODES.has(token)) continue;
+      if (b.countryMap[token]) continue;
+      b.countryMap[token] = c + 1;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 4. Find DATE SECTIONS below the domain row (scan col A then col B)
+  // ──────────────────────────────────────────────────────────────────────────
   const sectionStarts = [];
-  for (let r = 0; r < numRows; r++) {
-    const a = grid[r][0];
-    const detected = detectDateMarker(a);
-    if (detected) sectionStarts.push({ row: r, ...detected });
+  for (let r = domainRow + 1; r < numRows; r++) {
+    const m = detectDateMarker(grid[r][0]) || detectDateMarker(grid[r][1]);
+    if (m) sectionStarts.push({ row: r, label: m.label, date: m.date });
   }
-  if (sectionStarts.length === 0) {
-    ctx._parserCache.set(cacheKey, { dateSections: [] });
-    return { dateSections: [] };
-  }
-
   for (let i = 0; i < sectionStarts.length; i++) {
     sectionStarts[i].endRow = (i + 1 < sectionStarts.length)
       ? sectionStarts[i + 1].row - 1
       : numRows - 1;
   }
 
-  const brandDomains = (config.brandDomains.get(brand) || { main: [], bp: [] });
-  const knownDomains = [...brandDomains.main, ...brandDomains.bp];
-
+  // ──────────────────────────────────────────────────────────────────────────
+  // 5. Keyword rows per section (col B, skipping 'Country' / 'Domain' recaps)
+  // ──────────────────────────────────────────────────────────────────────────
   const dateSections = sectionStarts.map(sec => {
-    const headerScanEnd = Math.min(sec.row + HEADER_SCAN_DEPTH, sec.endRow);
-
-    let bestBlockRow = -1, bestBlockScore = 0, bestBlockHits = [];
-    for (let r = sec.row; r <= headerScanEnd; r++) {
-      const hits = scanBlockHeaderRow(grid[r], knownDomains);
-      if (hits.length > bestBlockScore) {
-        bestBlockScore = hits.length;
-        bestBlockRow = r;
-        bestBlockHits = hits;
-      }
-    }
-
-    let bestCountryRow = -1, bestCountryScore = 0;
-    const countryScanStart = bestBlockRow >= 0 ? bestBlockRow + 1 : sec.row + 1;
-    const countryScanEnd = Math.min(countryScanStart + HEADER_SCAN_DEPTH, sec.endRow);
-    for (let r = countryScanStart; r <= countryScanEnd; r++) {
-      const score = countCountryCells(grid[r]);
-      if (score > bestCountryScore) { bestCountryScore = score; bestCountryRow = r; }
-    }
-
-    if (bestBlockRow < 0 || bestCountryRow < 0) {
-      return {
-        dateLabel: sec.label, date: sec.date,
-        startRow: sec.row + 1, endRow: sec.endRow + 1,
-        blockHeaderRow: -1, countryHeaderRow: -1,
-        blocks: [], keywordRows: new Map(),
-        _diagnostic: 'block/country header row not detected'
-      };
-    }
-
-    const sortedHits = bestBlockHits.slice().sort((a, b) => a.col - b.col);
-    const blocks = sortedHits.map((hit, i) => {
-      const startCol = hit.col + 1;
-      const nextHit = sortedHits[i + 1];
-      const endCol = nextHit ? nextHit.col : numCols - 1;
-      return {
-        domain: hit.domain || null,
-        type: hit.type,
-        startCol,
-        endCol: endCol + 1,
-        countryMap: {}
-      };
-    });
-
-    let mainIdx = 0, bpIdx = 0;
-    for (const b of blocks) {
-      if (b.domain) continue;
-      const pool = b.type === 'main' ? brandDomains.main : brandDomains.bp;
-      const idx = b.type === 'main' ? mainIdx++ : bpIdx++;
-      b.domain = pool[idx] || null;
-    }
-
-    const countryRow = grid[bestCountryRow];
-    for (const b of blocks) {
-      const protectedSet = b.type === 'main' ? PROTECTED_COLUMNS_MAIN : PROTECTED_COLUMNS_BP;
-      for (let c = b.startCol - 1; c <= b.endCol - 1; c++) {
-        const token = String(countryRow[c] || '').trim().toUpperCase();
-        if (!token) continue;
-        if (protectedSet.has(token)) continue;
-        if (!ALLOWED_COUNTRY_CODES.has(token)) continue;
-        if (b.countryMap[token]) continue;
-        b.countryMap[token] = c + 1;
-      }
-    }
-
     const keywordRows = new Map();
-    for (let r = bestCountryRow + 1; r <= sec.endRow; r++) {
-      const k = normalizeKeyword(grid[r][0]);
-      if (!k) continue;
-      if (keywordRows.has(k)) continue;
-      keywordRows.set(k, r + 1);
+    for (let r = sec.row + 1; r <= sec.endRow; r++) {
+      const keyword = normalizeKeyword(grid[r][1]);
+      if (!keyword) continue;
+      if (keyword === 'country' || keyword === 'domain') continue;
+      if (keywordRows.has(keyword)) continue;
+      keywordRows.set(keyword, r + 1);
     }
-
     return {
       dateLabel: sec.label,
       date: sec.date,
       startRow: sec.row + 1,
       endRow: sec.endRow + 1,
-      blockHeaderRow: bestBlockRow + 1,
-      countryHeaderRow: bestCountryRow + 1,
-      blocks,
       keywordRows,
     };
   });
 
-  const structure = { dateSections };
+  const structure = {
+    blocks,
+    dateSections,
+    domainRow: domainRow + 1,
+    countryHeaderRow: countryHeaderRow + 1,
+  };
   ctx._parserCache.set(cacheKey, structure);
   return structure;
 }
 
 /**
- * Detect whether a column-A cell starts a date section.
+ * For a given row, return every cell that contains a CONFIG-registered domain.
+ * Exact normalized match first, then substring fallback (handles cells like
+ * "Main: lucky7even.com" or "lucky7even.com (main)").
+ */
+function findDomainsInRow(rowVals, byDomain) {
+  const hits = [];
+  for (let c = 0; c < rowVals.length; c++) {
+    const raw = rowVals[c];
+    if (raw === '' || raw == null) continue;
+    const normalized = normalizeDomain(raw);
+    if (!normalized) continue;
+
+    let mapping = byDomain.get(normalized);
+    if (!mapping) {
+      for (const d of byDomain.keys()) {
+        if (normalized.indexOf(d) >= 0) { mapping = byDomain.get(d); break; }
+      }
+    }
+    if (!mapping) continue;
+    hits.push({ col: c, domain: mapping.domain, type: mapping.type });
+  }
+  return hits;
+}
+
+/**
+ * Detect whether a cell starts a date section.
  *
- * Accepted formats:
+ * Accepted:
  *   - Date object
- *   - "yyyy-MM-dd" anywhere in the cell  (e.g. "DATE 2026-05-13")
- *   - "MM/DD/YY"   (e.g. "05/08/26"  → 2026-05-08)
- *   - "MM/DD/YYYY" (e.g. "05/08/2026")
- *   - any string starting with "DATE"   (no parseable date — section still detected)
+ *   - "yyyy-MM-dd" anywhere in the cell
+ *   - "MM/DD/YY"  (e.g. "05/08/26" → 2026-05-08)
+ *   - "MM/DD/YYYY"
+ *   - any string starting with "DATE"
  *
- * NOTE: slash dates are interpreted as MM/DD/YY (US format), to match the
- * dashboard convention. 2-digit years expand to 2000+YY (so "26" → 2026).
+ * Slash dates are interpreted as MM/DD/YY (US format). 2-digit years
+ * expand to 2000+YY.
  */
 function detectDateMarker(cell) {
   if (cell instanceof Date) return { label: cell.toISOString().slice(0, 10), date: cell };
@@ -192,35 +245,6 @@ function detectDateMarker(cell) {
   return null;
 }
 
-/** Returns array of {col, type, domain?} for cells that look like block headers. */
-function scanBlockHeaderRow(rowValues, knownDomains) {
-  const hits = [];
-  for (let c = 0; c < rowValues.length; c++) {
-    const raw = String(rowValues[c] || '').trim();
-    if (!raw) continue;
-    const upper = raw.toUpperCase();
-
-    const matchedDomain = knownDomains.find(d => upper.includes(d.toUpperCase()));
-    if (matchedDomain) {
-      let type = 'main';
-      if (BLOCK_TYPE_TOKENS.bp.some(t => upper.includes(t))) type = 'bp';
-      else if (BLOCK_TYPE_TOKENS.main.some(t => upper.includes(t))) type = 'main';
-      hits.push({ col: c, type, domain: normalizeDomain(matchedDomain) });
-      continue;
-    }
-
-    if (BLOCK_TYPE_TOKENS.main.some(t => upper === t || upper.startsWith(t))) {
-      hits.push({ col: c, type: 'main', domain: null });
-      continue;
-    }
-    if (BLOCK_TYPE_TOKENS.bp.some(t => upper === t || upper.startsWith(t))) {
-      hits.push({ col: c, type: 'bp', domain: null });
-      continue;
-    }
-  }
-  return hits;
-}
-
 function countCountryCells(rowValues) {
   let n = 0;
   for (const v of rowValues) {
@@ -238,6 +262,9 @@ function normalizeKeyword(v) {
 
 /**
  * Choose which date section a given import row belongs to.
+ *   1. exact same calendar day, or
+ *   2. nearest date (any direction), or
+ *   3. first section (top = newest, by dashboard convention).
  */
 function pickDateSection(sections, importDate) {
   if (sections.length === 0) return null;

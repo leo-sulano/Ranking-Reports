@@ -67,13 +67,34 @@ the dashboard layout** — only writes into country ranking cells.
 | Time-driven         | `clearErrorLog`    | Monthly, 1st @ 02:00      |
 | Installable on-edit | `processRankings`  | Edit on `RAW_IMPORT!A2:G` |
 
-## Detection rules (short version)
+## Dashboard layout the parser expects
 
-- **Date sections**: column-A cell is a Date, contains `yyyy-MM-dd`, or starts with `DATE`.
-- **Website blocks**: row within `HEADER_SCAN_DEPTH` below the date marker with the most `MAIN SITE`/`BP SITE`/known-domain hits. Each hit starts a block; the block extends to the column before the next hit.
-- **Domain ↔ block**: domain literal in the header cell wins; otherwise blocks are filled in CONFIG order (main first, then BP).
-- **Country columns**: country header row is the one with the most `ALLOWED_COUNTRY_CODES` tokens. Protected tokens (`GSV`, `SV`, `AFF`, `URL`) are filtered out — those cells can never be written.
-- **Keyword rows**: column A below the country header row until the next date section. Match is case- and whitespace-insensitive.
+```
+Row 1  | 0  | Country | GSV | AU | SV | AFF | CA | SV | AFF | DE | ... | AU | CA | DE | IT | NZ | ...
+Row 2  |    | Domain  |     |        lucky7even.com (main, merged across cols)        | lucky7evencasino.com (bp) | lucky7evencasino.io (bp) | ...
+Row 3  |    | 05/13/26  ← date marker (merged band)
+Row 4  |    | Country | AU | SV | AFF | ...   ← per-section recap (not required for parsing)
+Row 5  | 1  | casino lucky7 even   ← keyword in col B
+Row 6  | 2  | lucky 7 even
+...
+Row 11      (blank)
+Row 12 |    | 05/08/26
+...
+```
+
+- **Row 1** is the **global country header** — same for every date section.
+- **Row 2** is the **global domain header** — defines every block's column range.
+- **Date markers** in column B start new date sections.
+- **Keywords** live in **column B** (column A is a 1–N row counter).
+
+## Detection rules
+
+- **Domain row**: among the first 20 rows, the row with the most CONFIG-registered domains. Exact normalized match first, then substring fallback (so `Main: lucky7even.com` still matches).
+- **Country header row**: within ±5 rows of the domain row, the row with the most `ALLOWED_COUNTRY_CODES` tokens.
+- **Blocks**: every non-empty domain cell in the domain row starts a block; the block extends to the column before the next domain hit (or the last column). Type comes from CONFIG.
+- **Country map per block**: scan the country header row within the block's column range. Protected tokens (`GSV`, `SV`, `AFF`, `URL`, `LINK`) are filtered out — they can never be written.
+- **Date sections**: rows below the domain row whose col A *or* col B is a Date / `yyyy-MM-dd` / `MM/DD/YY` / `MM/DD/YYYY` / starts with `DATE`. A section runs until the next marker (or end of sheet).
+- **Keyword rows**: inside each section, every non-empty col B value, normalized to lowercase + collapsed whitespace. `country`/`domain` recap rows are skipped.
 
 ## Behaviour under missing data
 

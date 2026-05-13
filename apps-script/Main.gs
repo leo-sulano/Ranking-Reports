@@ -97,34 +97,36 @@ function diagnoseLayout() {
 
     log(ctx, 'INFO', `=== Diagnose: sheet="${sheetName}" brand="${brand}" ===`);
     const struct = parseSheetStructure(ctx, sheet, brand, config);
-    log(ctx, 'INFO', `Detected ${struct.dateSections.length} date section(s).`);
 
+    log(ctx, 'INFO',
+      `Layout anchors: domainRow=${struct.domainRow} countryHeaderRow=${struct.countryHeaderRow}`);
+
+    log(ctx, 'INFO', `Detected ${struct.blocks.length} website block(s):`);
+    struct.blocks.forEach((b, i) => {
+      const countries = Object.entries(b.countryMap)
+        .map(([k, v]) => `${k}=col${v}`)
+        .join(', ');
+      log(ctx, 'INFO',
+        `  Block #${i + 1}: type=${b.type} domain=${b.domain} ` +
+        `cols=${b.startCol}..${b.endCol} ` +
+        `countries={${countries || 'none'}}`);
+    });
+
+    log(ctx, 'INFO', `Detected ${struct.dateSections.length} date section(s):`);
     struct.dateSections.forEach((s, i) => {
       const dateStr = s.date ? Utilities.formatDate(s.date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'null';
+      const sample = [...s.keywordRows.keys()].slice(0, 6);
       log(ctx, 'INFO',
-        `Section #${i + 1}: label="${s.dateLabel}" date=${dateStr} ` +
-        `rows=${s.startRow}..${s.endRow} ` +
-        `blockHeaderRow=${s.blockHeaderRow} countryHeaderRow=${s.countryHeaderRow}`,
-        s._diagnostic || '');
-
-      s.blocks.forEach((b, bi) => {
-        const countries = Object.entries(b.countryMap)
-          .map(([k, v]) => `${k}=col${v}`)
-          .join(', ');
-        log(ctx, 'INFO',
-          `  Block #${bi + 1}: type=${b.type} domain=${b.domain || '(unmapped)'} ` +
-          `cols=${b.startCol}..${b.endCol} ` +
-          `countries={${countries || 'none'}}`);
-      });
-
-      const allKeywords = [...s.keywordRows.keys()];
-      const sample = allKeywords.slice(0, 8);
-      log(ctx, 'INFO',
-        `  Keywords (${allKeywords.length} total, first 8): ${sample.join(' | ')}`);
+        `  Section #${i + 1}: label="${s.dateLabel}" date=${dateStr} ` +
+        `rows=${s.startRow}..${s.endRow} keywords=${s.keywordRows.size}`);
+      if (sample.length) {
+        log(ctx, 'INFO', `    Keywords (first 6): ${sample.join(' | ')}`);
+      }
     });
 
     SpreadsheetApp.getActive().toast(
-      `Diagnose written to ${SHEETS.ERROR_LOG}. ${struct.dateSections.length} section(s) on "${sheetName}".`,
+      `Diagnose written to ${SHEETS.ERROR_LOG}. ` +
+      `${struct.blocks.length} block(s), ${struct.dateSections.length} section(s) on "${sheetName}".`,
       'Rankings', 6
     );
   } catch (err) {
@@ -196,7 +198,12 @@ function processBrandSheet(ctx, brand, rows, config) {
   }
 
   const structure = parseSheetStructure(ctx, sheet, brand, config);
-  if (!structure || structure.dateSections.length === 0) {
+  if (!structure || structure.blocks.length === 0) {
+    rows.forEach(r => log(ctx, 'ERROR', 'No website blocks detected on sheet',
+        `brand=${brand} sheet=${sheetName}`));
+    return { applied: 0, skipped: rows.length };
+  }
+  if (structure.dateSections.length === 0) {
     rows.forEach(r => log(ctx, 'ERROR', 'No date sections detected on sheet',
         `brand=${brand} sheet=${sheetName}`));
     return { applied: 0, skipped: rows.length };
@@ -223,26 +230,19 @@ function applyImportRow(ctx, row, brand, structure, updater, config) {
   const mapping = config.byDomain.get(row.domain);
   if (!mapping) return { applied: false };
 
-  const section = pickDateSection(structure.dateSections, row.lastCheck);
-  if (!section) {
-    log(ctx, 'WARN', `No date section matches "${row.lastCheckRaw}"`,
-        `brand=${brand} domain=${row.domain}`);
-    return { applied: false };
-  }
-
-  const block = section.blocks.find(b =>
-    b.domain === row.domain || (b.type === mapping.type && b.domain === mapping.domain)
-  );
+  // Block is GLOBAL — defined once by the domain row at the top of the sheet.
+  const block = structure.blocks.find(b => b.domain === row.domain);
   if (!block) {
-    log(ctx, 'WARN', `No website block for domain in section ${section.dateLabel}`,
-        `brand=${brand} domain=${row.domain}`);
+    log(ctx, 'WARN', `No website block for domain "${row.domain}" on this sheet`,
+        `brand=${brand} keyword=${row.keyword}`);
     return { applied: false };
   }
 
+  // Country column comes from the block's countryMap (built from the global country header).
   const col = block.countryMap[row.country];
   if (!col) {
-    log(ctx, 'WARN', `No country column "${row.country}" in block`,
-        `brand=${brand} domain=${row.domain} section=${section.dateLabel}`);
+    log(ctx, 'WARN', `No country column "${row.country}" in block for ${row.domain}`,
+        `brand=${brand} country=${row.country}`);
     return { applied: false };
   }
 
@@ -253,6 +253,15 @@ function applyImportRow(ctx, row, brand, structure, updater, config) {
     return { applied: false };
   }
 
+  // Date section is per-import-date.
+  const section = pickDateSection(structure.dateSections, row.lastCheck);
+  if (!section) {
+    log(ctx, 'WARN', `No date section matches "${row.lastCheckRaw}"`,
+        `brand=${brand} domain=${row.domain}`);
+    return { applied: false };
+  }
+
+  // Keyword row lives within the chosen date section (col B).
   const keywordKey = normalizeKeyword(row.keyword);
   const targetRow = section.keywordRows.get(keywordKey);
   if (!targetRow) {
