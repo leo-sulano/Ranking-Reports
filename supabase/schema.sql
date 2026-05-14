@@ -22,16 +22,22 @@ create index if not exists snapshots_created_at_idx
 
 -- Ranking records ------------------------------------------------------------
 create table if not exists public.ranking_records (
-  id           bigserial primary key,
-  snapshot_id  text not null references public.snapshots(id) on delete cascade,
-  domain       text not null,
-  keyword      text not null,
-  country      text not null,
-  position     text not null,                 -- text so "NR" / "Not in top 100" fit
-  previous     text not null default '',
-  change       text not null default '',
-  date         text not null default ''
+  id             bigserial primary key,
+  snapshot_id    text not null references public.snapshots(id) on delete cascade,
+  domain         text not null,
+  keyword        text not null,
+  country        text not null,
+  position       text not null,                 -- text so "NR" / "Not in top 100" fit
+  previous       text not null default '',
+  change         text not null default '',
+  date           text not null default '',
+  search_volume  text not null default '',    -- e.g. "6.3K" — only set by matrix-format uploads
+  affiliate_url  text not null default ''
 );
+
+-- Backfill ALTER for existing tables (idempotent — Postgres ignores duplicates).
+alter table public.ranking_records add column if not exists search_volume text not null default '';
+alter table public.ranking_records add column if not exists affiliate_url text not null default '';
 
 create index if not exists ranking_records_snapshot_idx
   on public.ranking_records (snapshot_id);

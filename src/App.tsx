@@ -2,10 +2,10 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import type { AppState, RROutletContext, RankingRecord, Snapshot } from './types'
 import type { CategoryId } from './lib/categories'
-import type { UnknownDomain } from './lib/parser'
+import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
 import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
-  countBrands, extractSnapshotDate, formatDisplayDate,
+  countBrands, formatDisplayDate,
 } from './lib/parser'
 import { loadSnapshots, upsertSnapshot, deleteSnapshot } from './lib/storage'
 
@@ -39,6 +39,8 @@ function Layout() {
   const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
+  // Bulk-import (matrix-format) progress overlay. null when not importing.
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -78,12 +80,15 @@ function Layout() {
 
   // ── Import ────────────────────────────────────────────────────────────────
 
-  const persistSnapshot = useCallback(async (
-    records:        RankingRecord[],
-    category:       CategoryId,
-    unknownDomains: UnknownDomain[],
-  ) => {
-    const rawDate     = extractSnapshotDate(records)
+  // Low-level persist for ONE snapshot. Wipes any existing snapshot for the
+  // same (category, rawDate) via upsertSnapshot's delete-cascade-insert.
+  // Updates local state on success. Does NOT show toasts / summary — callers
+  // decide how to surface the outcome.
+  const persistOneSnapshot = useCallback(async (
+    parsed: ParsedSnapshot,
+    category: CategoryId,
+  ): Promise<Snapshot | null> => {
+    const { rawDate, records } = parsed
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${category}-${rawDate || Date.now()}`
     const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, records }
@@ -92,49 +97,83 @@ function Layout() {
       await upsertSnapshot(newSnap)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      addToast(`Save failed: ${msg}`, 'error')
-      return
+      addToast(`Save failed (${displayDate}): ${msg}`, 'error')
+      return null
     }
 
     setState((s) => {
       const filtered = s.snapshots.filter((sn) => !(sn.category === category && sn.rawDate === rawDate))
+      // Keep snapshots sorted newest-first by rawDate.
+      const next = [newSnap, ...filtered].sort((a, b) =>
+        (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0),
+      )
       return {
         ...s,
-        snapshots:        [newSnap, ...filtered],
-        activeSnapshotId: newId,
+        snapshots:        next,
+        activeSnapshotId: s.activeSnapshotId ?? newId,
       }
     })
 
-    setShowUpload(false)
-    setUploadSummary({ displayDate, records, unknownDomains })
-    const brandCount = countBrands(records, DOMAIN_TO_BRAND)
-    addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
+    return newSnap
+  }, [addToast])
 
+  const reportUnknownDomains = useCallback((unknownDomains: UnknownDomain[]) => {
     const skipped = unknownDomains.reduce((s, u) => s + u.count, 0)
-    if (skipped > 0) {
-      const list = unknownDomains.slice(0, 3).map((u) => u.domain).join(', ')
-      const more = unknownDomains.length > 3 ? ` +${unknownDomains.length - 3} more` : ''
-      addToast(
-        `⚠ ${skipped} row${skipped !== 1 ? 's' : ''} skipped — domain not part of Rooster: ${list}${more}`,
-        'warning',
-      )
-    }
+    if (skipped === 0) return
+    const list = unknownDomains.slice(0, 3).map((u) => u.domain).join(', ')
+    const more = unknownDomains.length > 3 ? ` +${unknownDomains.length - 3} more` : ''
+    addToast(
+      `⚠ ${skipped} row${skipped !== 1 ? 's' : ''} skipped — domain not part of Rooster: ${list}${more}`,
+      'warning',
+    )
   }, [addToast])
 
   const handleImport = useCallback(async (
-    records:        RankingRecord[],
+    snapshots:      ParsedSnapshot[],
     category:       CategoryId,
     unknownDomains: UnknownDomain[],
   ) => {
-    const rawDate = extractSnapshotDate(records)
-    const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === rawDate)
-    if (dupe) {
+    if (snapshots.length === 0) return
+
+    // Single-snapshot path (flat-format upload) — preserve duplicate-warning UX.
+    if (snapshots.length === 1) {
+      const parsed = snapshots[0]
+      const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === parsed.rawDate)
+      if (dupe) {
+        setShowUpload(false)
+        setDuplicateWarning({ existing: dupe, pendingRecords: parsed.records, unknownDomains })
+        return
+      }
+      const snap = await persistOneSnapshot(parsed, category)
+      if (!snap) return
       setShowUpload(false)
-      setDuplicateWarning({ existing: dupe, pendingRecords: records, unknownDomains })
+      setUploadSummary({ displayDate: snap.displayDate, records: parsed.records, unknownDomains })
+      const brandCount = countBrands(parsed.records, DOMAIN_TO_BRAND)
+      addToast(`✓ Imported ${parsed.records.length} records across ${brandCount} brands — ${snap.displayDate}`)
+      reportUnknownDomains(unknownDomains)
       return
     }
-    await persistSnapshot(records, category, unknownDomains)
-  }, [persistSnapshot, state.snapshots])
+
+    // Multi-snapshot bulk path (matrix-format upload). Replace any existing
+    // (category, rawDate) silently — no per-snapshot dupe modal.
+    setShowUpload(false)
+    setBulkProgress({ done: 0, total: snapshots.length })
+
+    let okCount = 0
+    let totalRecords = 0
+    for (let i = 0; i < snapshots.length; i++) {
+      const snap = await persistOneSnapshot(snapshots[i], category)
+      if (snap) {
+        okCount++
+        totalRecords += snapshots[i].records.length
+      }
+      setBulkProgress({ done: i + 1, total: snapshots.length })
+    }
+    setBulkProgress(null)
+
+    addToast(`✓ Imported ${okCount}/${snapshots.length} snapshots — ${totalRecords.toLocaleString()} records total`)
+    reportUnknownDomains(unknownDomains)
+  }, [addToast, persistOneSnapshot, reportUnknownDomains, state.snapshots])
 
   const handleReplaceDuplicate = useCallback(async () => {
     if (!duplicateWarning) return
@@ -148,8 +187,16 @@ function Layout() {
       return
     }
     setState((s) => ({ ...s, snapshots: s.snapshots.filter((sn) => sn.id !== existing.id) }))
-    await persistSnapshot(pendingRecords, existing.category, unknownDomains)
-  }, [addToast, duplicateWarning, persistSnapshot])
+    const snap = await persistOneSnapshot(
+      { rawDate: existing.rawDate, records: pendingRecords },
+      existing.category,
+    )
+    if (!snap) return
+    setUploadSummary({ displayDate: snap.displayDate, records: pendingRecords, unknownDomains })
+    const brandCount = countBrands(pendingRecords, DOMAIN_TO_BRAND)
+    addToast(`✓ Imported ${pendingRecords.length} records across ${brandCount} brands — ${snap.displayDate}`)
+    reportUnknownDomains(unknownDomains)
+  }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
@@ -262,6 +309,25 @@ function Layout() {
           onClose={() => setDuplicateWarning(null)}
           onDelete={handleReplaceDuplicate}
         />
+      )}
+
+      {bulkProgress && (
+        <div className="fixed inset-0 bg-[rgba(15,23,42,0.55)] backdrop-blur-md z-50 flex items-center justify-center">
+          <div className="bg-white border border-[#E2E8F0] rounded-[14px] w-[420px] max-w-[95vw] p-6 shadow-[0_40px_80px_rgba(15,23,42,0.18)]">
+            <h2 className="font-display text-[16px] tracking-wider text-[#0F172A] mb-4">
+              Bulk import in progress
+            </h2>
+            <div className="h-[6px] bg-[#F1F5F9] rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full bg-[#0F172A] rounded-full transition-[width] duration-150"
+                style={{ width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="text-center text-[12px] text-[#64748B]">
+              Saving snapshot {bulkProgress.done} of {bulkProgress.total}…
+            </p>
+          </div>
+        </div>
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />

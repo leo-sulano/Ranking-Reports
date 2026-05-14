@@ -7,20 +7,48 @@ export interface UnknownDomain {
   count:  number
 }
 
+export interface ParsedSnapshot {
+  rawDate: string                 // 'yyyy-MM-dd'
+  records: RankingRecord[]
+}
+
 export interface ParseResult {
-  records:        RankingRecord[]
+  snapshots:      ParsedSnapshot[]
   unknownDomains: UnknownDomain[]
 }
 
+// Legacy matrix-format sheets. Each one is a per-brand sheet in the old Google
+// Sheets layout (stacked snapshots, domain row + country header at the top).
+// NOVADREAMS is intentionally NOT here — that brand isn't registered yet.
+const MATRIX_BRAND_SHEETS = new Set([
+  'LUCKY7', 'LUCKYVIBE', 'ROOSTERBET', 'SPINSUP', 'SPINJO',
+  'FORTUNEPLAY', 'ROCKETSPIN', 'PLAYMOJO', 'ROLLERO',
+])
+
 export function parseXlsx(buffer: ArrayBuffer): ParseResult {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
+
+  // Auto-detect matrix layout: if any sheet name matches a known per-brand
+  // tab, treat the workbook as the legacy stacked format.
+  const matrixSheets = wb.SheetNames.filter((n) => MATRIX_BRAND_SHEETS.has(n.toUpperCase()))
+  if (matrixSheets.length > 0) {
+    return parseMatrixWorkbook(wb, matrixSheets)
+  }
+
+  // Flat single-sheet format (current upload format).
   const ws = wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(ws, {
     header: 1,
     defval: '',
     raw: false,
   })
-  return parseRows(rows as (string | number | Date)[][])
+  const flat = parseRows(rows as (string | number | Date)[][])
+  // The flat format has one date per upload — derive it from the records.
+  const rawDate = extractSnapshotDate(flat.records)
+  return {
+    snapshots:      flat.records.length > 0 ? [{ rawDate, records: flat.records }] : [],
+    unknownDomains: flat.unknownDomains,
+  }
 }
 
 /**
@@ -88,7 +116,12 @@ function normalizeDate(v: unknown): string {
   return isNaN(d.getTime()) ? s : toIsoLocal(d)
 }
 
-function parseRows(rows: (string | number | Date)[][]): ParseResult {
+interface FlatParseResult {
+  records:        RankingRecord[]
+  unknownDomains: UnknownDomain[]
+}
+
+function parseRows(rows: (string | number | Date)[][]): FlatParseResult {
   if (!rows || rows.length < 2) return { records: [], unknownDomains: [] }
 
   let headerIdx = 0
@@ -198,4 +231,201 @@ export function parseChange(chg: string): number | null {
 export function countBrands(records: RankingRecord[], domainMap: Record<string, string>): number {
   const brands = new Set(records.map((r) => domainMap[r.domain.toLowerCase()]).filter(Boolean))
   return brands.size
+}
+
+// ─── Matrix-format parser (legacy per-brand stacked sheets) ────────────────────
+// File shape (one sheet per brand: LUCKY7, LUCKYVIBE, …):
+//   Row 0  — column header. Cols 3+ alternate AU/SV/AFF/CA/SV/AFF/… for domain 1,
+//            then plain AU/CA/DE/IT/NZ blocks for domains 2..5.
+//   Row 1  — domain at the FIRST column of each block (sparse).
+//   Row 2  — first date marker in col B ("05/13/26").
+//   Row 3  — country sub-header (skip).
+//   Rows 4+ — keyword in col B; per-(domain,country) position cells across cols.
+//   Then the date / sub-header / keyword block repeats down the sheet for every
+//   snapshot.
+
+const COUNTRY_CODES = new Set(['AU', 'CA', 'DE', 'IT', 'NZ'])
+
+interface ColRole { country: string; domain: string; type: 'POS' | 'SV' | 'AFF' }
+
+function extractDomain(raw: unknown): string {
+  // Domain cells sometimes carry a trailing note on a second line (e.g.
+  // "lucky7evencasino.org\n\nhttps://lucky7evencasino.org"). Take the first
+  // whitespace-delimited token.
+  return String(raw ?? '').split(/[\s\n\r]/)[0].trim().toLowerCase()
+}
+
+function parseMatrixDate(raw: string): string {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(raw.trim())
+  if (!m) return ''
+  const mm = parseInt(m[1], 10)
+  const dd = parseInt(m[2], 10)
+  let   yy = parseInt(m[3], 10)
+  if (yy < 100) yy += 2000
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return ''
+  return `${yy.toString().padStart(4, '0')}-${mm.toString().padStart(2, '0')}-${dd.toString().padStart(2, '0')}`
+}
+
+// Parse a position cell that may carry change info: "4 ⇓ (1)", "3 ⇑ (7)",
+// or a bare value like "1" / "Not in top 100".
+// ⇑ = ranking improved (current pos lower number, previous was higher);
+// ⇓ = ranking dropped  (current pos higher number, previous was lower).
+function parseMatrixPositionCell(cell: string): { position: string; change: string; previous: string } {
+  const s = cell.trim()
+  if (!s) return { position: '', change: '', previous: '' }
+
+  const m = /^(.+?)\s*([⇑⇓↑↓])\s*\(\s*(\d+)\s*\)\s*$/.exec(s)
+  if (!m) return { position: s, change: '', previous: '' }
+
+  const posPart = m[1].trim()
+  const arrow   = m[2]
+  const delta   = parseInt(m[3], 10)
+  const signed  = (arrow === '⇑' || arrow === '↑') ? delta : -delta
+  const posNum  = parseInt(posPart, 10)
+  // previous = current + signedDelta (works for both arrows; see derivation
+  // in the parser doc — for ⇓ signed is negative, so previous < current).
+  const previous = !isNaN(posNum) ? `${posNum + signed}` : ''
+  return { position: posPart, change: `${signed}`, previous }
+}
+
+function parseMatrixWorkbook(
+  wb: XLSX.WorkBook,
+  matrixSheetNames: string[],
+): ParseResult {
+  // Group records by rawDate across all brand sheets → one ParsedSnapshot per date.
+  const byDate = new Map<string, Map<string, RankingRecord>>()
+  const unknownByKey = new Map<string, { domain: string; count: number }>()
+
+  const upsertRecord = (
+    rawDate: string,
+    rec: RankingRecord,
+    patch: Partial<Pick<RankingRecord, 'position' | 'previous' | 'change' | 'searchVolume' | 'affiliateUrl'>>,
+  ) => {
+    let bucket = byDate.get(rawDate)
+    if (!bucket) { bucket = new Map(); byDate.set(rawDate, bucket) }
+    const k = `${rec.domain.toLowerCase()}|${rec.keyword.toLowerCase()}|${rec.country}`
+    const existing = bucket.get(k)
+    if (existing) {
+      Object.assign(existing, patch)
+    } else {
+      bucket.set(k, { ...rec, ...patch })
+    }
+  }
+
+  for (const sheetName of matrixSheetNames) {
+    const ws = wb.Sheets[sheetName]
+    if (!ws) continue
+    const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(ws, {
+      header: 1,
+      defval: '',
+      raw:    false,
+    }) as (string | number | Date)[][]
+    if (rows.length < 4) continue
+
+    // Build column → role map from rows 0 & 1.
+    const header0 = rows[0].map((c) => String(c ?? '').trim().toUpperCase())
+    const header1 = rows[1].map((c) => extractDomain(c))
+
+    // Scan header0 left-to-right tracking the current country + current domain.
+    const colMap = new Map<number, ColRole>()
+    let curCountry = ''
+    let curDomain  = ''
+    for (let c = 0; c < header0.length; c++) {
+      const cell = header0[c]
+      const dom1 = header1[c]
+      if (dom1) curDomain = dom1
+      if (COUNTRY_CODES.has(cell)) {
+        curCountry = cell
+        if (curDomain) colMap.set(c, { country: cell, domain: curDomain, type: 'POS' })
+      } else if (cell === 'SV' && curCountry && curDomain) {
+        colMap.set(c, { country: curCountry, domain: curDomain, type: 'SV' })
+      } else if (cell === 'AFF' && curCountry && curDomain) {
+        colMap.set(c, { country: curCountry, domain: curDomain, type: 'AFF' })
+      }
+    }
+
+    if (colMap.size === 0) continue
+
+    // Validate domains in this sheet up front (count unknowns once per sheet,
+    // not once per row × column).
+    const distinctDomains = new Set<string>()
+    colMap.forEach((v) => distinctDomains.add(v.domain))
+    for (const d of distinctDomains) {
+      if (!DOMAIN_TO_BRAND[d]) {
+        const e = unknownByKey.get(d)
+        if (e) e.count++
+        else unknownByKey.set(d, { domain: d, count: 1 })
+      }
+    }
+
+    // Find all date-marker rows (col B = MM/DD/YY).
+    const dateRows: Array<{ row: number; rawDate: string }> = []
+    for (let r = 0; r < rows.length; r++) {
+      const colB = String(rows[r]?.[1] ?? '').trim()
+      const iso  = parseMatrixDate(colB)
+      if (iso) dateRows.push({ row: r, rawDate: iso })
+    }
+    if (dateRows.length === 0) continue
+
+    for (let i = 0; i < dateRows.length; i++) {
+      const { row: startRow, rawDate } = dateRows[i]
+      const endRow = i + 1 < dateRows.length ? dateRows[i + 1].row : rows.length
+
+      // Skip the date row itself and any immediately-following sub-header rows
+      // whose col B is "Country" / "Domain" / empty.
+      for (let r = startRow + 1; r < endRow; r++) {
+        const row = rows[r]
+        const keyword = String(row?.[1] ?? '').trim()
+        if (!keyword) continue
+        const kwLc = keyword.toLowerCase()
+        if (kwLc === 'country' || kwLc === 'domain' || kwLc === 'keyword') continue
+
+        // Walk the column map and apply each cell's value to its
+        // (domain, country, keyword) record.
+        colMap.forEach((role, c) => {
+          if (!DOMAIN_TO_BRAND[role.domain]) return
+          const cell = String(row?.[c] ?? '').trim()
+          if (!cell) return
+
+          const base: RankingRecord = {
+            domain:   role.domain,
+            keyword,
+            country:  role.country,
+            position: '',
+            previous: '',
+            change:   '',
+            date:     rawDate,
+          }
+
+          if (role.type === 'POS') {
+            const parsed = parseMatrixPositionCell(cell)
+            upsertRecord(rawDate, base, {
+              position: parsed.position,
+              previous: parsed.previous,
+              change:   parsed.change,
+            })
+          } else if (role.type === 'SV') {
+            upsertRecord(rawDate, base, { searchVolume: cell })
+          } else if (role.type === 'AFF') {
+            upsertRecord(rawDate, base, { affiliateUrl: cell })
+          }
+        })
+      }
+    }
+  }
+
+  // Drop records that have no position AND no SV AND no AFF (empty rows that
+  // only carried whitespace).
+  const snapshots: ParsedSnapshot[] = []
+  for (const [rawDate, bucket] of byDate) {
+    const records = Array.from(bucket.values()).filter(
+      (r) => r.position || r.searchVolume || r.affiliateUrl,
+    )
+    if (records.length > 0) snapshots.push({ rawDate, records })
+  }
+  // Newest first.
+  snapshots.sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
+
+  const unknownDomains = Array.from(unknownByKey.values()).sort((a, b) => b.count - a.count)
+  return { snapshots, unknownDomains }
 }

@@ -33,11 +33,13 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
     previous: string | null
     change: string | null
     date: string | null
+    search_volume: string | null
+    affiliate_url: string | null
   }> = []
   for (let from = 0; ; from += PAGE) {
     const { data: page, error: e2 } = await supabase
       .from('ranking_records')
-      .select('snapshot_id, domain, keyword, country, position, previous, change, date')
+      .select('snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url')
       .in('snapshot_id', ids)
       .range(from, from + PAGE - 1)
     if (e2) throw e2
@@ -54,13 +56,15 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
       byId.set(r.snapshot_id, list)
     }
     list.push({
-      domain:   r.domain,
-      keyword:  r.keyword,
-      country:  r.country,
-      position: r.position,
-      previous: r.previous ?? '',
-      change:   r.change   ?? '',
-      date:     r.date     ?? '',
+      domain:       r.domain,
+      keyword:      r.keyword,
+      country:      r.country,
+      position:     r.position,
+      previous:     r.previous ?? '',
+      change:       r.change   ?? '',
+      date:         r.date     ?? '',
+      searchVolume: r.search_volume ?? '',
+      affiliateUrl: r.affiliate_url ?? '',
     })
   }
 
@@ -96,14 +100,16 @@ export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
   if (snapshot.records.length === 0) return
 
   const rows = snapshot.records.map((r) => ({
-    snapshot_id: snapshot.id,
-    domain:      r.domain,
-    keyword:     r.keyword,
-    country:     r.country,
-    position:    r.position,
-    previous:    r.previous,
-    change:      r.change,
-    date:        r.date,
+    snapshot_id:   snapshot.id,
+    domain:        r.domain,
+    keyword:       r.keyword,
+    country:       r.country,
+    position:      r.position,
+    previous:      r.previous,
+    change:        r.change,
+    date:          r.date,
+    search_volume: r.searchVolume ?? '',
+    affiliate_url: r.affiliateUrl ?? '',
   }))
 
   const CHUNK = 500

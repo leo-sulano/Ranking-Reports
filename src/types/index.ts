@@ -8,6 +8,10 @@ export interface RankingRecord {
   previous: string
   change: string
   date: string
+  // Optional — captured from the legacy matrix-format upload (per-brand sheets
+  // with stacked dates). The flat-format upload leaves both blank.
+  searchVolume?: string
+  affiliateUrl?: string
 }
 
 export interface Snapshot {

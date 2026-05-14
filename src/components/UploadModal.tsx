@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { parseXlsx } from '../lib/parser'
-import type { UnknownDomain } from '../lib/parser'
-import type { RankingRecord } from '../types'
+import type { UnknownDomain, ParsedSnapshot } from '../lib/parser'
 import { CATEGORIES, DEFAULT_CATEGORY } from '../lib/categories'
 import type { CategoryId } from '../lib/categories'
 import { X, ChevronDown, Check, UploadCloud, AlertCircle, FileSpreadsheet } from 'lucide-react'
 
 interface Props {
-  onImport: (records: RankingRecord[], category: CategoryId, unknownDomains: UnknownDomain[]) => void
+  onImport: (snapshots: ParsedSnapshot[], category: CategoryId, unknownDomains: UnknownDomain[]) => void
   onClose: () => void
 }
 
@@ -46,14 +45,14 @@ export function UploadModal({ onImport, onClose }: Props) {
     reader.onload = (e) => {
       try {
         const buf = e.target?.result as ArrayBuffer
-        const { records, unknownDomains } = parseXlsx(buf)
-        if (records.length === 0) {
-          setError('No valid records found. Check that columns match: Domain, Keyword, Country, Position.')
+        const { snapshots, unknownDomains } = parseXlsx(buf)
+        if (snapshots.length === 0) {
+          setError('No valid records found. For flat files: check columns match Domain, Keyword, Country, Position. For matrix files: ensure per-brand sheets are named LUCKY7, LUCKYVIBE, etc.')
           setParsing(false)
           return
         }
         setTimeout(() => {
-          onImport(records, category, unknownDomains)
+          onImport(snapshots, category, unknownDomains)
         }, 200)
       } catch (err) {
         setError(`Parse error: ${err instanceof Error ? err.message : String(err)}`)
