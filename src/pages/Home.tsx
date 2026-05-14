@@ -206,7 +206,7 @@ export function Home() {
 
           {/* Big numeric readouts */}
           <div className="grid grid-cols-4 divide-x divide-[#E2E8F0]">
-            <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#E2E8F0" />
+            <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#0F172A" />
             <HeroMetric label="BRANDS"    value={totals.brands}    accent="#0F172A" />
             <HeroMetric label="COUNTRIES" value={totals.countries} accent="#10B981" />
             <HeroMetric label="RECORDS"   value={totals.records}   accent="#3B82F6" suffix="rows" />
@@ -288,8 +288,15 @@ export function Home() {
               ))}
             </div>
 
+            {/* Axis label between bars and position numbers */}
+            <div className="flex items-center gap-2 mt-3 mb-1 px-1">
+              <div className="h-px flex-1 bg-[#E2E8F0]" />
+              <span className="font-mono text-[9px] tracking-[0.28em] text-[#64748B]">POSITION</span>
+              <div className="h-px flex-1 bg-[#E2E8F0]" />
+            </div>
+
             {/* X-axis labels */}
-            <div className="grid grid-cols-12 gap-2 mt-2">
+            <div className="grid grid-cols-12 gap-2 mt-1">
               {buckets.map((b) => (
                 <div key={b.key} className="text-center font-mono text-[10px] tracking-wider text-[#64748B]">
                   {b.label}
