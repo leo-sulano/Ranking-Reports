@@ -4,7 +4,6 @@ import type { Brand, RankingRecord, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
-import { SnapshotTabs } from '../components/SnapshotTabs'
 import { parsePosition, parseChange } from '../lib/parser'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
@@ -53,8 +52,7 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
-  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot,
-          activeSnapshotId, onSelectSnapshot } = ctx
+  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot } = ctx
   const activeBrand = bpFilterBrand ? BRAND_BY_NAME[bpFilterBrand] ?? null : null
 
   if (activeBrand) {
@@ -62,8 +60,6 @@ export function BPSites() {
       <BrandView
         brand={activeBrand}
         snapshots={snapshots}
-        activeSnapshotId={activeSnapshotId}
-        onSelectSnapshot={onSelectSnapshot}
         onBack={() => onSelectBPBrand(null)}
         onDeleteSnapshot={onDeleteSnapshot}
       />
@@ -166,15 +162,11 @@ function BrandGrid({
 function BrandView({
   brand,
   snapshots,
-  activeSnapshotId,
-  onSelectSnapshot,
   onBack,
   onDeleteSnapshot,
 }: {
   brand: Brand
   snapshots: Snapshot[]
-  activeSnapshotId: string | null
-  onSelectSnapshot: (id: string) => void
   onBack: () => void
   onDeleteSnapshot: (id: string) => void
 }) {
@@ -201,12 +193,8 @@ function BrandView({
     [snapshots, brandDomainSet],
   )
 
-  // Pick the active snapshot — fall back to the most recent brand-snapshot if
-  // the globally-active one has no data for this brand.
-  const activeSnap = useMemo(() => {
-    if (!brandSnapshots.length) return null
-    return brandSnapshots.find((s) => s.id === activeSnapshotId) ?? brandSnapshots[0]
-  }, [brandSnapshots, activeSnapshotId])
+  // Most recent snapshot drives the StatsRow and the keyword/site count chip
+  const latestSnap = brandSnapshots[0] ?? null
 
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
@@ -219,9 +207,9 @@ function BrandView({
     })
   }
 
-  // Stats for the active snapshot (drives the top StatsRow)
+  // Stats for the latest snapshot
   const stats = useMemo(() => {
-    const recs = activeSnap?.records ?? []
+    const recs = latestSnap?.records ?? []
     return {
       total:      recs.length,
       top3:       recs.filter((r) => { const p = parsePosition(r.position); return typeof p === 'number' && p <= 3 }).length,
@@ -229,43 +217,23 @@ function BrandView({
       dropped:    recs.filter((r) => (parseChange(r.change) ?? 0) < 0).length,
       notRanking: recs.filter((r) => parsePosition(r.position) === 'NR').length,
     }
-  }, [activeSnap])
+  }, [latestSnap])
 
-  // Sorted keyword list for the active snapshot, with kw search applied
-  const keywords = useMemo(() => {
-    if (!activeSnap) return [] as Array<{ key: string; label: string }>
+  // Keyword count for the latest snapshot (filtered) — drives the summary chip
+  const latestKeywordCount = useMemo(() => {
+    if (!latestSnap) return 0
     const seen = new Set<string>()
     const labels: Record<string, string> = {}
-    for (const r of activeSnap.records) {
+    for (const r of latestSnap.records) {
       const kl = r.keyword.toLowerCase()
       if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
     }
     const filter = kwFilter.trim().toLowerCase()
-    return Object.keys(labels)
-      .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
-      .sort()
-      .map((kl) => ({ key: kl, label: labels[kl] }))
-  }, [activeSnap, kwFilter])
-
-  // Lookup for the active snapshot only
-  const lookup = useMemo(() => {
-    const map: Lookup = {}
-    if (!activeSnap) return map
-    for (const r of activeSnap.records) {
-      const kk = r.keyword.toLowerCase()
-      const dk = r.domain.toLowerCase()
-      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
-      if (!map[kk]) map[kk] = {}
-      if (!map[kk][dk]) map[kk][dk] = {}
-      map[kk][dk][ck] = r
-    }
-    return map
-  }, [activeSnap])
+    return Object.keys(labels).filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter)).length
+  }, [latestSnap, kwFilter])
 
   // Country columns honor the chip filter, but preserve canonical order
   const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
-  const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
-  const bpColCount   = visibleCountries.length
 
   return (
     <>
@@ -298,12 +266,6 @@ function BrandView({
             improved={stats.improved}
             dropped={stats.dropped}
             notRanking={stats.notRanking}
-          />
-
-          <SnapshotTabs
-            snapshots={brandSnapshots}
-            activeId={activeSnap?.id ?? null}
-            onSelect={onSelectSnapshot}
           />
 
           {/* Inline filter bar — countries + keyword search (no domain chips
@@ -351,263 +313,326 @@ function BrandView({
             </div>
 
             <div className="ml-auto text-[11px] font-mono text-[#64748B]">
-              {keywords.length} keyword{keywords.length !== 1 ? 's' : ''} · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
+              {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
               {' (1 main + ' + bpDomains.length + ' BP)'}
             </div>
           </div>
 
-          {/* Single-snapshot matrix */}
-          <div className="flex-1 overflow-auto px-7 pb-7">
-            {activeSnap && (() => {
-              const borderStyle = `1px solid ${TABLE_BORDER}`
-              return (
-                <div
-                  className="bg-white rounded-[6px] overflow-hidden text-black"
-                  style={{ border: borderStyle }}
-                >
-                  {/* Date band */}
-                  <div
-                    className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
-                    style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
-                  >
-                    <span>{activeSnap.displayDate}</span>
-                    <button
-                      onClick={() => onDeleteSnapshot(activeSnap.id)}
-                      className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
-                      title={`Delete snapshot for ${activeSnap.displayDate}`}
-                    >
-                      ✕ Delete
-                    </button>
-                  </div>
-
-                  {/* Horizontal matrix */}
-                  <div className="overflow-x-auto">
-                    <table className="border-collapse text-[11px] w-max min-w-full">
-
-                      {/* Row 1 — Block label row (MAIN / BP per block) */}
-                      <thead>
-                        <tr>
-                          <th
-                            rowSpan={2}
-                            className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
-                            style={{
-                              background: STICKY_KW_BG,
-                              color: '#000',
-                              borderRight: borderStyle,
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            Keyword
-                          </th>
-                          <th
-                            colSpan={mainColCount}
-                            className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
-                            style={{
-                              background: MAIN_HEADER_BG,
-                              color: HEADER_FG,
-                              borderRight: borderStyle,
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            MAIN — <span className="">{brand.mainDomain}</span>
-                          </th>
-                          {bpDomains.map((bp, bpIdx) => {
-                            const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
-                            return (
-                              <th
-                                key={`bp-h-${bp}`}
-                                colSpan={bpColCount}
-                                className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
-                                style={{
-                                  background: palette.headerBg,
-                                  color: HEADER_FG,
-                                  borderRight: borderStyle,
-                                  borderBottom: borderStyle,
-                                }}
-                              >
-                                BP — <span className="">{bp}</span>
-                              </th>
-                            )
-                          })}
-                        </tr>
-
-                        {/* Row 2 — Country / spec sub-header */}
-                        <tr>
-                          <th
-                            className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                            style={{
-                              background: MAIN_HEADER_BG,
-                              color: HEADER_FG,
-                              borderRight: borderStyle,
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            GSV
-                          </th>
-                          {visibleCountries.map((c, ci) => (
-                            <Fragment key={`main-sub-${c}`}>
-                              <th
-                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                                style={{
-                                  background: MAIN_HEADER_BG,
-                                  color: HEADER_FG,
-                                  borderLeft: ci === 0 ? undefined : borderStyle,
-                                  borderBottom: borderStyle,
-                                }}
-                              >
-                                {c}
-                              </th>
-                              <th
-                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                                style={{
-                                  background: MAIN_HEADER_BG,
-                                  color: HEADER_FG,
-                                  borderBottom: borderStyle,
-                                }}
-                              >
-                                SV
-                              </th>
-                              <th
-                                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                                style={{
-                                  background: MAIN_HEADER_BG,
-                                  color: HEADER_FG,
-                                  borderRight: borderStyle,
-                                  borderBottom: borderStyle,
-                                }}
-                              >
-                                AFF
-                              </th>
-                            </Fragment>
-                          ))}
-                          {bpDomains.map((bp, bpIdx) => {
-                            const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
-                            return (
-                              <Fragment key={`bp-sub-${bp}`}>
-                                {visibleCountries.map((c, ci) => (
-                                  <th
-                                    key={`bp-sub-${bp}-${c}`}
-                                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                                    style={{
-                                      background: palette.headerBg,
-                                      color: HEADER_FG,
-                                      borderLeft: ci === 0 ? borderStyle : borderStyle,
-                                      borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
-                                      borderBottom: borderStyle,
-                                    }}
-                                  >
-                                    {c}
-                                  </th>
-                                ))}
-                              </Fragment>
-                            )
-                          })}
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {keywords.map(({ key: kw, label }) => (
-                          <tr key={kw}>
-
-                            {/* Keyword (sticky) */}
-                            <td
-                              className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
-                              style={{
-                                background: STICKY_KW_BG,
-                                color: '#000',
-                                borderRight: borderStyle,
-                                borderBottom: borderStyle,
-                              }}
-                            >
-                              {label}
-                            </td>
-
-                            {/* MAIN — GSV */}
-                            <td
-                              className="px-2 py-1.5 text-center align-middle text-[11px] "
-                              style={{
-                                background: MAIN_AUX_BG,
-                                color: '#6B7280',
-                                borderRight: borderStyle,
-                                borderBottom: borderStyle,
-                              }}
-                            >
-                              –
-                            </td>
-
-                            {/* MAIN — per-country triplets (country / SV / AFF) */}
-                            {visibleCountries.map((c, ci) => {
-                              const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                              return (
-                                <Fragment key={`main-cell-${kw}-${c}`}>
-                                  <td
-                                    className="px-2 py-1.5 text-center align-middle"
-                                    style={{
-                                      background: MAIN_CELL_BG,
-                                      borderLeft: ci === 0 ? undefined : borderStyle,
-                                      borderBottom: borderStyle,
-                                    }}
-                                  >
-                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                                  </td>
-                                  <td
-                                    className="px-2 py-1.5 text-center text-[11px] "
-                                    style={{
-                                      background: MAIN_AUX_BG,
-                                      color: '#6B7280',
-                                      borderBottom: borderStyle,
-                                    }}
-                                  >
-                                    –
-                                  </td>
-                                  <td
-                                    className="px-2 py-1.5 text-center text-[11px] "
-                                    style={{
-                                      background: MAIN_AUX_BG,
-                                      color: '#6B7280',
-                                      borderRight: borderStyle,
-                                      borderBottom: borderStyle,
-                                    }}
-                                  >
-                                    –
-                                  </td>
-                                </Fragment>
-                              )
-                            })}
-
-                            {/* BP blocks */}
-                            {bpDomains.map((bp, bpIdx) => {
-                              const dk = bp.toLowerCase()
-                              const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
-                              return visibleCountries.map((c, ci) => {
-                                const rec = lookup?.[kw]?.[dk]?.[c]
-                                return (
-                                  <td
-                                    key={`bp-cell-${kw}-${bp}-${c}`}
-                                    className="px-2 py-1.5 text-center align-middle"
-                                    style={{
-                                      background: palette.cellBg,
-                                      borderLeft: ci === 0 ? borderStyle : borderStyle,
-                                      borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
-                                      borderBottom: borderStyle,
-                                    }}
-                                  >
-                                    {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                                  </td>
-                                )
-                              })
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })()}
+          {/* Stacked matrices — one table per uploaded date, newest first */}
+          <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
+            {brandSnapshots.map((snap) => (
+              <SnapshotMatrix
+                key={snap.id}
+                snapshot={snap}
+                brand={brand}
+                mainDomain={mainDomain}
+                bpDomains={bpDomains}
+                visibleCountries={visibleCountries}
+                kwFilter={kwFilter}
+                onDelete={onDeleteSnapshot}
+              />
+            ))}
           </div>
         </>
       )}
     </>
+  )
+}
+
+// ─── SnapshotMatrix — one date's matrix table ─────────────────────────────────
+
+function SnapshotMatrix({
+  snapshot,
+  brand,
+  mainDomain,
+  bpDomains,
+  visibleCountries,
+  kwFilter,
+  onDelete,
+}: {
+  snapshot: Snapshot
+  brand: Brand
+  mainDomain: string
+  bpDomains: string[]
+  visibleCountries: string[]
+  kwFilter: string
+  onDelete: (id: string) => void
+}) {
+  const borderStyle = `1px solid ${TABLE_BORDER}`
+  const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
+  const bpColCount   = visibleCountries.length
+
+  // Sorted keyword list for this snapshot, with kw search applied
+  const keywords = useMemo(() => {
+    const seen = new Set<string>()
+    const labels: Record<string, string> = {}
+    for (const r of snapshot.records) {
+      const kl = r.keyword.toLowerCase()
+      if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
+    }
+    const filter = kwFilter.trim().toLowerCase()
+    return Object.keys(labels)
+      .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
+      .sort()
+      .map((kl) => ({ key: kl, label: labels[kl] }))
+  }, [snapshot, kwFilter])
+
+  // keyword → domain → country → record
+  const lookup = useMemo(() => {
+    const map: Lookup = {}
+    for (const r of snapshot.records) {
+      const kk = r.keyword.toLowerCase()
+      const dk = r.domain.toLowerCase()
+      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      if (!map[kk]) map[kk] = {}
+      if (!map[kk][dk]) map[kk][dk] = {}
+      map[kk][dk][ck] = r
+    }
+    return map
+  }, [snapshot])
+
+  return (
+    <div
+      className="bg-white rounded-[6px] overflow-hidden text-black"
+      style={{ border: borderStyle }}
+    >
+      {/* Date band */}
+      <div
+        className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
+        style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
+      >
+        <span>{snapshot.displayDate}</span>
+        <button
+          onClick={() => onDelete(snapshot.id)}
+          className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
+          title={`Delete snapshot for ${snapshot.displayDate}`}
+        >
+          ✕ Delete
+        </button>
+      </div>
+
+      {/* Horizontal matrix */}
+      <div className="overflow-x-auto">
+        <table className="border-collapse text-[11px] w-max min-w-full">
+
+          {/* Row 1 — Block label row (MAIN / BP per block) */}
+          <thead>
+            <tr>
+              <th
+                rowSpan={2}
+                className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
+                style={{
+                  background: STICKY_KW_BG,
+                  color: '#000',
+                  borderRight: borderStyle,
+                  borderBottom: borderStyle,
+                }}
+              >
+                Keyword
+              </th>
+              <th
+                colSpan={mainColCount}
+                className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
+                style={{
+                  background: MAIN_HEADER_BG,
+                  color: HEADER_FG,
+                  borderRight: borderStyle,
+                  borderBottom: borderStyle,
+                }}
+              >
+                MAIN — <span className="">{brand.mainDomain}</span>
+              </th>
+              {bpDomains.map((bp, bpIdx) => {
+                const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                return (
+                  <th
+                    key={`bp-h-${bp}`}
+                    colSpan={bpColCount}
+                    className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
+                    style={{
+                      background: palette.headerBg,
+                      color: HEADER_FG,
+                      borderRight: borderStyle,
+                      borderBottom: borderStyle,
+                    }}
+                  >
+                    BP — <span className="">{bp}</span>
+                  </th>
+                )
+              })}
+            </tr>
+
+            {/* Row 2 — Country / spec sub-header */}
+            <tr>
+              <th
+                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                style={{
+                  background: MAIN_HEADER_BG,
+                  color: HEADER_FG,
+                  borderRight: borderStyle,
+                  borderBottom: borderStyle,
+                }}
+              >
+                GSV
+              </th>
+              {visibleCountries.map((c, ci) => (
+                <Fragment key={`main-sub-${c}`}>
+                  <th
+                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                    style={{
+                      background: MAIN_HEADER_BG,
+                      color: HEADER_FG,
+                      borderLeft: ci === 0 ? undefined : borderStyle,
+                      borderBottom: borderStyle,
+                    }}
+                  >
+                    {c}
+                  </th>
+                  <th
+                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                    style={{
+                      background: MAIN_HEADER_BG,
+                      color: HEADER_FG,
+                      borderBottom: borderStyle,
+                    }}
+                  >
+                    SV
+                  </th>
+                  <th
+                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                    style={{
+                      background: MAIN_HEADER_BG,
+                      color: HEADER_FG,
+                      borderRight: borderStyle,
+                      borderBottom: borderStyle,
+                    }}
+                  >
+                    AFF
+                  </th>
+                </Fragment>
+              ))}
+              {bpDomains.map((bp, bpIdx) => {
+                const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                return (
+                  <Fragment key={`bp-sub-${bp}`}>
+                    {visibleCountries.map((c, ci) => (
+                      <th
+                        key={`bp-sub-${bp}-${c}`}
+                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                        style={{
+                          background: palette.headerBg,
+                          color: HEADER_FG,
+                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        {c}
+                      </th>
+                    ))}
+                  </Fragment>
+                )
+              })}
+            </tr>
+          </thead>
+
+          <tbody>
+            {keywords.map(({ key: kw, label }) => (
+              <tr key={kw}>
+
+                {/* Keyword (sticky) */}
+                <td
+                  className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
+                  style={{
+                    background: STICKY_KW_BG,
+                    color: '#000',
+                    borderRight: borderStyle,
+                    borderBottom: borderStyle,
+                  }}
+                >
+                  {label}
+                </td>
+
+                {/* MAIN — GSV */}
+                <td
+                  className="px-2 py-1.5 text-center align-middle text-[11px] "
+                  style={{
+                    background: MAIN_AUX_BG,
+                    color: '#6B7280',
+                    borderRight: borderStyle,
+                    borderBottom: borderStyle,
+                  }}
+                >
+                  –
+                </td>
+
+                {/* MAIN — per-country triplets (country / SV / AFF) */}
+                {visibleCountries.map((c, ci) => {
+                  const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                  return (
+                    <Fragment key={`main-cell-${kw}-${c}`}>
+                      <td
+                        className="px-2 py-1.5 text-center align-middle"
+                        style={{
+                          background: MAIN_CELL_BG,
+                          borderLeft: ci === 0 ? undefined : borderStyle,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                      </td>
+                      <td
+                        className="px-2 py-1.5 text-center text-[11px] "
+                        style={{
+                          background: MAIN_AUX_BG,
+                          color: '#6B7280',
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        –
+                      </td>
+                      <td
+                        className="px-2 py-1.5 text-center text-[11px] "
+                        style={{
+                          background: MAIN_AUX_BG,
+                          color: '#6B7280',
+                          borderRight: borderStyle,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        –
+                      </td>
+                    </Fragment>
+                  )
+                })}
+
+                {/* BP blocks */}
+                {bpDomains.map((bp, bpIdx) => {
+                  const dk = bp.toLowerCase()
+                  const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                  return visibleCountries.map((c, ci) => {
+                    const rec = lookup?.[kw]?.[dk]?.[c]
+                    return (
+                      <td
+                        key={`bp-cell-${kw}-${bp}-${c}`}
+                        className="px-2 py-1.5 text-center align-middle"
+                        style={{
+                          background: palette.cellBg,
+                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                      </td>
+                    )
+                  })
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
