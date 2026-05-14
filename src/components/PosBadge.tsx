@@ -26,7 +26,7 @@ export function PosBadge({ record }: Props) {
   }
 
   if (pos === 'NR') {
-    return <span className="text-[11px] whitespace-nowrap">Not in top 100</span>
+    return <span className="text-[10px] whitespace-nowrap">Not in top 100</span>
   }
 
   const isUp   = chg !== null && chg > 0

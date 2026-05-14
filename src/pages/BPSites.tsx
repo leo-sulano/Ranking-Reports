@@ -325,7 +325,7 @@ function BrandView({
 
             <button
               onClick={() => setShowMain((v) => !v)}
-              className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all flex items-center gap-1.5"
+              className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all flex items-center gap-1.5"
               style={
                 showMain
                   ? { background: '#0F172A', color: 'white', borderColor: 'transparent', fontWeight: 700 }
@@ -342,7 +342,7 @@ function BrandView({
                 <button
                   key={d}
                   onClick={() => toggleBpDomain(d)}
-                  className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
+                  className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
                   style={
                     active
                       ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
@@ -366,7 +366,7 @@ function BrandView({
                 <button
                   key={c}
                   onClick={() => toggleCountry(c)}
-                  className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
+                  className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
                   style={
                     active
                       ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
