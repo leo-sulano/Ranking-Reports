@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { RankingRecord } from '../types'
+import type { UnknownDomain } from '../lib/parser'
 import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND } from '../lib/brands'
 import { ChevronDown, X, AlertCircle, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
-  displayDate: string
-  records: RankingRecord[]
+  displayDate:    string
+  records:        RankingRecord[]
+  unknownDomains: UnknownDomain[]
 }
 
 interface Props {
@@ -35,15 +37,16 @@ function aggregate(records: RankingRecord[]) {
   const tree = new Map<string, Map<string, Map<string, number>>>()
   // brand → set of unique keywords (lowercased)
   const brandKeywords = new Map<string, Set<string>>()
-  let unknown = 0
   const countrySet = new Set<string>()
   const domainSet  = new Set<string>()
 
+  // Records here have already been filtered to known Rooster domains by the
+  // parser — unrecognized domains arrive separately via data.unknownDomains.
   for (const r of records) {
     const dk = r.domain.toLowerCase()
     domainSet.add(dk)
     const brand = DOMAIN_TO_BRAND[dk]
-    if (!brand) { unknown++; continue }
+    if (!brand) continue
 
     const country = (r.country && (COUNTRY_LABELS[r.country] ?? r.country.toUpperCase())) || '—'
     if (r.country) countrySet.add(country)
@@ -90,7 +93,6 @@ function aggregate(records: RankingRecord[]) {
 
   return {
     brands,
-    unknown,
     domainCount:  domainSet.size,
     countryCount: countrySet.size,
   }
@@ -99,11 +101,12 @@ function aggregate(records: RankingRecord[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function UploadSummary({ data, onClose }: Props) {
-  const { displayDate, records } = data
-  const { brands, unknown, domainCount, countryCount } = useMemo(
+  const { displayDate, records, unknownDomains } = data
+  const { brands, domainCount, countryCount } = useMemo(
     () => aggregate(records),
     [records],
   )
+  const unknownTotal = unknownDomains.reduce((s, u) => s + u.count, 0)
 
   // All brands expanded by default — first impression should reveal everything
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(brands.map((b) => b.name)))
@@ -152,13 +155,11 @@ export function UploadSummary({ data, onClose }: Props) {
             <Stat label="Countries" value={countryCount} />
           </div>
 
-          {unknown > 0 && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2 bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.3)] rounded-md">
-              <AlertCircle size={13} strokeWidth={2.25} className="text-[#F43F5E] shrink-0 mt-0.5" />
-              <p className="text-[12px] text-[#F43F5E] leading-snug">
-                {unknown.toLocaleString()} record{unknown !== 1 ? 's' : ''} had a domain not in CONFIG and were ignored.
-              </p>
-            </div>
+          {unknownDomains.length > 0 && (
+            <UnknownDomainsPanel
+              total={unknownTotal}
+              domains={unknownDomains}
+            />
           )}
 
           {/* Distribution tree */}
@@ -202,6 +203,59 @@ export function UploadSummary({ data, onClose }: Props) {
 }
 
 // ─── Pieces ───────────────────────────────────────────────────────────────────
+
+function UnknownDomainsPanel({
+  total,
+  domains,
+}: {
+  total:   number
+  domains: UnknownDomain[]
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div className="mb-4 bg-[rgba(244,63,94,0.06)] border border-[rgba(244,63,94,0.3)] rounded-md overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[rgba(244,63,94,0.08)] transition-colors"
+      >
+        <AlertCircle size={13} strokeWidth={2.25} className="text-[#F43F5E] shrink-0" />
+        <p className="text-[12px] text-[#F43F5E] leading-snug flex-1">
+          <span className="font-semibold">
+            {total.toLocaleString()} record{total !== 1 ? 's' : ''}
+          </span>{' '}
+          from {domains.length} domain{domains.length !== 1 ? 's' : ''} not in the Rooster brand list — skipped on import.
+        </p>
+        <ChevronDown
+          size={13}
+          strokeWidth={2.25}
+          className={`text-[#F43F5E] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+        />
+      </button>
+
+      {open && (
+        <div className="border-t border-[rgba(244,63,94,0.25)] bg-white">
+          {domains.map((u, i) => (
+            <div
+              key={u.domain}
+              className={`flex items-center justify-between px-3 py-1.5 ${i > 0 ? 'border-t border-[#FEE2E2]' : ''}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Globe size={11} strokeWidth={2} className="text-[#F43F5E] shrink-0" />
+                <span className="font-mono text-[12px] text-[#0F172A] truncate">{u.domain}</span>
+              </div>
+              <span className="font-mono text-[11px] text-[#64748B] shrink-0">
+                {u.count.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import type { AppState, RROutletContext, RankingRecord, Snapshot } from './types'
 import type { CategoryId } from './lib/categories'
+import type { UnknownDomain } from './lib/parser'
 import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, extractSnapshotDate, formatDisplayDate,
@@ -35,7 +36,7 @@ function Layout() {
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
   const [uploadSummary, setUploadSummary] = useState<UploadSummaryData | null>(null)
-  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[] } | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
 
@@ -77,7 +78,11 @@ function Layout() {
 
   // ── Import ────────────────────────────────────────────────────────────────
 
-  const persistSnapshot = useCallback(async (records: RankingRecord[], category: CategoryId) => {
+  const persistSnapshot = useCallback(async (
+    records:        RankingRecord[],
+    category:       CategoryId,
+    unknownDomains: UnknownDomain[],
+  ) => {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${category}-${rawDate || Date.now()}`
@@ -101,25 +106,29 @@ function Layout() {
     })
 
     setShowUpload(false)
-    setUploadSummary({ displayDate, records })
+    setUploadSummary({ displayDate, records, unknownDomains })
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
   }, [addToast])
 
-  const handleImport = useCallback(async (records: RankingRecord[], category: CategoryId) => {
+  const handleImport = useCallback(async (
+    records:        RankingRecord[],
+    category:       CategoryId,
+    unknownDomains: UnknownDomain[],
+  ) => {
     const rawDate = extractSnapshotDate(records)
     const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === rawDate)
     if (dupe) {
       setShowUpload(false)
-      setDuplicateWarning({ existing: dupe, pendingRecords: records })
+      setDuplicateWarning({ existing: dupe, pendingRecords: records, unknownDomains })
       return
     }
-    await persistSnapshot(records, category)
+    await persistSnapshot(records, category, unknownDomains)
   }, [persistSnapshot, state.snapshots])
 
   const handleReplaceDuplicate = useCallback(async () => {
     if (!duplicateWarning) return
-    const { existing, pendingRecords } = duplicateWarning
+    const { existing, pendingRecords, unknownDomains } = duplicateWarning
     setDuplicateWarning(null)
     try {
       await deleteSnapshot(existing.id)
@@ -129,7 +138,7 @@ function Layout() {
       return
     }
     setState((s) => ({ ...s, snapshots: s.snapshots.filter((sn) => sn.id !== existing.id) }))
-    await persistSnapshot(pendingRecords, existing.category)
+    await persistSnapshot(pendingRecords, existing.category, unknownDomains)
   }, [addToast, duplicateWarning, persistSnapshot])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {

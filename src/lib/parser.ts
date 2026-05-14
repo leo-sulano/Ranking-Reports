@@ -2,7 +2,17 @@ import * as XLSX from 'xlsx'
 import type { RankingRecord } from '../types'
 import { DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
 
-export function parseXlsx(buffer: ArrayBuffer): RankingRecord[] {
+export interface UnknownDomain {
+  domain: string
+  count:  number
+}
+
+export interface ParseResult {
+  records:        RankingRecord[]
+  unknownDomains: UnknownDomain[]
+}
+
+export function parseXlsx(buffer: ArrayBuffer): ParseResult {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
   const ws = wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(ws, {
@@ -78,8 +88,8 @@ function normalizeDate(v: unknown): string {
   return isNaN(d.getTime()) ? s : toIsoLocal(d)
 }
 
-function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
-  if (!rows || rows.length < 2) return []
+function parseRows(rows: (string | number | Date)[][]): ParseResult {
+  if (!rows || rows.length < 2) return { records: [], unknownDomains: [] }
 
   let headerIdx = 0
   for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -102,20 +112,30 @@ function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
   const iChange   = colIdx('change')
   const iDate     = colIdx('last check') !== -1 ? colIdx('last check') : colIdx('date')
 
-  if (iDomain < 0 || iKeyword < 0) return []
+  if (iDomain < 0 || iKeyword < 0) return { records: [], unknownDomains: [] }
 
   // Dedupe by (domain, keyword, country). Within a single upload, identical
   // (domain, keyword, country) rows replace each other — the LAST one wins.
   const byKey = new Map<string, RankingRecord>()
+  // Track domains the file references but that aren't in the Rooster registry,
+  // preserving the original casing of the first occurrence.
+  const unknownByKey = new Map<string, { domain: string; count: number }>()
+
   for (let r = headerIdx + 1; r < rows.length; r++) {
     const row = rows[r]
     const domain  = String(row[iDomain]  ?? '').trim()
     const keyword = String(row[iKeyword] ?? '').trim()
     if (!domain || !keyword) continue
-    if (!DOMAIN_TO_BRAND[domain.toLowerCase()]) continue
+    const dk = domain.toLowerCase()
+    if (!DOMAIN_TO_BRAND[dk]) {
+      const existing = unknownByKey.get(dk)
+      if (existing) existing.count++
+      else unknownByKey.set(dk, { domain, count: 1 })
+      continue
+    }
 
     const country = iCountry >= 0 ? normalizeCountry(row[iCountry]) : ''
-    const dedupeKey = `${domain.toLowerCase()}|${keyword.toLowerCase()}|${country}`
+    const dedupeKey = `${dk}|${keyword.toLowerCase()}|${country}`
 
     byKey.set(dedupeKey, {
       domain,
@@ -127,7 +147,9 @@ function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
       date:     iDate     >= 0 ? normalizeDate(row[iDate]) : '',
     })
   }
-  return Array.from(byKey.values())
+
+  const unknownDomains = Array.from(unknownByKey.values()).sort((a, b) => b.count - a.count)
+  return { records: Array.from(byKey.values()), unknownDomains }
 }
 
 // Extract the most common date value from records' date field
