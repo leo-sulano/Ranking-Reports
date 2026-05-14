@@ -42,6 +42,16 @@ function normalizeCountry(raw: unknown): string {
   return s.toUpperCase()
 }
 
+// Format a JS Date as "yyyy-MM-dd" using its LOCAL components. Avoids the
+// off-by-one that `toISOString().slice(0,10)` causes in positive-UTC zones,
+// where local midnight is already the previous day in UTC.
+function toIsoLocal(d: Date): string {
+  const yyyy = d.getFullYear()
+  const mm   = String(d.getMonth() + 1).padStart(2, '0')
+  const dd   = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 /**
  * Coerce a cell to "yyyy-MM-dd". Handles:
  *   - Date objects (from cellDates:true)
@@ -52,17 +62,20 @@ function normalizeCountry(raw: unknown): string {
 function normalizeDate(v: unknown): string {
   if (v == null || v === '') return ''
   if (v instanceof Date && !isNaN(v.getTime())) {
-    return v.toISOString().slice(0, 10)
+    return toIsoLocal(v)
   }
   if (typeof v === 'number' && Number.isFinite(v)) {
     // Excel serial → JS Date. 25569 = days between 1899-12-30 and 1970-01-01.
+    // Serial has no timezone; the resulting Date is UTC-midnight of the day.
     const d = new Date((v - 25569) * 86400 * 1000)
     return isNaN(d.getTime()) ? String(v) : d.toISOString().slice(0, 10)
   }
   const s = String(v).trim()
   if (!s) return ''
+  // Already a YYYY-MM-DD literal? Trust it; don't round-trip through Date.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
   const d = new Date(s)
-  return isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10)
+  return isNaN(d.getTime()) ? s : toIsoLocal(d)
 }
 
 function parseRows(rows: (string | number | Date)[][]): RankingRecord[] {
@@ -130,6 +143,14 @@ export function extractSnapshotDate(records: RankingRecord[]): string {
 // Format raw date string "5/20/2026" → "20 May 26"
 export function formatDisplayDate(raw: string): string {
   if (!raw) return 'Unknown Date'
+  // YYYY-MM-DD literals: build a local Date so toLocaleDateString doesn't
+  // shift the displayed day across the UTC boundary (e.g. UTC- zones would
+  // otherwise show the previous day for a "2026-05-13" ISO date).
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: '2-digit' })
+  }
   const d = new Date(raw)
   if (!isNaN(d.getTime())) {
     return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: '2-digit' })
