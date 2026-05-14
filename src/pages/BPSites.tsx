@@ -206,6 +206,7 @@ function BrandView({
 
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
+  const [activeBpDomains, setActiveBpDomains] = useState<string[]>(() => bpDomains)
   const [kwFilter, setKwFilter] = useState('')
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
@@ -220,6 +221,13 @@ function BrandView({
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
       return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+    })
+  }
+
+  const toggleBpDomain = (d: string) => {
+    setActiveBpDomains((prev) => {
+      if (prev.includes(d) && prev.length === 1) return prev
+      return prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     })
   }
 
@@ -259,6 +267,9 @@ function BrandView({
 
   // Country columns honor the chip filter, but preserve canonical order
   const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
+
+  // BP domain columns honor the chip filter, preserving registered order
+  const visibleBpDomains = bpDomains.filter((d) => activeBpDomains.includes(d))
 
   return (
     <>
@@ -304,8 +315,33 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* Inline filter bar — countries + keyword search (no domain chips
-              since BP Sites lays every domain out as a matrix column) */}
+          {/* BP Sites filter — toggles which BP domain columns/sections show */}
+          {bpDomains.length > 0 && (
+            <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+                BP Sites
+              </span>
+              {bpDomains.map((d) => {
+                const active = activeBpDomains.includes(d)
+                return (
+                  <button
+                    key={d}
+                    onClick={() => toggleBpDomain(d)}
+                    className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
+                    style={
+                      active
+                        ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
+                        : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+                    }
+                  >
+                    {d}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Inline filter bar — countries + keyword search */}
           <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Countries
@@ -367,7 +403,7 @@ function BrandView({
                 snapshot={snap}
                 brand={brand}
                 mainDomain={mainDomain}
-                bpDomains={bpDomains}
+                bpDomains={visibleBpDomains}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 onEditCell={onEditCell}
