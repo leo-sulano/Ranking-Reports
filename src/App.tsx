@@ -5,7 +5,7 @@ import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
 import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
-  countBrands, formatDisplayDate,
+  countBrands, formatDisplayDate, applyCarryForward,
 } from './lib/parser'
 import { loadSnapshots, upsertSnapshot, deleteSnapshot } from './lib/storage'
 
@@ -57,6 +57,9 @@ function Layout() {
     loadSnapshots()
       .then((snaps) => {
         if (cancelled) return
+        // Mutate records in place so GSV / SV / AFF inherit from the most
+        // recent prior snapshot when a newer one leaves them blank.
+        applyCarryForward(snaps)
         setState((s) => ({
           ...s,
           snapshots:        snaps,
@@ -107,6 +110,9 @@ function Layout() {
       const next = [newSnap, ...filtered].sort((a, b) =>
         (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0),
       )
+      // Re-run sticky carry-forward so a new partial-data upload inherits
+      // GSV / SV / AFF from prior snapshots in the same category.
+      applyCarryForward(next)
       return {
         ...s,
         snapshots:        next,

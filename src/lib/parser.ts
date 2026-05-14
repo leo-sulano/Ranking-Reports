@@ -233,6 +233,57 @@ export function countBrands(records: RankingRecord[], domainMap: Record<string, 
   return brands.size
 }
 
+// ─── Carry-forward of "sticky" fields ──────────────────────────────────────────
+// GSV / SV / AFF rarely change week-to-week; newer ranking exports often leave
+// them blank. Walk snapshots oldest → newest within a category and inherit any
+// empty searchVolume / affiliateUrl / globalSearchVolume from the most recent
+// prior snapshot's record with the same key. Mutates records in place.
+//
+// Keying:
+//   SV / AFF — per (domain, keyword, country)
+//   GSV      — per keyword (denormalized onto every record for that keyword)
+//
+// Imported as: import { applyCarryForward } from './parser' — see storage.ts
+// for the call site.
+export function applyCarryForward(
+  // Use the public Snapshot shape from this module's consumers. Typed loosely
+  // here to avoid a circular import on src/types.
+  snapshots: Array<{ category?: string; rawDate: string; records: RankingRecord[] }>,
+): void {
+  // Group by category — values shouldn't bleed across categories.
+  const byCat = new Map<string, typeof snapshots>()
+  for (const s of snapshots) {
+    const cat = s.category ?? ''
+    const arr = byCat.get(cat) ?? []
+    arr.push(s)
+    byCat.set(cat, arr)
+  }
+
+  for (const arr of byCat.values()) {
+    const asc = [...arr].sort((a, b) =>
+      a.rawDate < b.rawDate ? -1 : a.rawDate > b.rawDate ? 1 : 0,
+    )
+    const sv  = new Map<string, string>()
+    const aff = new Map<string, string>()
+    const gsv = new Map<string, string>()
+
+    for (const snap of asc) {
+      for (const r of snap.records) {
+        const k  = `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
+        const kw = r.keyword.toLowerCase()
+
+        if (!r.searchVolume       && sv.has(k))   r.searchVolume       = sv.get(k)
+        if (!r.affiliateUrl       && aff.has(k))  r.affiliateUrl       = aff.get(k)
+        if (!r.globalSearchVolume && gsv.has(kw)) r.globalSearchVolume = gsv.get(kw)
+
+        if (r.searchVolume)        sv.set(k, r.searchVolume)
+        if (r.affiliateUrl)        aff.set(k, r.affiliateUrl)
+        if (r.globalSearchVolume)  gsv.set(kw, r.globalSearchVolume)
+      }
+    }
+  }
+}
+
 // ─── Matrix-format parser (legacy per-brand stacked sheets) ────────────────────
 // File shape (one sheet per brand: LUCKY7, LUCKYVIBE, …):
 //   Row 0  — column header. Cols 3+ alternate AU/SV/AFF/CA/SV/AFF/… for domain 1,
