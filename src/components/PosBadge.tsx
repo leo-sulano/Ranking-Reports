@@ -31,8 +31,8 @@ export function PosBadge({ record }: Props) {
 
   const isUp   = chg !== null && chg > 0
   const isDown = chg !== null && chg < 0
-  const color  = isUp   ? '#16A34A'    // green-600
-               : isDown ? '#DC2626'    // red-600
+  const color  = isUp   ? '#15803D'    // green-700
+               : isDown ? '#B91C1C'    // red-700
                : undefined             // inherit (black on white, light on dark)
 
   const tip = [
