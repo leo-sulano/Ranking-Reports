@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { parsePosition, parseChange } from '../lib/parser'
-import { ChevronDown, Check, CalendarDays, Search } from 'lucide-react'
+import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
@@ -417,47 +417,49 @@ function StatsDateFilter({
       <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
         Stats date
       </span>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] outline-none transition-colors ${
+
+      {/* Combobox: shows the selected label when closed, becomes a search
+          input when open. No separate search bar inside the dropdown. */}
+      <div
+        onClick={() => { if (!open) setOpen(true) }}
+        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] transition-colors cursor-text ${
           open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
         }`}
       >
         <CalendarDays size={13} strokeWidth={2.25} className="text-[#64748B] shrink-0" />
-        <span className="font-medium">{label}</span>
-        <ChevronDown
-          size={13}
-          strokeWidth={2.25}
-          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+        {open ? (
+          <input
+            ref={searchRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={label}
+            aria-label="Search dates"
+            className="bg-transparent outline-none flex-1 min-w-0 text-[12px] text-[#0F172A] placeholder:text-[#94A3B8] font-medium"
+          />
+        ) : (
+          <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
+        )}
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          className="shrink-0 flex items-center justify-center"
+        >
+          <ChevronDown
+            size={13}
+            strokeWidth={2.25}
+            className={`text-[#64748B] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
+      </div>
 
       {open && (
         <div
           role="listbox"
           className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
-          {/* Search */}
-          <div className="relative border-b border-[#E2E8F0]">
-            <Search
-              size={12}
-              strokeWidth={2.25}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none"
-            />
-            <input
-              ref={searchRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search dates…"
-              className="w-full pl-7 pr-2.5 py-2 text-[12px] text-[#0F172A] placeholder:text-[#94A3B8] outline-none"
-            />
-          </div>
-
-          {/* Options (scrollable when many) */}
           <div className="max-h-[260px] overflow-y-auto">
             {showAllOption && (
               <DateOption
