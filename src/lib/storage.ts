@@ -12,9 +12,12 @@ import { supabase } from './supabase'
  * object handling.
  */
 export async function loadSnapshots(): Promise<Snapshot[]> {
+  // Order by the snapshot's own date (newest first), not insert order — bulk
+  // backfills write newest first, so created_at DESC would put oldest on top.
   const { data: snaps, error: e1 } = await supabase
     .from('snapshots')
     .select('id, raw_date, display_date, category')
+    .order('raw_date', { ascending: false })
     .order('created_at', { ascending: false })
   if (e1) throw e1
   if (!snaps || snaps.length === 0) return []

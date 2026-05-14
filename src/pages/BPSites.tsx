@@ -358,6 +358,7 @@ function BrandView({
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 onDelete={onDeleteSnapshot}
+                isLatest={snap.id === latestSnap?.id}
               />
             ))}
           </div>
@@ -531,6 +532,7 @@ function SnapshotMatrix({
   visibleCountries,
   kwFilter,
   onDelete,
+  isLatest,
 }: {
   snapshot: Snapshot
   brand: Brand
@@ -539,6 +541,7 @@ function SnapshotMatrix({
   visibleCountries: string[]
   kwFilter: string
   onDelete: (id: string) => void
+  isLatest: boolean
 }) {
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
@@ -583,7 +586,17 @@ function SnapshotMatrix({
         className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
         style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
       >
-        <span>{snapshot.displayDate}</span>
+        <div className="flex items-center gap-2">
+          <span>{snapshot.displayDate}</span>
+          {isLatest && (
+            <span
+              className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-[2px] rounded-[3px]"
+              style={{ background: '#16A34A', color: 'white' }}
+            >
+              Latest
+            </span>
+          )}
+        </div>
         <button
           onClick={() => onDelete(snapshot.id)}
           className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
