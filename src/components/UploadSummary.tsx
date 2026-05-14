@@ -20,9 +20,10 @@ interface Props {
 // the stats cards. One pass over records is enough.
 
 interface BrandNode {
-  name:    string
-  total:   number
-  domains: DomainNode[]
+  name:     string
+  total:    number
+  keywords: number
+  domains:  DomainNode[]
 }
 interface DomainNode {
   domain:    string
@@ -33,6 +34,8 @@ interface DomainNode {
 function aggregate(records: RankingRecord[]) {
   // brand → domain → country → count
   const tree = new Map<string, Map<string, Map<string, number>>>()
+  // brand → set of unique keywords (lowercased)
+  const brandKeywords = new Map<string, Set<string>>()
   let unknown = 0
   const countrySet = new Set<string>()
   const domainSet  = new Set<string>()
@@ -51,6 +54,10 @@ function aggregate(records: RankingRecord[]) {
     let byCountry = byDomain.get(dk)
     if (!byCountry) { byCountry = new Map(); byDomain.set(dk, byCountry) }
     byCountry.set(country, (byCountry.get(country) ?? 0) + 1)
+
+    let kwSet = brandKeywords.get(brand)
+    if (!kwSet) { kwSet = new Set(); brandKeywords.set(brand, kwSet) }
+    if (r.keyword) kwSet.add(r.keyword.toLowerCase())
   }
 
   // Sort: brands by total desc, domains by total desc, countries by canonical order
@@ -73,7 +80,12 @@ function aggregate(records: RankingRecord[]) {
       domains.push({ domain, total, countries })
     }
     domains.sort((a, b) => b.total - a.total)
-    brands.push({ name: brand, total: brandTotal, domains })
+    brands.push({
+      name:     brand,
+      total:    brandTotal,
+      keywords: brandKeywords.get(brand)?.size ?? 0,
+      domains,
+    })
   }
   brands.sort((a, b) => b.total - a.total)
 
@@ -249,6 +261,8 @@ function BrandRow({
           <span className="text-[13px] font-semibold text-[#0F172A] truncate">{node.name}</span>
           <span className="text-[10px] font-mono text-[#64748B] shrink-0">
             {node.domains.length} site{node.domains.length !== 1 ? 's' : ''}
+            <span className="mx-1 text-[#CBD5E1]">·</span>
+            {node.keywords.toLocaleString()} keyword{node.keywords !== 1 ? 's' : ''}
           </span>
         </div>
         <span className="text-[12px] font-mono font-semibold text-[#0F172A] shrink-0">
@@ -270,26 +284,26 @@ function BrandRow({
 function DomainRow({ node, divider }: { node: DomainNode; divider: boolean }) {
   return (
     <div className={`px-3 py-2 ${divider ? 'border-t border-[#E2E8F0]' : ''}`}>
-      <div className="flex items-center justify-between gap-3 mb-1.5">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
           <Globe size={11} strokeWidth={2} className="text-[#94A3B8] shrink-0" />
           <span className="font-mono text-[12px] text-[#0F172A] truncate">{node.domain}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+          {node.countries.map((c) => (
+            <span
+              key={c.code}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-[#E2E8F0] rounded font-mono text-[10px] text-[#475569]"
+            >
+              <span className="font-semibold text-[#0F172A]">{c.code}</span>
+              <span className="text-[#94A3B8]">·</span>
+              <span>{c.count.toLocaleString()}</span>
+            </span>
+          ))}
         </div>
         <span className="font-mono text-[11px] text-[#64748B] shrink-0">
           {node.total.toLocaleString()}
         </span>
-      </div>
-      <div className="flex flex-wrap gap-1 pl-[18px]">
-        {node.countries.map((c) => (
-          <span
-            key={c.code}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-[#E2E8F0] rounded font-mono text-[10px] text-[#475569]"
-          >
-            <span className="font-semibold text-[#0F172A]">{c.code}</span>
-            <span className="text-[#94A3B8]">·</span>
-            <span>{c.count.toLocaleString()}</span>
-          </span>
-        ))}
       </div>
     </div>
   )
