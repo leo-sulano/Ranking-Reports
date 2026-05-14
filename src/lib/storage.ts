@@ -17,14 +17,34 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
   if (!snaps || snaps.length === 0) return []
 
   const ids = snaps.map((s) => s.id)
-  const { data: records, error: e2 } = await supabase
-    .from('ranking_records')
-    .select('snapshot_id, domain, keyword, country, position, previous, change, date')
-    .in('snapshot_id', ids)
-  if (e2) throw e2
+
+  // Supabase/PostgREST caps a single response at 1000 rows by default. Page
+  // through with .range() until a short page comes back.
+  const PAGE = 1000
+  const allRecords: Array<{
+    snapshot_id: string
+    domain: string
+    keyword: string
+    country: string
+    position: string
+    previous: string | null
+    change: string | null
+    date: string | null
+  }> = []
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error: e2 } = await supabase
+      .from('ranking_records')
+      .select('snapshot_id, domain, keyword, country, position, previous, change, date')
+      .in('snapshot_id', ids)
+      .range(from, from + PAGE - 1)
+    if (e2) throw e2
+    if (!page || page.length === 0) break
+    allRecords.push(...page)
+    if (page.length < PAGE) break
+  }
 
   const byId = new Map<string, RankingRecord[]>()
-  for (const r of records ?? []) {
+  for (const r of allRecords) {
     let list = byId.get(r.snapshot_id)
     if (!list) {
       list = []
@@ -35,9 +55,9 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
       keyword:  r.keyword,
       country:  r.country,
       position: r.position,
-      previous: r.previous,
-      change:   r.change,
-      date:     r.date,
+      previous: r.previous ?? '',
+      change:   r.change   ?? '',
+      date:     r.date     ?? '',
     })
   }
 
