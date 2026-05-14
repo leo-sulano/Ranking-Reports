@@ -207,6 +207,7 @@ function BrandView({
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
   const [activeBpDomains, setActiveBpDomains] = useState<string[]>(() => bpDomains)
+  const [showMain, setShowMain] = useState(true)
   const [kwFilter, setKwFilter] = useState('')
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
@@ -315,31 +316,44 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* BP Sites filter — toggles which BP domain columns/sections show */}
-          {bpDomains.length > 0 && (
-            <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
-                BP Sites
-              </span>
-              {bpDomains.map((d) => {
-                const active = activeBpDomains.includes(d)
-                return (
-                  <button
-                    key={d}
-                    onClick={() => toggleBpDomain(d)}
-                    className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
-                    style={
-                      active
-                        ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                        : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-                    }
-                  >
-                    {d}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          {/* Sites filter — toggles which domain columns/sections show.
+              MAIN chip can be hidden too; BPs keep the min-one-active rule.  */}
+          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+              Sites
+            </span>
+
+            <button
+              onClick={() => setShowMain((v) => !v)}
+              className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all flex items-center gap-1.5"
+              style={
+                showMain
+                  ? { background: '#0F172A', color: 'white', borderColor: 'transparent', fontWeight: 700 }
+                  : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+              }
+            >
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] opacity-70">Main</span>
+              {brand.mainDomain}
+            </button>
+
+            {bpDomains.map((d) => {
+              const active = activeBpDomains.includes(d)
+              return (
+                <button
+                  key={d}
+                  onClick={() => toggleBpDomain(d)}
+                  className="px-3 py-1 rounded-full text-[12px] font-mono border transition-all"
+                  style={
+                    active
+                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
+                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+                  }
+                >
+                  {d}
+                </button>
+              )
+            })}
+          </div>
 
           {/* Inline filter bar — countries + keyword search */}
           <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
@@ -404,6 +418,7 @@ function BrandView({
                 brand={brand}
                 mainDomain={mainDomain}
                 bpDomains={visibleBpDomains}
+                showMain={showMain}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 onEditCell={onEditCell}
@@ -578,6 +593,7 @@ function SnapshotMatrix({
   brand,
   mainDomain,
   bpDomains,
+  showMain,
   visibleCountries,
   kwFilter,
   onEditCell,
@@ -587,6 +603,7 @@ function SnapshotMatrix({
   brand: Brand
   mainDomain: string
   bpDomains: string[]
+  showMain: boolean
   visibleCountries: string[]
   kwFilter: string
   onEditCell: EditCellFn
@@ -675,18 +692,20 @@ function SnapshotMatrix({
               >
                 Keyword
               </th>
-              <th
-                colSpan={mainColCount}
-                className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
-                style={{
-                  background: MAIN_HEADER_BG,
-                  color: HEADER_FG,
-                  borderRight: borderStyle,
-                  borderBottom: borderStyle,
-                }}
-              >
-                MAIN — <span className="">{brand.mainDomain}</span>
-              </th>
+              {showMain && (
+                <th
+                  colSpan={mainColCount}
+                  className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
+                  style={{
+                    background: MAIN_HEADER_BG,
+                    color: HEADER_FG,
+                    borderRight: borderStyle,
+                    borderBottom: borderStyle,
+                  }}
+                >
+                  MAIN — <span className="">{brand.mainDomain}</span>
+                </th>
+              )}
               {bpDomains.map((bp, bpIdx) => {
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
@@ -709,40 +728,8 @@ function SnapshotMatrix({
 
             {/* Row 2 — Country / spec sub-header */}
             <tr>
-              <th
-                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                style={{
-                  background: MAIN_HEADER_BG,
-                  color: HEADER_FG,
-                  borderRight: borderStyle,
-                  borderBottom: borderStyle,
-                }}
-              >
-                GSV
-              </th>
-              {visibleCountries.map((c, ci) => (
-                <Fragment key={`main-sub-${c}`}>
-                  <th
-                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                    style={{
-                      background: MAIN_HEADER_BG,
-                      color: HEADER_FG,
-                      borderLeft: ci === 0 ? undefined : borderStyle,
-                      borderBottom: borderStyle,
-                    }}
-                  >
-                    {c}
-                  </th>
-                  <th
-                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                    style={{
-                      background: MAIN_HEADER_BG,
-                      color: HEADER_FG,
-                      borderBottom: borderStyle,
-                    }}
-                  >
-                    SV
-                  </th>
+              {showMain && (
+                <Fragment>
                   <th
                     className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                     style={{
@@ -752,10 +739,46 @@ function SnapshotMatrix({
                       borderBottom: borderStyle,
                     }}
                   >
-                    AFF
+                    GSV
                   </th>
+                  {visibleCountries.map((c, ci) => (
+                    <Fragment key={`main-sub-${c}`}>
+                      <th
+                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                        style={{
+                          background: MAIN_HEADER_BG,
+                          color: HEADER_FG,
+                          borderLeft: ci === 0 ? undefined : borderStyle,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        {c}
+                      </th>
+                      <th
+                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                        style={{
+                          background: MAIN_HEADER_BG,
+                          color: HEADER_FG,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        SV
+                      </th>
+                      <th
+                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                        style={{
+                          background: MAIN_HEADER_BG,
+                          color: HEADER_FG,
+                          borderRight: borderStyle,
+                          borderBottom: borderStyle,
+                        }}
+                      >
+                        AFF
+                      </th>
+                    </Fragment>
+                  ))}
                 </Fragment>
-              ))}
+              )}
               {bpDomains.map((bp, bpIdx) => {
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
@@ -798,83 +821,87 @@ function SnapshotMatrix({
                   {label}
                 </td>
 
-                {/* MAIN — GSV (editable, applies to every record with this keyword) */}
-                <td
-                  className="px-1 py-1 text-center align-middle text-[11px] w-[60px]"
-                  style={{
-                    background: MAIN_AUX_BG,
-                    color: '#0F172A',
-                    borderRight: borderStyle,
-                    borderBottom: borderStyle,
-                  }}
-                >
-                  <EditableCell
-                    value={gsvByKw[kw] ?? ''}
-                    onSave={(next) => onEditCell(
-                      snapshot.id,
-                      { keyword: label },
-                      { globalSearchVolume: next },
-                    )}
-                  />
-                </td>
+                {showMain && (
+                  <Fragment>
+                    {/* MAIN — GSV (editable, applies to every record with this keyword) */}
+                    <td
+                      className="px-1 py-1 text-center align-middle text-[11px] w-[60px]"
+                      style={{
+                        background: MAIN_AUX_BG,
+                        color: '#0F172A',
+                        borderRight: borderStyle,
+                        borderBottom: borderStyle,
+                      }}
+                    >
+                      <EditableCell
+                        value={gsvByKw[kw] ?? ''}
+                        onSave={(next) => onEditCell(
+                          snapshot.id,
+                          { keyword: label },
+                          { globalSearchVolume: next },
+                        )}
+                      />
+                    </td>
 
-                {/* MAIN — per-country triplets (country / SV / AFF) */}
-                {visibleCountries.map((c, ci) => {
-                  const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                  const sv  = rec?.searchVolume ?? ''
-                  const aff = rec?.affiliateUrl ?? ''
-                  return (
-                    <Fragment key={`main-cell-${kw}-${c}`}>
-                      <td
-                        className="px-2 py-1.5 text-center align-middle"
-                        style={{
-                          background: MAIN_CELL_BG,
-                          borderLeft: ci === 0 ? undefined : borderStyle,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                      </td>
-                      <td
-                        className="px-1 py-1 text-center text-[11px] w-[60px]"
-                        style={{
-                          background: MAIN_AUX_BG,
-                          color: '#0F172A',
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        <EditableCell
-                          value={sv}
-                          onSave={(next) => onEditCell(
-                            snapshot.id,
-                            { keyword: label, domain: mainDomain, country: c },
-                            { searchVolume: next },
-                          )}
-                        />
-                      </td>
-                      <td
-                        className="px-1 py-1 text-center text-[11px] w-[60px] max-w-[60px]"
-                        style={{
-                          background: MAIN_AUX_BG,
-                          color: '#0F172A',
-                          borderRight: borderStyle,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        <EditableCell
-                          value={aff}
-                          inputClassName="text-left"
-                          renderDisplay={(v) => <AffDisplay value={v} />}
-                          onSave={(next) => onEditCell(
-                            snapshot.id,
-                            { keyword: label, domain: mainDomain, country: c },
-                            { affiliateUrl: next },
-                          )}
-                        />
-                      </td>
-                    </Fragment>
-                  )
-                })}
+                    {/* MAIN — per-country triplets (country / SV / AFF) */}
+                    {visibleCountries.map((c, ci) => {
+                      const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                      const sv  = rec?.searchVolume ?? ''
+                      const aff = rec?.affiliateUrl ?? ''
+                      return (
+                        <Fragment key={`main-cell-${kw}-${c}`}>
+                          <td
+                            className="px-2 py-1.5 text-center align-middle"
+                            style={{
+                              background: MAIN_CELL_BG,
+                              borderLeft: ci === 0 ? undefined : borderStyle,
+                              borderBottom: borderStyle,
+                            }}
+                          >
+                            {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                          </td>
+                          <td
+                            className="px-1 py-1 text-center text-[11px] w-[60px]"
+                            style={{
+                              background: MAIN_AUX_BG,
+                              color: '#0F172A',
+                              borderBottom: borderStyle,
+                            }}
+                          >
+                            <EditableCell
+                              value={sv}
+                              onSave={(next) => onEditCell(
+                                snapshot.id,
+                                { keyword: label, domain: mainDomain, country: c },
+                                { searchVolume: next },
+                              )}
+                            />
+                          </td>
+                          <td
+                            className="px-1 py-1 text-center text-[11px] w-[60px] max-w-[60px]"
+                            style={{
+                              background: MAIN_AUX_BG,
+                              color: '#0F172A',
+                              borderRight: borderStyle,
+                              borderBottom: borderStyle,
+                            }}
+                          >
+                            <EditableCell
+                              value={aff}
+                              inputClassName="text-left"
+                              renderDisplay={(v) => <AffDisplay value={v} />}
+                              onSave={(next) => onEditCell(
+                                snapshot.id,
+                                { keyword: label, domain: mainDomain, country: c },
+                                { affiliateUrl: next },
+                              )}
+                            />
+                          </td>
+                        </Fragment>
+                      )
+                    })}
+                  </Fragment>
+                )}
 
                 {/* BP blocks */}
                 {bpDomains.map((bp, bpIdx) => {
