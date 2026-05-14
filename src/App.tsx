@@ -91,20 +91,17 @@ function Layout() {
       return
     }
 
-    let nextAll: Snapshot[] = []
     setState((s) => {
       const filtered = s.snapshots.filter((sn) => !(sn.category === category && sn.rawDate === rawDate))
-      const nextSnapshots = [newSnap, ...filtered]
-      nextAll = nextSnapshots
       return {
         ...s,
-        snapshots:        nextSnapshots,
+        snapshots:        [newSnap, ...filtered],
         activeSnapshotId: newId,
       }
     })
 
     setShowUpload(false)
-    setUploadSummary({ displayDate, records, allSnapshots: nextAll })
+    setUploadSummary({ displayDate, records })
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
   }, [addToast])

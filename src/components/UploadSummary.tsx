@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
-import type { RankingRecord, Snapshot } from '../types'
+import type { RankingRecord } from '../types'
 import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND } from '../lib/brands'
 import { ChevronDown, X, AlertCircle, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
   displayDate: string
   records: RankingRecord[]
-  allSnapshots: Snapshot[]
 }
 
 interface Props {
@@ -100,14 +99,11 @@ function aggregate(records: RankingRecord[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function UploadSummary({ data, onClose }: Props) {
-  const { displayDate, records, allSnapshots } = data
+  const { displayDate, records } = data
   const { brands, unknown, domainCount, countryCount } = useMemo(
     () => aggregate(records),
     [records],
   )
-
-  const totalRecordsInDb   = allSnapshots.reduce((sum, s) => sum + s.records.length, 0)
-  const totalSnapshotsInDb = allSnapshots.length
 
   // All brands expanded by default — first impression should reveal everything
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(brands.map((b) => b.name)))
@@ -189,16 +185,6 @@ export function UploadSummary({ data, onClose }: Props) {
             )}
           </div>
 
-          {/* DB totals */}
-          <div className="pt-4 border-t border-[#E2E8F0]">
-            <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-2">
-              Database after upload
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="Total snapshots" value={totalSnapshotsInDb} muted />
-              <Stat label="Total records"   value={totalRecordsInDb}   muted />
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -217,14 +203,11 @@ export function UploadSummary({ data, onClose }: Props) {
 
 // ─── Pieces ───────────────────────────────────────────────────────────────────
 
-function Stat({ label, value, muted = false }: { label: string; value: number; muted?: boolean }) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md px-3 py-2.5">
       <div className="text-[10px] uppercase tracking-[0.1em] text-[#64748B] mb-0.5">{label}</div>
-      <div
-        className="text-[20px] font-bold font-mono"
-        style={{ color: muted ? '#94A3B8' : '#0F172A' }}
-      >
+      <div className="text-[20px] font-bold font-mono text-[#0F172A]">
         {value.toLocaleString()}
       </div>
     </div>
