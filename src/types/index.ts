@@ -49,7 +49,7 @@ export interface RROutletContext {
 export interface ToastItem {
   id: string
   message: string
-  type: 'success' | 'error'
+  type: 'success' | 'warning' | 'error'
 }
 
 export type ParsedPosition = number | 'NR' | null

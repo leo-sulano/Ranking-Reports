@@ -109,6 +109,16 @@ function Layout() {
     setUploadSummary({ displayDate, records, unknownDomains })
     const brandCount = countBrands(records, DOMAIN_TO_BRAND)
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
+
+    const skipped = unknownDomains.reduce((s, u) => s + u.count, 0)
+    if (skipped > 0) {
+      const list = unknownDomains.slice(0, 3).map((u) => u.domain).join(', ')
+      const more = unknownDomains.length > 3 ? ` +${unknownDomains.length - 3} more` : ''
+      addToast(
+        `⚠ ${skipped} row${skipped !== 1 ? 's' : ''} skipped — domain not part of Rooster: ${list}${more}`,
+        'warning',
+      )
+    }
   }, [addToast])
 
   const handleImport = useCallback(async (
