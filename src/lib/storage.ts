@@ -1,4 +1,6 @@
 import type { Snapshot, RankingRecord } from '../types'
+import type { CategoryId } from './categories'
+import { DEFAULT_CATEGORY } from './categories'
 import { supabase } from './supabase'
 
 /**
@@ -11,7 +13,7 @@ import { supabase } from './supabase'
 export async function loadSnapshots(): Promise<Snapshot[]> {
   const { data: snaps, error: e1 } = await supabase
     .from('snapshots')
-    .select('id, raw_date, display_date')
+    .select('id, raw_date, display_date, category')
     .order('created_at', { ascending: false })
   if (e1) throw e1
   if (!snaps || snaps.length === 0) return []
@@ -63,6 +65,7 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
 
   return snaps.map((s) => ({
     id:          s.id,
+    category:    (s.category as CategoryId | null) ?? DEFAULT_CATEGORY,
     rawDate:     s.raw_date,
     displayDate: s.display_date,
     records:     byId.get(s.id) ?? [],
@@ -83,6 +86,7 @@ export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
     id:           snapshot.id,
     raw_date:     snapshot.rawDate,
     display_date: snapshot.displayDate,
+    category:     snapshot.category,
   })
   if (eIns) throw eIns
 

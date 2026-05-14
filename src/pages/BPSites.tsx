@@ -53,20 +53,24 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
   const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot } = ctx
+  const bpSnapshots = useMemo(
+    () => snapshots.filter((s) => s.category === 'bp-sites'),
+    [snapshots],
+  )
   const activeBrand = bpFilterBrand ? BRAND_BY_NAME[bpFilterBrand] ?? null : null
 
   if (activeBrand) {
     return (
       <BrandView
         brand={activeBrand}
-        snapshots={snapshots}
+        snapshots={bpSnapshots}
         onBack={() => onSelectBPBrand(null)}
         onDeleteSnapshot={onDeleteSnapshot}
       />
     )
   }
 
-  return <BrandGrid snapshots={snapshots} onSelect={(b) => onSelectBPBrand(b.name)} />
+  return <BrandGrid snapshots={bpSnapshots} onSelect={(b) => onSelectBPBrand(b.name)} />
 }
 
 // ─── Brand Grid (unchanged from prior) ────────────────────────────────────────

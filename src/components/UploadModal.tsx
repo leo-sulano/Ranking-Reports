@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { parseXlsx } from '../lib/parser'
 import type { RankingRecord } from '../types'
+import { CATEGORIES, DEFAULT_CATEGORY } from '../lib/categories'
+import type { CategoryId } from '../lib/categories'
 
 interface Props {
-  onImport: (records: RankingRecord[]) => void
+  onImport: (records: RankingRecord[], category: CategoryId) => void
   onClose: () => void
 }
 
@@ -12,6 +14,7 @@ export function UploadModal({ onImport, onClose }: Props) {
   const [dragging, setDragging] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [category, setCategory] = useState<CategoryId>(DEFAULT_CATEGORY)
 
   const handleFile = (file: File) => {
     if (!file) return
@@ -29,7 +32,7 @@ export function UploadModal({ onImport, onClose }: Props) {
           return
         }
         setTimeout(() => {
-          onImport(records)
+          onImport(records, category)
         }, 200)
       } catch (err) {
         setError(`Parse error: ${err instanceof Error ? err.message : String(err)}`)
@@ -67,6 +70,40 @@ export function UploadModal({ onImport, onClose }: Props) {
 
         {/* Body */}
         <div className="p-6 space-y-4">
+          {/* Category selector */}
+          <div>
+            <label
+              htmlFor="upload-category"
+              className="block text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-1.5"
+            >
+              Category
+            </label>
+            <div className="relative">
+              <select
+                id="upload-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value as CategoryId)}
+                className="w-full appearance-none bg-white border border-[#CBD5E1] rounded-md pl-3 pr-9 py-2 text-[13px] text-[#0F172A] outline-none focus:border-[#0F172A] transition-colors cursor-pointer"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-60"
+                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-[#64748B] mt-1.5">
+              This upload's data will only appear under {CATEGORIES.find((c) => c.id === category)?.label}.
+            </p>
+          </div>
+
           {/* Drop zone */}
           <div
             className={`relative border-2 border-dashed rounded-[10px] p-10 text-center cursor-pointer transition-all ${

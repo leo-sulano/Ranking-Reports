@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import type { AppState, RROutletContext, RankingRecord, Snapshot } from './types'
+import type { CategoryId } from './lib/categories'
 import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, extractSnapshotDate, formatDisplayDate,
@@ -76,11 +77,11 @@ function Layout() {
 
   // ── Import ────────────────────────────────────────────────────────────────
 
-  const persistSnapshot = useCallback(async (records: RankingRecord[]) => {
+  const persistSnapshot = useCallback(async (records: RankingRecord[], category: CategoryId) => {
     const rawDate     = extractSnapshotDate(records)
     const displayDate = formatDisplayDate(rawDate)
-    const newId       = `snap-${rawDate || Date.now()}`
-    const newSnap: Snapshot = { id: newId, rawDate, displayDate, records }
+    const newId       = `snap-${category}-${rawDate || Date.now()}`
+    const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, records }
 
     try {
       await upsertSnapshot(newSnap)
@@ -92,7 +93,7 @@ function Layout() {
 
     let nextAll: Snapshot[] = []
     setState((s) => {
-      const filtered = s.snapshots.filter((sn) => sn.rawDate !== rawDate)
+      const filtered = s.snapshots.filter((sn) => !(sn.category === category && sn.rawDate === rawDate))
       const nextSnapshots = [newSnap, ...filtered]
       nextAll = nextSnapshots
       return {
@@ -108,15 +109,15 @@ function Layout() {
     addToast(`✓ Imported ${records.length} records across ${brandCount} brands — ${displayDate}`)
   }, [addToast])
 
-  const handleImport = useCallback(async (records: RankingRecord[]) => {
+  const handleImport = useCallback(async (records: RankingRecord[], category: CategoryId) => {
     const rawDate = extractSnapshotDate(records)
-    const dupe = state.snapshots.find((s) => s.rawDate === rawDate)
+    const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === rawDate)
     if (dupe) {
       setShowUpload(false)
       setDuplicateWarning({ existing: dupe, pendingRecords: records })
       return
     }
-    await persistSnapshot(records)
+    await persistSnapshot(records, category)
   }, [persistSnapshot, state.snapshots])
 
   const handleReplaceDuplicate = useCallback(async () => {
@@ -131,7 +132,7 @@ function Layout() {
       return
     }
     setState((s) => ({ ...s, snapshots: s.snapshots.filter((sn) => sn.id !== existing.id) }))
-    await persistSnapshot(pendingRecords)
+    await persistSnapshot(pendingRecords, existing.category)
   }, [addToast, duplicateWarning, persistSnapshot])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {

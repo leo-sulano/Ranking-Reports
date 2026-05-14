@@ -1,3 +1,5 @@
+import type { CategoryId } from '../lib/categories'
+
 export interface RankingRecord {
   domain: string
   keyword: string
@@ -10,6 +12,7 @@ export interface RankingRecord {
 
 export interface Snapshot {
   id: string
+  category: CategoryId
   rawDate: string      // from Last Check column e.g. "5/20/2026"
   displayDate: string  // formatted e.g. "20 May 26"
   records: RankingRecord[]
