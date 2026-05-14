@@ -1,6 +1,7 @@
 import type { Snapshot, RankingRecord } from '../types'
 import type { CategoryId } from './categories'
 import { DEFAULT_CATEGORY } from './categories'
+import { formatDisplayDate } from './parser'
 import { supabase } from './supabase'
 
 /**
@@ -67,7 +68,9 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
     id:          s.id,
     category:    (s.category as CategoryId | null) ?? DEFAULT_CATEGORY,
     rawDate:     s.raw_date,
-    displayDate: s.display_date,
+    // Re-format on read so display matches the current formatter even for
+    // older rows whose stored display_date used a previous format.
+    displayDate: formatDisplayDate(s.raw_date),
     records:     byId.get(s.id) ?? [],
   }))
 }

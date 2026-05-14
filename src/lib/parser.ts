@@ -162,20 +162,21 @@ export function extractSnapshotDate(records: RankingRecord[]): string {
   return sorted.length > 0 ? sorted[0][0] : ''
 }
 
-// Format raw date string "5/20/2026" → "20 May 26"
+// Format raw date string "5/20/2026" → "May 20, 2026"
 export function formatDisplayDate(raw: string): string {
   if (!raw) return 'Unknown Date'
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
   // YYYY-MM-DD literals: build a local Date so toLocaleDateString doesn't
   // shift the displayed day across the UTC boundary (e.g. UTC- zones would
   // otherwise show the previous day for a "2026-05-13" ISO date).
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
   if (iso) {
     const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
-    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: '2-digit' })
+    return d.toLocaleDateString('en-US', opts)
   }
   const d = new Date(raw)
   if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: '2-digit' })
+    return d.toLocaleDateString('en-US', opts)
   }
   return raw
 }
