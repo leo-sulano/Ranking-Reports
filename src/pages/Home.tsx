@@ -244,64 +244,83 @@ export function Home() {
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
 
           <div className="px-6 pb-6 pt-2">
-            {/* Page-1 / Page-2 labels */}
-            <div className="grid grid-cols-12 gap-2 mb-2 px-1">
-              <div className="col-span-10 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
-                <span className="font-mono text-[9px] tracking-[0.2em] text-[#0F172A]">PAGE 1</span>
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
+            {/* Page-1 / Page-2 group labels */}
+            <div className="grid grid-cols-[88px_1fr] gap-3 mb-2 items-center">
+              <div />
+              <div className="grid grid-cols-12 gap-2 px-1">
+                <div className="col-span-10 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                  <span className="font-mono text-[9px] tracking-[0.2em] text-[#0F172A]">PAGE 1</span>
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                </div>
+                <div className="col-span-2 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                  <span className="font-mono text-[9px] tracking-[0.2em] text-[#94A3B8]">BEYOND</span>
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                </div>
               </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
-                <span className="font-mono text-[9px] tracking-[0.2em] text-[#94A3B8]">BEYOND</span>
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
+            </div>
+
+            {/* RECORDS row (count above each bar) */}
+            <div className="grid grid-cols-[88px_1fr] gap-3 mb-1.5 items-center">
+              <div className="text-right font-mono text-[10px] tracking-[0.2em] text-[#64748B] uppercase">
+                Records
+              </div>
+              <div className="grid grid-cols-12 gap-2">
+                {buckets.map((b) => (
+                  <div
+                    key={b.key}
+                    className="text-center font-mono text-[12px] tabular-nums text-[#0F172A]"
+                  >
+                    {b.count}
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Bars */}
-            <div className="grid grid-cols-12 gap-2 items-end h-[160px]">
-              {buckets.map((b, i) => (
-                <div
-                  key={b.key}
-                  className="relative flex flex-col items-center group"
-                  style={{ animation: `fadeUp 0.5s ease ${0.15 + i * 0.04}s both` }}
-                >
-                  <span className="font-mono text-[11px] tabular-nums text-[#0F172A] mb-1">{b.count}</span>
-                  <div className="relative w-full h-full bg-[#E2E8F0] rounded-sm overflow-hidden">
-                    <div
-                      className="absolute bottom-0 left-0 right-0 rounded-sm"
-                      style={{
-                        height: `${Math.max(b.pct * 100, b.count > 0 ? 4 : 0)}%`,
-                        background: `linear-gradient(180deg, ${TIER_COLOR[b.tier]}, ${TIER_COLOR[b.tier]}88)`,
-                        boxShadow: `0 0 12px ${TIER_COLOR[b.tier]}40, inset 0 1px 0 ${TIER_COLOR[b.tier]}cc`,
-                      }}
-                    />
-                    {/* Horizontal scan lines inside the bar */}
-                    <div
-                      className="absolute inset-0 pointer-events-none opacity-30"
-                      style={{
-                        backgroundImage: 'repeating-linear-gradient(0deg, transparent 0, transparent 6px, rgba(0,0,0,0.4) 6px, rgba(0,0,0,0.4) 7px)',
-                      }}
-                    />
+            <div className="grid grid-cols-[88px_1fr] gap-3 items-end">
+              <div />
+              <div className="grid grid-cols-12 gap-2 items-end h-[150px]">
+                {buckets.map((b, i) => (
+                  <div
+                    key={b.key}
+                    className="relative flex flex-col items-center group h-full"
+                    style={{ animation: `fadeUp 0.5s ease ${0.15 + i * 0.04}s both` }}
+                  >
+                    <div className="relative w-full h-full bg-[#E2E8F0] rounded-sm overflow-hidden">
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-sm"
+                        style={{
+                          height: `${Math.max(b.pct * 100, b.count > 0 ? 4 : 0)}%`,
+                          background: `linear-gradient(180deg, ${TIER_COLOR[b.tier]}, ${TIER_COLOR[b.tier]}88)`,
+                          boxShadow: `0 0 12px ${TIER_COLOR[b.tier]}40, inset 0 1px 0 ${TIER_COLOR[b.tier]}cc`,
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0 pointer-events-none opacity-30"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(0deg, transparent 0, transparent 6px, rgba(0,0,0,0.4) 6px, rgba(0,0,0,0.4) 7px)',
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* Axis label between bars and position numbers */}
-            <div className="flex items-center gap-2 mt-3 mb-1 px-1">
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
-              <span className="font-mono text-[9px] tracking-[0.28em] text-[#64748B]">POSITION</span>
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
-            </div>
-
-            {/* X-axis labels */}
-            <div className="grid grid-cols-12 gap-2 mt-1">
-              {buckets.map((b) => (
-                <div key={b.key} className="text-center font-mono text-[10px] tracking-wider text-[#64748B]">
-                  {b.label}
-                </div>
-              ))}
+            {/* POSITION row (x-axis labels) */}
+            <div className="grid grid-cols-[88px_1fr] gap-3 mt-2 items-center">
+              <div className="text-right font-mono text-[10px] tracking-[0.2em] text-[#64748B] uppercase">
+                Position
+              </div>
+              <div className="grid grid-cols-12 gap-2">
+                {buckets.map((b) => (
+                  <div key={b.key} className="text-center font-mono text-[10px] tracking-wider text-[#64748B]">
+                    {b.label}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
