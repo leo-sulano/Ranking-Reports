@@ -223,17 +223,26 @@ function BrandView({
     })
   }
 
-  // Stats for the selected stats-date snapshot
+  // Stats for the selected stats-date snapshot.
+  // Counts BP-site rows only (MAIN domain excluded) and uses a mutually
+  // exclusive classification so the five breakdown cards sum to total:
+  //   NR > TOP 3 > IMPROVED > DROPPED > UNCHANGED
   const stats = useMemo(() => {
-    const recs = statsSnap?.records ?? []
-    return {
-      total:      recs.length,
-      top3:       recs.filter((r) => { const p = parsePosition(r.position); return typeof p === 'number' && p <= 3 }).length,
-      improved:   recs.filter((r) => (parseChange(r.change) ?? 0) > 0).length,
-      dropped:    recs.filter((r) => (parseChange(r.change) ?? 0) < 0).length,
-      notRanking: recs.filter((r) => parsePosition(r.position) === 'NR').length,
+    const all = statsSnap?.records ?? []
+    const bpSet = new Set(bpDomains.map((d) => d.toLowerCase()))
+    const recs = all.filter((r) => bpSet.has(r.domain.toLowerCase()))
+    let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
+    for (const r of recs) {
+      const p = parsePosition(r.position)
+      const d = parseChange(r.change) ?? 0
+      if (p === 'NR') notRanking++
+      else if (typeof p === 'number' && p <= 3) top3++
+      else if (d > 0) improved++
+      else if (d < 0) dropped++
+      else unchanged++
     }
-  }, [statsSnap])
+    return { total: recs.length, top3, improved, dropped, notRanking, unchanged }
+  }, [statsSnap, bpDomains])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
@@ -292,6 +301,7 @@ function BrandView({
             improved={stats.improved}
             dropped={stats.dropped}
             notRanking={stats.notRanking}
+            unchanged={stats.unchanged}
           />
 
           {/* Inline filter bar — countries + keyword search (no domain chips
