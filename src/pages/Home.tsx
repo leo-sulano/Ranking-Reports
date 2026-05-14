@@ -24,22 +24,21 @@ const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR'
   { label: 'NR', key: 'nr',  test: (p) => p === 'NR',                 tier: 'nr'    },
 ]
 
-// Per-position gradient: best (green) → worst (gray). One stop per bucket so
-// the bar fill smoothly steps from emerald to red across positions 1-10, then
-// deepens for 11–100 and desaturates to slate for NR.
+// Positions 1-10 share a green family (deep emerald → light lime) to signal
+// "page 1 = healthy". 11–100 flips to yellow as a warning, NR to red.
 const POSITION_COLOR: Record<string, string> = {
-  p1:    '#10B981', // emerald
-  p2:    '#34D399',
-  p3:    '#84CC16', // lime
-  p4:    '#BEF264',
-  p5:    '#FACC15', // yellow
-  p6:    '#F59E0B', // amber
-  p7:    '#FB923C',
-  p8:    '#F97316', // orange
-  p9:    '#EF4444',
-  p10:   '#DC2626', // red
-  page2: '#991B1B', // deep red
-  nr:    '#64748B', // slate
+  p1:    '#047857', // emerald-700
+  p2:    '#059669', // emerald-600
+  p3:    '#10B981', // emerald-500
+  p4:    '#16A34A', // green-600
+  p5:    '#22C55E', // green-500
+  p6:    '#4ADE80', // green-400
+  p7:    '#65A30D', // lime-600
+  p8:    '#84CC16', // lime-500
+  p9:    '#A3E635', // lime-400
+  p10:   '#BEF264', // lime-300
+  page2: '#EAB308', // yellow-500
+  nr:    '#DC2626', // red-600
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
