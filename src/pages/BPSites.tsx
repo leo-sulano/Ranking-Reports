@@ -56,7 +56,7 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
-  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot, onEditCell } = ctx
+  const { snapshots, bpFilterBrand, onSelectBPBrand, onEditCell } = ctx
   const bpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'bp-sites'),
     [snapshots],
@@ -69,7 +69,6 @@ export function BPSites() {
         brand={activeBrand}
         snapshots={bpSnapshots}
         onBack={() => onSelectBPBrand(null)}
-        onDeleteSnapshot={onDeleteSnapshot}
         onEditCell={onEditCell}
       />
     )
@@ -172,13 +171,11 @@ function BrandView({
   brand,
   snapshots,
   onBack,
-  onDeleteSnapshot,
   onEditCell,
 }: {
   brand: Brand
   snapshots: Snapshot[]
   onBack: () => void
-  onDeleteSnapshot: (id: string) => void
   onEditCell: EditCellFn
 }) {
   const brandDomainSet = useMemo(
@@ -363,7 +360,6 @@ function BrandView({
                 bpDomains={bpDomains}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
-                onDelete={onDeleteSnapshot}
                 onEditCell={onEditCell}
                 isLatest={snap.id === latestSnap?.id}
               />
@@ -538,7 +534,6 @@ function SnapshotMatrix({
   bpDomains,
   visibleCountries,
   kwFilter,
-  onDelete,
   onEditCell,
   isLatest,
 }: {
@@ -548,7 +543,6 @@ function SnapshotMatrix({
   bpDomains: string[]
   visibleCountries: string[]
   kwFilter: string
-  onDelete: (id: string) => void
   onEditCell: EditCellFn
   isLatest: boolean
 }) {
@@ -602,27 +596,18 @@ function SnapshotMatrix({
     >
       {/* Date band */}
       <div
-        className="px-4 py-2 text-[13px] font-bold flex items-center justify-between"
+        className="px-4 py-2 text-[13px] font-bold flex items-center gap-2"
         style={{ background: DATE_BAND_BG, color: DATE_BAND_FG }}
       >
-        <div className="flex items-center gap-2">
-          <span>{snapshot.displayDate}</span>
-          {isLatest && (
-            <span
-              className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-[2px] rounded-[3px]"
-              style={{ background: '#16A34A', color: 'white' }}
-            >
-              Latest
-            </span>
-          )}
-        </div>
-        <button
-          onClick={() => onDelete(snapshot.id)}
-          className="text-[11px] font-normal px-2 py-0.5 rounded hover:bg-[rgba(0,0,0,0.2)] transition-colors"
-          title={`Delete snapshot for ${snapshot.displayDate}`}
-        >
-          ✕ Delete
-        </button>
+        <span>{snapshot.displayDate}</span>
+        {isLatest && (
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-[2px] rounded-[3px]"
+            style={{ background: '#16A34A', color: 'white' }}
+          >
+            Latest
+          </span>
+        )}
       </div>
 
       {/* Horizontal matrix */}
