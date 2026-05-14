@@ -42,7 +42,7 @@ export function PosBadge({ record }: Props) {
 
   return (
     <span
-      className="text-[11px] whitespace-nowrap"
+      className="text-[11px] font-normal whitespace-nowrap"
       style={color ? { color } : undefined}
       title={tip || undefined}
     >
