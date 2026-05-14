@@ -217,8 +217,8 @@ export function Home() {
           <div className="grid grid-cols-4 divide-x divide-[#E2E8F0]">
             <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#0F172A" />
             <HeroMetric label="BRANDS"    value={totals.brands}    accent="#0F172A" />
-            <HeroMetric label="COUNTRIES" value={totals.countries} accent="#10B981" />
-            <HeroMetric label="RECORDS"   value={totals.records}   accent="#3B82F6" suffix="rows" />
+            <HeroMetric label="COUNTRIES" value={totals.countries} accent="#0F172A" />
+            <HeroMetric label="RECORDS"   value={totals.records}   accent="#0F172A" suffix="rows" />
           </div>
 
           {/* Page-1 progress bar */}
