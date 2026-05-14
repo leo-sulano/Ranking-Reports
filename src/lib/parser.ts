@@ -237,27 +237,31 @@ export function countBrands(records: RankingRecord[], domainMap: Record<string, 
 // GSV / SV / AFF rarely change week-to-week; newer ranking exports often leave
 // them blank. Walk snapshots oldest → newest within a category and inherit any
 // empty searchVolume / affiliateUrl / globalSearchVolume from the most recent
-// prior snapshot's record with the same key. Mutates records in place.
+// prior snapshot's record with the same key.
+//
+// Returns NEW snapshot + record objects so the caller can keep the "raw"
+// version (no inheritance) alongside the derived view. Critical for live
+// edits: when a user edits an early snapshot's value, the raw record changes
+// and the derived view re-propagates downstream — but only if downstream
+// records remain empty in raw state. Mutating in place would freeze the
+// inherited value and break that propagation.
 //
 // Keying:
 //   SV / AFF — per (domain, keyword, country)
 //   GSV      — per keyword (denormalized onto every record for that keyword)
-//
-// Imported as: import { applyCarryForward } from './parser' — see storage.ts
-// for the call site.
-export function applyCarryForward(
-  // Use the public Snapshot shape from this module's consumers. Typed loosely
-  // here to avoid a circular import on src/types.
-  snapshots: Array<{ category?: string; rawDate: string; records: RankingRecord[] }>,
-): void {
-  // Group by category — values shouldn't bleed across categories.
-  const byCat = new Map<string, typeof snapshots>()
+export function applyCarryForward<T extends { category?: string; rawDate: string; records: RankingRecord[] }>(
+  snapshots: T[],
+): T[] {
+  const byCat = new Map<string, T[]>()
   for (const s of snapshots) {
     const cat = s.category ?? ''
     const arr = byCat.get(cat) ?? []
     arr.push(s)
     byCat.set(cat, arr)
   }
+
+  // Build a map: original snapshot ref → new records list
+  const newRecordsBySnap = new Map<T, RankingRecord[]>()
 
   for (const arr of byCat.values()) {
     const asc = [...arr].sort((a, b) =>
@@ -268,20 +272,30 @@ export function applyCarryForward(
     const gsv = new Map<string, string>()
 
     for (const snap of asc) {
-      for (const r of snap.records) {
+      const nextRecords = snap.records.map((r) => {
         const k  = `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
         const kw = r.keyword.toLowerCase()
 
-        if (!r.searchVolume       && sv.has(k))   r.searchVolume       = sv.get(k)
-        if (!r.affiliateUrl       && aff.has(k))  r.affiliateUrl       = aff.get(k)
-        if (!r.globalSearchVolume && gsv.has(kw)) r.globalSearchVolume = gsv.get(kw)
+        const next: RankingRecord = { ...r }
+        if (!next.searchVolume       && sv.has(k))   next.searchVolume       = sv.get(k)
+        if (!next.affiliateUrl       && aff.has(k))  next.affiliateUrl       = aff.get(k)
+        if (!next.globalSearchVolume && gsv.has(kw)) next.globalSearchVolume = gsv.get(kw)
 
+        // Seed the carry-forward maps from the RAW values, not the derived
+        // ones — otherwise a deleted/cleared upstream value would still flow
+        // forward forever.
         if (r.searchVolume)        sv.set(k, r.searchVolume)
         if (r.affiliateUrl)        aff.set(k, r.affiliateUrl)
         if (r.globalSearchVolume)  gsv.set(kw, r.globalSearchVolume)
-      }
+
+        return next
+      })
+      newRecordsBySnap.set(snap, nextRecords)
     }
   }
+
+  // Return snapshots in the original (caller-controlled) order.
+  return snapshots.map((s) => ({ ...s, records: newRecordsBySnap.get(s) ?? s.records }))
 }
 
 // ─── Matrix-format parser (legacy per-brand stacked sheets) ────────────────────

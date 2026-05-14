@@ -41,6 +41,18 @@ export interface AppState {
 // Shape of the React Router outlet context that the Layout supplies to
 // every page (Home, BPSites, …). Defined here so pages don't have to
 // reach into one another for the type.
+export interface EditCellMatcher {
+  keyword?: string
+  domain?:  string
+  country?: string
+}
+
+export interface EditCellPatch {
+  searchVolume?:       string
+  affiliateUrl?:       string
+  globalSearchVolume?: string
+}
+
 export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
@@ -49,6 +61,9 @@ export interface RROutletContext {
   onSelectBPBrand: (name: string | null) => void
   onOpenUpload: () => void
   onDeleteSnapshot: (id: string) => void
+  // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows
+  // which rows are patched within the snapshot.
+  onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
 }
 
 export interface ToastItem {

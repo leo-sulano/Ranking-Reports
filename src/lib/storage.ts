@@ -130,3 +130,29 @@ export async function deleteSnapshot(id: string): Promise<void> {
   const { error } = await supabase.from('snapshots').delete().eq('id', id)
   if (error) throw error
 }
+
+/**
+ * Patch GSV / SV / AFF on the ranking_records rows matched by
+ * (snapshot_id, ...matcher). When the matcher omits a field, the patch
+ * applies to every row that matches the rest — used for GSV which is
+ * per-keyword (matcher = { keyword }) vs SV/AFF which are
+ * per-(domain, keyword, country).
+ */
+export async function updateRecordFields(
+  snapshotId: string,
+  matcher: { keyword?: string; domain?: string; country?: string },
+  patch:   { searchVolume?: string; affiliateUrl?: string; globalSearchVolume?: string },
+): Promise<void> {
+  const dbPatch: Record<string, string> = {}
+  if ('searchVolume'       in patch) dbPatch.search_volume        = patch.searchVolume       ?? ''
+  if ('affiliateUrl'       in patch) dbPatch.affiliate_url        = patch.affiliateUrl       ?? ''
+  if ('globalSearchVolume' in patch) dbPatch.global_search_volume = patch.globalSearchVolume ?? ''
+  if (Object.keys(dbPatch).length === 0) return
+
+  let q = supabase.from('ranking_records').update(dbPatch).eq('snapshot_id', snapshotId)
+  if (matcher.keyword) q = q.eq('keyword', matcher.keyword)
+  if (matcher.domain)  q = q.eq('domain',  matcher.domain)
+  if (matcher.country) q = q.eq('country', matcher.country)
+  const { error } = await q
+  if (error) throw error
+}

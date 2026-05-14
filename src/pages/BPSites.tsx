@@ -1,11 +1,14 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import type { Brand, RankingRecord, RROutletContext, Snapshot } from '../types'
+import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
+import { EditableCell } from '../components/EditableCell'
 import { parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
+
+type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
@@ -53,7 +56,7 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
-  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot } = ctx
+  const { snapshots, bpFilterBrand, onSelectBPBrand, onDeleteSnapshot, onEditCell } = ctx
   const bpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'bp-sites'),
     [snapshots],
@@ -67,6 +70,7 @@ export function BPSites() {
         snapshots={bpSnapshots}
         onBack={() => onSelectBPBrand(null)}
         onDeleteSnapshot={onDeleteSnapshot}
+        onEditCell={onEditCell}
       />
     )
   }
@@ -169,11 +173,13 @@ function BrandView({
   snapshots,
   onBack,
   onDeleteSnapshot,
+  onEditCell,
 }: {
   brand: Brand
   snapshots: Snapshot[]
   onBack: () => void
   onDeleteSnapshot: (id: string) => void
+  onEditCell: EditCellFn
 }) {
   const brandDomainSet = useMemo(
     () => new Set(brand.domains.map((d) => d.toLowerCase())),
@@ -358,6 +364,7 @@ function BrandView({
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 onDelete={onDeleteSnapshot}
+                onEditCell={onEditCell}
                 isLatest={snap.id === latestSnap?.id}
               />
             ))}
@@ -532,6 +539,7 @@ function SnapshotMatrix({
   visibleCountries,
   kwFilter,
   onDelete,
+  onEditCell,
   isLatest,
 }: {
   snapshot: Snapshot
@@ -541,6 +549,7 @@ function SnapshotMatrix({
   visibleCountries: string[]
   kwFilter: string
   onDelete: (id: string) => void
+  onEditCell: EditCellFn
   isLatest: boolean
 }) {
   const borderStyle = `1px solid ${TABLE_BORDER}`
@@ -758,24 +767,31 @@ function SnapshotMatrix({
                   {label}
                 </td>
 
-                {/* MAIN — GSV */}
+                {/* MAIN — GSV (editable, applies to every record with this keyword) */}
                 <td
-                  className="px-2 py-1.5 text-center align-middle text-[11px] "
+                  className="px-1 py-1 text-center align-middle text-[11px] w-[60px]"
                   style={{
                     background: MAIN_AUX_BG,
-                    color: gsvByKw[kw] ? '#0F172A' : '#6B7280',
+                    color: '#0F172A',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
                   }}
                 >
-                  {gsvByKw[kw] || '–'}
+                  <EditableCell
+                    value={gsvByKw[kw] ?? ''}
+                    onSave={(next) => onEditCell(
+                      snapshot.id,
+                      { keyword: label },
+                      { globalSearchVolume: next },
+                    )}
+                  />
                 </td>
 
                 {/* MAIN — per-country triplets (country / SV / AFF) */}
                 {visibleCountries.map((c, ci) => {
                   const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                  const sv  = rec?.searchVolume
-                  const aff = rec?.affiliateUrl
+                  const sv  = rec?.searchVolume ?? ''
+                  const aff = rec?.affiliateUrl ?? ''
                   return (
                     <Fragment key={`main-cell-${kw}-${c}`}>
                       <td
@@ -789,39 +805,41 @@ function SnapshotMatrix({
                         {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                       </td>
                       <td
-                        className="px-2 py-1.5 text-center text-[11px] "
+                        className="px-1 py-1 text-center text-[11px] w-[60px]"
                         style={{
                           background: MAIN_AUX_BG,
-                          color: sv ? '#0F172A' : '#6B7280',
+                          color: '#0F172A',
                           borderBottom: borderStyle,
                         }}
                       >
-                        {sv || '–'}
+                        <EditableCell
+                          value={sv}
+                          onSave={(next) => onEditCell(
+                            snapshot.id,
+                            { keyword: label, domain: mainDomain, country: c },
+                            { searchVolume: next },
+                          )}
+                        />
                       </td>
                       <td
-                        className="px-2 py-1.5 text-center text-[11px] "
+                        className="px-1 py-1 text-center text-[11px] w-[110px] max-w-[110px]"
                         style={{
                           background: MAIN_AUX_BG,
-                          color: '#6B7280',
+                          color: '#0F172A',
                           borderRight: borderStyle,
                           borderBottom: borderStyle,
                         }}
                       >
-                        {!aff ? (
-                          '–'
-                        ) : /^https?:\/\//i.test(aff) ? (
-                          <a
-                            href={aff}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#2563EB] hover:underline whitespace-nowrap"
-                            title={aff}
-                          >
-                            link
-                          </a>
-                        ) : (
-                          <span className="text-[#0F172A] whitespace-nowrap" title={aff}>{aff}</span>
-                        )}
+                        <EditableCell
+                          value={aff}
+                          inputClassName="text-left"
+                          renderDisplay={(v) => <AffDisplay value={v} />}
+                          onSave={(next) => onEditCell(
+                            snapshot.id,
+                            { keyword: label, domain: mainDomain, country: c },
+                            { affiliateUrl: next },
+                          )}
+                        />
                       </td>
                     </Fragment>
                   )
@@ -855,5 +873,37 @@ function SnapshotMatrix({
         </table>
       </div>
     </div>
+  )
+}
+
+// ─── AffDisplay — hostname-only AFF render with click-through link ───────────
+//
+// Affiliate cells hold either a URL or a short label ("Lucky7even Casino").
+// Render hostname for URLs (keeps the column narrow) and full text for
+// non-URLs. The whole cell is wrapped in an EditableCell so click → edit;
+// the small ↗ icon opens the URL in a new tab without triggering edit.
+
+function AffDisplay({ value }: { value: string }) {
+  const isUrl = /^https?:\/\//i.test(value)
+  let hostname = value
+  if (isUrl) {
+    try { hostname = new URL(value).hostname.replace(/^www\./, '') } catch { hostname = value }
+  }
+  return (
+    <span className="inline-flex items-center gap-1 max-w-full" title={value}>
+      <span className="truncate text-[#0F172A]">{hostname}</span>
+      {isUrl && (
+        <a
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-[#2563EB] hover:underline shrink-0"
+          aria-label="Open affiliate link in new tab"
+        >
+          ↗
+        </a>
+      )}
+    </span>
   )
 }

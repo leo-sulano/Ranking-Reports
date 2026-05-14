@@ -1,13 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
-import type { AppState, RROutletContext, RankingRecord, Snapshot } from './types'
+import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
 import { DOMAIN_TO_BRAND } from './lib/brands'
 import {
   countBrands, formatDisplayDate, applyCarryForward,
 } from './lib/parser'
-import { loadSnapshots, upsertSnapshot, deleteSnapshot } from './lib/storage'
+import { loadSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields } from './lib/storage'
 
 import { Sidebar }       from './components/Sidebar'
 import { Topbar }        from './components/Topbar'
@@ -57,9 +57,8 @@ function Layout() {
     loadSnapshots()
       .then((snaps) => {
         if (cancelled) return
-        // Mutate records in place so GSV / SV / AFF inherit from the most
-        // recent prior snapshot when a newer one leaves them blank.
-        applyCarryForward(snaps)
+        // Store the RAW snapshots — carry-forward is applied in a useMemo
+        // derived from this state, so edits can re-propagate downstream.
         setState((s) => ({
           ...s,
           snapshots:        snaps,
@@ -76,10 +75,17 @@ function Layout() {
     return () => { cancelled = true }
   }, [addToast])
 
+  // Derived view: snapshots with GSV / SV / AFF carry-forward applied. Kept
+  // separate from raw state so live edits re-propagate downstream.
+  const viewSnapshots: Snapshot[] = useMemo(
+    () => applyCarryForward(state.snapshots),
+    [state.snapshots],
+  )
+
   const activeSnapshot: Snapshot | undefined = useMemo(() => {
-    if (!state.snapshots.length) return undefined
-    return state.snapshots.find((s) => s.id === state.activeSnapshotId) ?? state.snapshots[0]
-  }, [state.snapshots, state.activeSnapshotId])
+    if (!viewSnapshots.length) return undefined
+    return viewSnapshots.find((s) => s.id === state.activeSnapshotId) ?? viewSnapshots[0]
+  }, [viewSnapshots, state.activeSnapshotId])
 
   // ── Import ────────────────────────────────────────────────────────────────
 
@@ -110,9 +116,7 @@ function Layout() {
       const next = [newSnap, ...filtered].sort((a, b) =>
         (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0),
       )
-      // Re-run sticky carry-forward so a new partial-data upload inherits
-      // GSV / SV / AFF from prior snapshots in the same category.
-      applyCarryForward(next)
+      // Carry-forward is applied in the derived useMemo; state stays raw.
       return {
         ...s,
         snapshots:        next,
@@ -204,6 +208,41 @@ function Layout() {
     reportUnknownDomains(unknownDomains)
   }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains])
 
+  // ── Inline-edit GSV / SV / AFF ────────────────────────────────────────────
+  const handleEditCell = useCallback(async (
+    snapshotId: string,
+    matcher:    EditCellMatcher,
+    patch:      EditCellPatch,
+  ) => {
+    try {
+      await updateRecordFields(snapshotId, matcher, patch)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      addToast(`Edit failed: ${msg}`, 'error')
+      return
+    }
+    setState((s) => {
+      const next = s.snapshots.map((snap) => {
+        if (snap.id !== snapshotId) return snap
+        const records = snap.records.map((r) => {
+          if (matcher.keyword && r.keyword !== matcher.keyword) return r
+          if (matcher.domain  && r.domain  !== matcher.domain)  return r
+          if (matcher.country && r.country !== matcher.country) return r
+          const np: RankingRecord = { ...r }
+          if ('searchVolume'       in patch) np.searchVolume       = patch.searchVolume       ?? ''
+          if ('affiliateUrl'       in patch) np.affiliateUrl       = patch.affiliateUrl       ?? ''
+          if ('globalSearchVolume' in patch) np.globalSearchVolume = patch.globalSearchVolume ?? ''
+          return np
+        })
+        return { ...snap, records }
+      })
+      // Carry-forward is applied in the derived useMemo. The raw state only
+      // reflects the edited snapshot; downstream propagation happens in the
+      // view layer.
+      return { ...s, snapshots: next }
+    })
+  }, [addToast])
+
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
     if (!snap) return
@@ -256,13 +295,14 @@ function Layout() {
     : ['Ranking Reports', 'Command center · Rooster Partners']
 
   const rrContext: RROutletContext = {
-    snapshots:         state.snapshots,
+    snapshots:         viewSnapshots,
     activeSnapshotId:  state.activeSnapshotId,
     onSelectSnapshot:  selectSnapshot,
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
     bpFilterBrand,
     onSelectBPBrand:   setBPFilterBrand,
+    onEditCell:        handleEditCell,
   }
 
   if (loading) {
