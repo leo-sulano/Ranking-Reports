@@ -822,7 +822,7 @@ function SnapshotMatrix({
                         />
                       </td>
                       <td
-                        className="px-1 py-1 text-center text-[11px] w-[110px] max-w-[110px]"
+                        className="px-1 py-1 text-center text-[11px] w-[60px] max-w-[60px]"
                         style={{
                           background: MAIN_AUX_BG,
                           color: '#0F172A',
