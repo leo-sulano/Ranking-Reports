@@ -1,10 +1,11 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { Brand, RankingRecord, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { parsePosition, parseChange } from '../lib/parser'
+import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
@@ -197,12 +198,20 @@ function BrandView({
     [snapshots, brandDomainSet],
   )
 
-  // Most recent snapshot drives the StatsRow and the keyword/site count chip
+  // Most recent snapshot drives the keyword/site count chip
   const latestSnap = brandSnapshots[0] ?? null
 
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
   const [kwFilter, setKwFilter] = useState('')
+
+  // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
+  // selected snapshot id.
+  const [statsFilter, setStatsFilter] = useState<string>('all')
+  const statsSnap = useMemo(() => {
+    if (statsFilter === 'all') return latestSnap
+    return brandSnapshots.find((s) => s.id === statsFilter) ?? latestSnap
+  }, [statsFilter, brandSnapshots, latestSnap])
 
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
@@ -211,9 +220,9 @@ function BrandView({
     })
   }
 
-  // Stats for the latest snapshot
+  // Stats for the selected stats-date snapshot
   const stats = useMemo(() => {
-    const recs = latestSnap?.records ?? []
+    const recs = statsSnap?.records ?? []
     return {
       total:      recs.length,
       top3:       recs.filter((r) => { const p = parsePosition(r.position); return typeof p === 'number' && p <= 3 }).length,
@@ -221,7 +230,7 @@ function BrandView({
       dropped:    recs.filter((r) => (parseChange(r.change) ?? 0) < 0).length,
       notRanking: recs.filter((r) => parsePosition(r.position) === 'NR').length,
     }
-  }, [latestSnap])
+  }, [statsSnap])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
@@ -254,6 +263,16 @@ function BrandView({
         </button>
 
         <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
+
+        {brandSnapshots.length > 0 && (
+          <div className="ml-auto">
+            <StatsDateFilter
+              value={statsFilter}
+              snapshots={brandSnapshots}
+              onChange={setStatsFilter}
+            />
+          </div>
+        )}
       </div>
 
       {brandSnapshots.length === 0 ? (
@@ -340,6 +359,114 @@ function BrandView({
         </>
       )}
     </>
+  )
+}
+
+// ─── StatsDateFilter — small dropdown that scopes the StatsRow to a date ─────
+
+function StatsDateFilter({
+  value,
+  snapshots,
+  onChange,
+}: {
+  value: string                 // 'all' or snapshot id
+  snapshots: Snapshot[]         // already filtered to brand snapshots (newest first)
+  onChange: (next: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const selected = snapshots.find((s) => s.id === value)
+  const label = value === 'all'
+    ? `All${snapshots[0] ? ` · latest ${snapshots[0].displayDate}` : ''}`
+    : (selected?.displayDate ?? 'Unknown date')
+
+  return (
+    <div ref={ref} className="relative">
+      <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
+        Stats date
+      </span>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] outline-none transition-colors ${
+          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        }`}
+      >
+        <CalendarDays size={13} strokeWidth={2.25} className="text-[#64748B] shrink-0" />
+        <span className="font-medium">{label}</span>
+        <ChevronDown
+          size={13}
+          strokeWidth={2.25}
+          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]"
+        >
+          <DateOption
+            label="All (latest)"
+            selected={value === 'all'}
+            onClick={() => { onChange('all'); setOpen(false) }}
+          />
+          {snapshots.length > 0 && (
+            <div className="border-t border-[#E2E8F0]" />
+          )}
+          {snapshots.map((s) => (
+            <DateOption
+              key={s.id}
+              label={s.displayDate}
+              selected={value === s.id}
+              onClick={() => { onChange(s.id); setOpen(false) }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DateOption({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
+        selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+      }`}
+    >
+      <span className="font-medium">{label}</span>
+      {selected && <Check size={13} strokeWidth={2.5} />}
+    </button>
   )
 }
 
