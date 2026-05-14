@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { parsePosition, parseChange } from '../lib/parser'
-import { ChevronDown, Check, CalendarDays } from 'lucide-react'
+import { ChevronDown, Check, CalendarDays, Search } from 'lucide-react'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
@@ -374,7 +374,9 @@ function StatsDateFilter({
   onChange: (next: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -390,10 +392,25 @@ function StatsDateFilter({
     }
   }, [open])
 
+  // Reset query when closed; auto-focus the search input when opened
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => searchRef.current?.focus(), 0)
+    } else {
+      setQuery('')
+    }
+  }, [open])
+
   const selected = snapshots.find((s) => s.id === value)
   const label = value === 'all'
     ? `All${snapshots[0] ? ` · latest ${snapshots[0].displayDate}` : ''}`
     : (selected?.displayDate ?? 'Unknown date')
+
+  const q = query.trim().toLowerCase()
+  const filteredSnapshots = q
+    ? snapshots.filter((s) => s.displayDate.toLowerCase().includes(q) || s.rawDate.toLowerCase().includes(q))
+    : snapshots
+  const showAllOption = !q || 'all (latest)'.includes(q) || 'latest'.includes(q)
 
   return (
     <div ref={ref} className="relative">
@@ -421,24 +438,51 @@ function StatsDateFilter({
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]"
+          className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
-          <DateOption
-            label="All (latest)"
-            selected={value === 'all'}
-            onClick={() => { onChange('all'); setOpen(false) }}
-          />
-          {snapshots.length > 0 && (
-            <div className="border-t border-[#E2E8F0]" />
-          )}
-          {snapshots.map((s) => (
-            <DateOption
-              key={s.id}
-              label={s.displayDate}
-              selected={value === s.id}
-              onClick={() => { onChange(s.id); setOpen(false) }}
+          {/* Search */}
+          <div className="relative border-b border-[#E2E8F0]">
+            <Search
+              size={12}
+              strokeWidth={2.25}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none"
             />
-          ))}
+            <input
+              ref={searchRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search dates…"
+              className="w-full pl-7 pr-2.5 py-2 text-[12px] text-[#0F172A] placeholder:text-[#94A3B8] outline-none"
+            />
+          </div>
+
+          {/* Options (scrollable when many) */}
+          <div className="max-h-[260px] overflow-y-auto">
+            {showAllOption && (
+              <DateOption
+                label="All (latest)"
+                selected={value === 'all'}
+                onClick={() => { onChange('all'); setOpen(false) }}
+              />
+            )}
+            {showAllOption && filteredSnapshots.length > 0 && (
+              <div className="border-t border-[#E2E8F0]" />
+            )}
+            {filteredSnapshots.map((s) => (
+              <DateOption
+                key={s.id}
+                label={s.displayDate}
+                selected={value === s.id}
+                onClick={() => { onChange(s.id); setOpen(false) }}
+              />
+            ))}
+            {!showAllOption && filteredSnapshots.length === 0 && (
+              <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">
+                No dates match “{query}”.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

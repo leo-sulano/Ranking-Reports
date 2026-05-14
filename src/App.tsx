@@ -243,7 +243,6 @@ function Layout() {
         <Topbar
           brandName={topbarTitle}
           domain={topbarDomain}
-          uploadDate={activeSnapshot?.displayDate ?? null}
         />
 
         <Outlet context={rrContext} />
