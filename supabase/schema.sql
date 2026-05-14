@@ -31,13 +31,15 @@ create table if not exists public.ranking_records (
   previous       text not null default '',
   change         text not null default '',
   date           text not null default '',
-  search_volume  text not null default '',    -- e.g. "6.3K" — only set by matrix-format uploads
-  affiliate_url  text not null default ''
+  search_volume         text not null default '',  -- per-(domain, country) SV — e.g. "6.3K"
+  affiliate_url         text not null default '',
+  global_search_volume  text not null default ''   -- per-keyword GSV — denormalized onto every record for the keyword
 );
 
 -- Backfill ALTER for existing tables (idempotent — Postgres ignores duplicates).
 alter table public.ranking_records add column if not exists search_volume text not null default '';
 alter table public.ranking_records add column if not exists affiliate_url text not null default '';
+alter table public.ranking_records add column if not exists global_search_volume text not null default '';
 
 create index if not exists ranking_records_snapshot_idx
   on public.ranking_records (snapshot_id);

@@ -9,9 +9,10 @@ export interface RankingRecord {
   change: string
   date: string
   // Optional — captured from the legacy matrix-format upload (per-brand sheets
-  // with stacked dates). The flat-format upload leaves both blank.
-  searchVolume?: string
-  affiliateUrl?: string
+  // with stacked dates). The flat-format upload leaves them blank.
+  searchVolume?: string         // per-(domain, country) search volume
+  affiliateUrl?: string         // per-(domain, country) affiliate link
+  globalSearchVolume?: string   // per-keyword GSV — same value on every record for the keyword in the snapshot
 }
 
 export interface Snapshot {

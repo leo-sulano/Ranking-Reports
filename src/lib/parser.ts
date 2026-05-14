@@ -299,7 +299,7 @@ function parseMatrixWorkbook(
   const upsertRecord = (
     rawDate: string,
     rec: RankingRecord,
-    patch: Partial<Pick<RankingRecord, 'position' | 'previous' | 'change' | 'searchVolume' | 'affiliateUrl'>>,
+    patch: Partial<Pick<RankingRecord, 'position' | 'previous' | 'change' | 'searchVolume' | 'affiliateUrl' | 'globalSearchVolume'>>,
   ) => {
     let bucket = byDate.get(rawDate)
     if (!bucket) { bucket = new Map(); byDate.set(rawDate, bucket) }
@@ -310,6 +310,18 @@ function parseMatrixWorkbook(
     } else {
       bucket.set(k, { ...rec, ...patch })
     }
+  }
+
+  // GSV is per-keyword (col 2). Stamp it on every record for the keyword in
+  // this snapshot at the end of each section.
+  const stampGsv = (rawDate: string, keyword: string, gsv: string) => {
+    if (!gsv) return
+    const bucket = byDate.get(rawDate)
+    if (!bucket) return
+    const kwLc = keyword.toLowerCase()
+    bucket.forEach((rec) => {
+      if (rec.keyword.toLowerCase() === kwLc) rec.globalSearchVolume = gsv
+    })
   }
 
   for (const sheetName of matrixSheetNames) {
@@ -380,6 +392,9 @@ function parseMatrixWorkbook(
         const kwLc = keyword.toLowerCase()
         if (kwLc === 'country' || kwLc === 'domain' || kwLc === 'keyword') continue
 
+        // Capture global search volume from col 2 (always 'GSV' in row 0).
+        const gsvCell = String(row?.[2] ?? '').trim()
+
         // Walk the column map and apply each cell's value to its
         // (domain, country, keyword) record.
         colMap.forEach((role, c) => {
@@ -400,16 +415,23 @@ function parseMatrixWorkbook(
           if (role.type === 'POS') {
             const parsed = parseMatrixPositionCell(cell)
             upsertRecord(rawDate, base, {
-              position: parsed.position,
-              previous: parsed.previous,
-              change:   parsed.change,
+              position:           parsed.position,
+              previous:           parsed.previous,
+              change:             parsed.change,
+              globalSearchVolume: gsvCell,
             })
           } else if (role.type === 'SV') {
-            upsertRecord(rawDate, base, { searchVolume: cell })
+            upsertRecord(rawDate, base, { searchVolume: cell, globalSearchVolume: gsvCell })
           } else if (role.type === 'AFF') {
-            upsertRecord(rawDate, base, { affiliateUrl: cell })
+            upsertRecord(rawDate, base, { affiliateUrl: cell, globalSearchVolume: gsvCell })
           }
         })
+
+        // Records for keywords that only appeared in BP-domain columns won't
+        // have GSV stamped on them via the patch above (BP-block cells live in
+        // POS-only columns, which fall through here too — so we'd stamp them).
+        // Belt-and-braces: stamp every record for this keyword in this snapshot.
+        if (gsvCell) stampGsv(rawDate, keyword, gsvCell)
       }
     }
   }

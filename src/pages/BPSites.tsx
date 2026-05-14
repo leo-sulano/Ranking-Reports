@@ -576,6 +576,16 @@ function SnapshotMatrix({
     return map
   }, [snapshot])
 
+  // keyword → GSV (denormalized on every record; just pick the first non-empty).
+  const gsvByKw = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const r of snapshot.records) {
+      const kl = r.keyword.toLowerCase()
+      if (!m[kl] && r.globalSearchVolume) m[kl] = r.globalSearchVolume
+    }
+    return m
+  }, [snapshot])
+
   return (
     <div
       className="bg-white rounded-[6px] overflow-hidden text-black shrink-0"
@@ -753,17 +763,19 @@ function SnapshotMatrix({
                   className="px-2 py-1.5 text-center align-middle text-[11px] "
                   style={{
                     background: MAIN_AUX_BG,
-                    color: '#6B7280',
+                    color: gsvByKw[kw] ? '#0F172A' : '#6B7280',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
                   }}
                 >
-                  –
+                  {gsvByKw[kw] || '–'}
                 </td>
 
                 {/* MAIN — per-country triplets (country / SV / AFF) */}
                 {visibleCountries.map((c, ci) => {
                   const rec = lookup?.[kw]?.[mainDomain]?.[c]
+                  const sv  = rec?.searchVolume
+                  const aff = rec?.affiliateUrl
                   return (
                     <Fragment key={`main-cell-${kw}-${c}`}>
                       <td
@@ -780,11 +792,11 @@ function SnapshotMatrix({
                         className="px-2 py-1.5 text-center text-[11px] "
                         style={{
                           background: MAIN_AUX_BG,
-                          color: '#6B7280',
+                          color: sv ? '#0F172A' : '#6B7280',
                           borderBottom: borderStyle,
                         }}
                       >
-                        –
+                        {sv || '–'}
                       </td>
                       <td
                         className="px-2 py-1.5 text-center text-[11px] "
@@ -795,7 +807,21 @@ function SnapshotMatrix({
                           borderBottom: borderStyle,
                         }}
                       >
-                        –
+                        {!aff ? (
+                          '–'
+                        ) : /^https?:\/\//i.test(aff) ? (
+                          <a
+                            href={aff}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#2563EB] hover:underline whitespace-nowrap"
+                            title={aff}
+                          >
+                            link
+                          </a>
+                        ) : (
+                          <span className="text-[#0F172A] whitespace-nowrap" title={aff}>{aff}</span>
+                        )}
                       </td>
                     </Fragment>
                   )
