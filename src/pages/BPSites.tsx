@@ -341,9 +341,14 @@ function BrandView({
             </div>
           </div>
 
-          {/* Stacked matrices — one table per uploaded date, newest first */}
+          {/* Stacked matrices — one table per uploaded date, newest first.
+              When the Stats date filter picks a specific date, narrow the
+              tables to that one date too. */}
           <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
-            {brandSnapshots.map((snap) => (
+            {(statsFilter === 'all'
+              ? brandSnapshots
+              : brandSnapshots.filter((s) => s.id === statsFilter)
+            ).map((snap) => (
               <SnapshotMatrix
                 key={snap.id}
                 snapshot={snap}
