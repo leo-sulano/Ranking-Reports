@@ -24,12 +24,22 @@ const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR'
   { label: 'NR', key: 'nr',  test: (p) => p === 'NR',                 tier: 'nr'    },
 ]
 
-const TIER_COLOR: Record<'p1' | 'top3' | 'top10' | 'page2' | 'nr', string> = {
-  p1:     '#0F172A',
-  top3:   '#FBBF24',
-  top10:  '#10B981',
-  page2:  '#3B82F6',
-  nr:     '#94A3B8',
+// Per-position gradient: best (green) → worst (gray). One stop per bucket so
+// the bar fill smoothly steps from emerald to red across positions 1-10, then
+// deepens for 11–100 and desaturates to slate for NR.
+const POSITION_COLOR: Record<string, string> = {
+  p1:    '#10B981', // emerald
+  p2:    '#34D399',
+  p3:    '#84CC16', // lime
+  p4:    '#BEF264',
+  p5:    '#FACC15', // yellow
+  p6:    '#F59E0B', // amber
+  p7:    '#FB923C',
+  p8:    '#F97316', // orange
+  p9:    '#EF4444',
+  p10:   '#DC2626', // red
+  page2: '#991B1B', // deep red
+  nr:    '#64748B', // slate
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -293,8 +303,8 @@ export function Home() {
                         className="absolute bottom-0 left-0 right-0 rounded-sm"
                         style={{
                           height: `${Math.max(b.pct * 100, b.count > 0 ? 4 : 0)}%`,
-                          background: `linear-gradient(180deg, ${TIER_COLOR[b.tier]}, ${TIER_COLOR[b.tier]}88)`,
-                          boxShadow: `0 0 12px ${TIER_COLOR[b.tier]}40, inset 0 1px 0 ${TIER_COLOR[b.tier]}cc`,
+                          background: `linear-gradient(180deg, ${POSITION_COLOR[b.key]}, ${POSITION_COLOR[b.key]}88)`,
+                          boxShadow: `0 0 12px ${POSITION_COLOR[b.key]}40, inset 0 1px 0 ${POSITION_COLOR[b.key]}cc`,
                         }}
                       />
                       <div
