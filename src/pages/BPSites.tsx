@@ -31,6 +31,21 @@ const HEADER_FG     = '#000000'   // black reads better on the softer pastel hea
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
 
+// Grid-only color overrides — sampled from each brand's logo so the cards on
+// the BP Sites overview match brand identity. Scoped here intentionally; the
+// global brand.color (used by Home stats, badges, etc.) is unchanged.
+const GRID_BRAND_COLORS: Record<string, string> = {
+  'Lucky 7even': '#C026D3', // magenta from "Lucky" lettering
+  'RoosterBet':  '#DC2626', // red accent
+  'LuckyVibe':   '#0F766E', // dark teal gradient
+  'SpinsUp':     '#EC4899', // neon pink
+  'Spinjo':      '#1E40AF', // royal blue
+  'FortunePLay': '#CA8A04', // gold on dark
+  'RocketSpin':  '#1F2937', // black w/ red star (using the black)
+  'PlayMojo':    '#38BDF8', // light sky blue
+  'Rollero':     '#B8860B', // dark gold/crown
+}
+
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
@@ -75,6 +90,7 @@ function BrandGrid({
           const hasData = snapshots.some((s) =>
             s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
           )
+          const c = GRID_BRAND_COLORS[brand.name] ?? brand.color
 
           return (
             <button
@@ -83,12 +99,12 @@ function BrandGrid({
               className="bg-white border border-[#E2E8F0] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#CBD5E1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: brand.color }} />
+              <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: c }} />
 
               <div className="flex items-center gap-3 mb-4">
                 <div
-                  className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-black shrink-0"
-                  style={{ background: brand.color }}
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-white shrink-0"
+                  style={{ background: c }}
                 >
                   {brand.abbr}
                 </div>
@@ -98,7 +114,7 @@ function BrandGrid({
                 {hasData && (
                   <span
                     className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: brand.color + '20', color: brand.color }}
+                    style={{ background: c + '20', color: c }}
                   >
                     Data
                   </span>
@@ -111,12 +127,12 @@ function BrandGrid({
                     key={d}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border"
                     style={{
-                      borderColor: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '60' : '#E2E8F0',
-                      background: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color + '14' : '#F8FAFC',
+                      borderColor: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c + '60' : '#E2E8F0',
+                      background: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c + '14' : '#F8FAFC',
                     }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? brand.color : '#94A3B8', flexShrink: 0 }}>
+                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c : '#94A3B8', flexShrink: 0 }}>
                       <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
@@ -129,7 +145,7 @@ function BrandGrid({
                     {d.toLowerCase() === brand.mainDomain.toLowerCase() && (
                       <span
                         className="ml-auto text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
-                        style={{ background: brand.color + '30', color: brand.color }}
+                        style={{ background: c + '30', color: c }}
                       >
                         MAIN
                       </span>
