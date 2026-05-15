@@ -235,17 +235,18 @@ export function parseChange(chg: string): number | null {
 }
 
 // Aggregate counts shown in the StatsRow at the top of BP / LP brand views.
-// Classification must match what PosBadge actually paints in each cell so the
-// counters never disagree with the visual:
-//   NR       → position === 'NR'           (badge: "Not in top 100", dim)
-//   IMPROVED → change   >  0               (badge: green up-arrow)
-//   DROPPED  → change   <  0               (badge: red down-arrow)
-//   TOP 3    → position <= 3 AND change=0  (badge: bare position, no arrow)
-//   UNCHANGED → everything else
-//
-// IMPROVED / DROPPED win over TOP 3 because a position-1 record that just
-// moved up still shows a green arrow — counting it as TOP 3 would visibly
-// mis-match the cell color.
+// Two layers:
+//   • Movement classification (mutually exclusive, sums to total):
+//       NR        → position === 'NR'       (badge: "Not in top 100", dim)
+//       IMPROVED  → change   >  0           (badge: green up-arrow)
+//       DROPPED   → change   <  0           (badge: red down-arrow)
+//       UNCHANGED → everything else         (bare position, no arrow)
+//     IMPROVED / DROPPED are driven by change sign so the counters track
+//     exactly what PosBadge paints — a top-3 record that moved up still
+//     reads green and still counts as IMPROVED.
+//   • Top 3 (overlap, not exclusive): every record currently at position
+//     1 / 2 / 3, regardless of movement. Overlaps with IMPROVED / DROPPED
+//     / UNCHANGED, so the five cards no longer sum to total — by design.
 export interface StatsCounts {
   total:      number
   top3:       number
@@ -260,11 +261,16 @@ export function computeStats(records: RankingRecord[]): StatsCounts {
   for (const r of records) {
     const p = parsePosition(r.position)
     const d = parseChange(r.change) ?? 0
-    if (p === 'NR')                              notRanking++
-    else if (d > 0)                              improved++
-    else if (d < 0)                              dropped++
-    else if (typeof p === 'number' && p <= 3)    top3++
-    else                                         unchanged++
+
+    // Movement bucket — exclusive.
+    if (p === 'NR')      notRanking++
+    else if (d > 0)      improved++
+    else if (d < 0)      dropped++
+    else                 unchanged++
+
+    // Top 3 overlap — every currently-ranked record at position 1/2/3,
+    // even if it also moved up or down in this snapshot.
+    if (typeof p === 'number' && p <= 3) top3++
   }
   return { total: records.length, top3, improved, dropped, notRanking, unchanged }
 }
