@@ -52,14 +52,20 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
     if (page.length < PAGE) break
   }
 
-  const byId = new Map<string, RankingRecord[]>()
+  // Group records by snapshot, deduping any rows that share
+  // (snapshot_id, domain, keyword, country). Defensive guard for the case
+  // where prior uploads left orphans behind because the FK CASCADE wasn't
+  // doing its job — without this, stats counters read 2x (or more) what's
+  // actually rendered in the matrix.
+  const byId = new Map<string, Map<string, RankingRecord>>()
   for (const r of allRecords) {
-    let list = byId.get(r.snapshot_id)
-    if (!list) {
-      list = []
-      byId.set(r.snapshot_id, list)
+    let bucket = byId.get(r.snapshot_id)
+    if (!bucket) {
+      bucket = new Map()
+      byId.set(r.snapshot_id, bucket)
     }
-    list.push({
+    const key = `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
+    bucket.set(key, {
       domain:             r.domain,
       keyword:            r.keyword,
       country:            r.country,
@@ -80,17 +86,27 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
     // Re-format on read so display matches the current formatter even for
     // older rows whose stored display_date used a previous format.
     displayDate: formatDisplayDate(s.raw_date),
-    records:     byId.get(s.id) ?? [],
+    records:     Array.from(byId.get(s.id)?.values() ?? []),
   }))
 }
 
 /**
- * Wipe-and-replace upsert for a single snapshot. Cascades delete the prior
- * snapshot's records (via FK ON DELETE CASCADE) before inserting fresh.
+ * Wipe-and-replace upsert for a single snapshot. Explicitly clears the child
+ * ranking_records rows first instead of relying on FK ON DELETE CASCADE — if
+ * the cascade isn't actually configured on the table, deleting just the
+ * snapshot leaves orphan rows behind and the next insert silently doubles
+ * the data on every re-upload. Doing it explicitly is idempotent and safe
+ * regardless of how the FK is set up.
  *
  * Records are batched in 500-row chunks to stay well under PostgREST limits.
  */
 export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
+  const { error: eDelRecs } = await supabase
+    .from('ranking_records')
+    .delete()
+    .eq('snapshot_id', snapshot.id)
+  if (eDelRecs) throw eDelRecs
+
   const { error: eDel } = await supabase.from('snapshots').delete().eq('id', snapshot.id)
   if (eDel) throw eDel
 
