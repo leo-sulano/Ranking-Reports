@@ -4,7 +4,7 @@ import type { Brand, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
-import { parsePosition, parseChange } from '../lib/parser'
+import { computeStats } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
@@ -200,21 +200,12 @@ function BrandView({
   }
 
   // Stats for the selected stats-date snapshot. All LP records count toward
-  // the totals (no MAIN exclusion for LP).
-  const stats = useMemo(() => {
-    const recs = statsSnap?.records ?? []
-    let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
-    for (const r of recs) {
-      const p = parsePosition(r.position)
-      const d = parseChange(r.change) ?? 0
-      if (p === 'NR') notRanking++
-      else if (typeof p === 'number' && p <= 3) top3++
-      else if (d > 0) improved++
-      else if (d < 0) dropped++
-      else unchanged++
-    }
-    return { total: recs.length, top3, improved, dropped, notRanking, unchanged }
-  }, [statsSnap])
+  // the totals (no MAIN exclusion for LP). Classification lives in
+  // computeStats so counters stay in lockstep with PosBadge cell coloring.
+  const stats = useMemo(
+    () => computeStats(statsSnap?.records ?? []),
+    [statsSnap],
+  )
 
   const latestKeywordCount = useMemo(() => {
     if (!latestSnap) return 0

@@ -234,6 +234,41 @@ export function parseChange(chg: string): number | null {
   return isNaN(n) ? null : n
 }
 
+// Aggregate counts shown in the StatsRow at the top of BP / LP brand views.
+// Classification must match what PosBadge actually paints in each cell so the
+// counters never disagree with the visual:
+//   NR       → position === 'NR'           (badge: "Not in top 100", dim)
+//   IMPROVED → change   >  0               (badge: green up-arrow)
+//   DROPPED  → change   <  0               (badge: red down-arrow)
+//   TOP 3    → position <= 3 AND change=0  (badge: bare position, no arrow)
+//   UNCHANGED → everything else
+//
+// IMPROVED / DROPPED win over TOP 3 because a position-1 record that just
+// moved up still shows a green arrow — counting it as TOP 3 would visibly
+// mis-match the cell color.
+export interface StatsCounts {
+  total:      number
+  top3:       number
+  improved:   number
+  dropped:    number
+  notRanking: number
+  unchanged:  number
+}
+
+export function computeStats(records: RankingRecord[]): StatsCounts {
+  let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
+  for (const r of records) {
+    const p = parsePosition(r.position)
+    const d = parseChange(r.change) ?? 0
+    if (p === 'NR')                              notRanking++
+    else if (d > 0)                              improved++
+    else if (d < 0)                              dropped++
+    else if (typeof p === 'number' && p <= 3)    top3++
+    else                                         unchanged++
+  }
+  return { total: records.length, top3, improved, dropped, notRanking, unchanged }
+}
+
 export function countBrands(records: RankingRecord[], domainMap: Record<string, string>): number {
   const brands = new Set(records.map((r) => domainMap[r.domain.toLowerCase()]).filter(Boolean))
   return brands.size

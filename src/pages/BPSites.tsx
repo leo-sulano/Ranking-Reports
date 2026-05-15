@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { EditableCell } from '../components/EditableCell'
-import { parsePosition, parseChange } from '../lib/parser'
+import { computeStats } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -232,25 +232,14 @@ function BrandView({
     })
   }
 
-  // Stats for the selected stats-date snapshot.
-  // Counts BP-site rows only (MAIN domain excluded) and uses a mutually
-  // exclusive classification so the five breakdown cards sum to total:
-  //   NR > TOP 3 > IMPROVED > DROPPED > UNCHANGED
+  // Stats for the selected stats-date snapshot. Restricted to BP-site rows
+  // (MAIN excluded). Classification lives in computeStats — keeps counters
+  // in lockstep with the PosBadge cell coloring.
   const stats = useMemo(() => {
     const all = statsSnap?.records ?? []
     const bpSet = new Set(bpDomains.map((d) => d.toLowerCase()))
     const recs = all.filter((r) => bpSet.has(r.domain.toLowerCase()))
-    let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
-    for (const r of recs) {
-      const p = parsePosition(r.position)
-      const d = parseChange(r.change) ?? 0
-      if (p === 'NR') notRanking++
-      else if (typeof p === 'number' && p <= 3) top3++
-      else if (d > 0) improved++
-      else if (d < 0) dropped++
-      else unchanged++
-    }
-    return { total: recs.length, top3, improved, dropped, notRanking, unchanged }
+    return computeStats(recs)
   }, [statsSnap, bpDomains])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
