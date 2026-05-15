@@ -405,10 +405,14 @@ function parseMatrixDate(raw: string): string {
   return `${yy.toString().padStart(4, '0')}-${mm.toString().padStart(2, '0')}-${dd.toString().padStart(2, '0')}`
 }
 
-// Parse a position cell that may carry change info: "4 ⇓ (1)", "3 ⇑ (7)",
+// Parse a position cell that may carry change info: "4 ⇓ (1)", "3 ⇑ (6)",
 // or a bare value like "1" / "Not in top 100".
-// ⇑ = ranking improved (current pos lower number, previous was higher);
-// ⇓ = ranking dropped  (current pos higher number, previous was lower).
+//
+// AHREFs convention: the parenthesised number is the PREVIOUS position,
+// NOT a delta. So "3 ⇑ (6)" reads as "now at 3, was at 6 — improved by 3
+// spots". The signed change is derived from the actual delta:
+//   ⇑ improved → +(prev − curr) > 0
+//   ⇓ dropped  → −(curr − prev) < 0
 function parseMatrixPositionCell(cell: string): { position: string; change: string; previous: string } {
   const s = cell.trim()
   if (!s) return { position: '', change: '', previous: '' }
@@ -418,13 +422,13 @@ function parseMatrixPositionCell(cell: string): { position: string; change: stri
 
   const posPart = m[1].trim()
   const arrow   = m[2]
-  const delta   = parseInt(m[3], 10)
-  const signed  = (arrow === '⇑' || arrow === '↑') ? delta : -delta
+  const prevNum = parseInt(m[3], 10)
   const posNum  = parseInt(posPart, 10)
-  // previous = current + signedDelta (works for both arrows; see derivation
-  // in the parser doc — for ⇓ signed is negative, so previous < current).
-  const previous = !isNaN(posNum) ? `${posNum + signed}` : ''
-  return { position: posPart, change: `${signed}`, previous }
+  if (isNaN(posNum) || isNaN(prevNum)) {
+    return { position: posPart, change: '', previous: '' }
+  }
+  const signed = (arrow === '⇑' || arrow === '↑') ? (prevNum - posNum) : -(posNum - prevNum)
+  return { position: posPart, change: `${signed}`, previous: `${prevNum}` }
 }
 
 function parseMatrixWorkbook(
