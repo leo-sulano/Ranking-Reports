@@ -1,4 +1,4 @@
-import { parsePosition, parseChange } from '../lib/parser'
+import { parsePosition } from '../lib/parser'
 import type { RankingRecord } from '../types'
 
 interface Props {
@@ -6,20 +6,18 @@ interface Props {
 }
 
 /**
- * Renders a ranking position in the canonical dashboard format:
- *   improved  →  "1 ↑ (2)"   in green
- *   dropped   →  "7 ↓ (3)"   in red
- *   no change →  "5"          in current text color (black on white, light on dark)
- *   not ranked → "Not in top 100"  dimmed
- *   no data   →  "–"            dimmed
+ * Renders the ranking position exactly as it appears in the source file:
+ *   "3 ⇑ (6)"        in green       (BP matrix — parens hold previous pos)
+ *   "12 ⇓ 10"        in red         (LP matrix — trailing number is prev pos)
+ *   "5"              inherits color (no movement)
+ *   "Not in top 100" dimmed
+ *   "–"              dimmed         (no data)
  *
- * Uses `currentColor` for the no-change case so the badge inherits the
- * surrounding table's text color — looks correct on both white and dark
- * backgrounds.
+ * No tooltip, no delta computation — the cell mirrors the upload verbatim
+ * so what you see in the dashboard is what the export contained.
  */
 export function PosBadge({ record }: Props) {
   const pos = parsePosition(record.position)
-  const chg = parseChange(record.change)
 
   if (pos === null) {
     return <span className="text-[11px] opacity-30">–</span>
@@ -29,26 +27,34 @@ export function PosBadge({ record }: Props) {
     return <span className="text-[10px] whitespace-nowrap">Not in top 100</span>
   }
 
-  const isUp   = chg !== null && chg > 0
-  const isDown = chg !== null && chg < 0
-  const color  = isUp   ? '#15803D'    // green-700
-               : isDown ? '#B91C1C'    // red-700
-               : undefined             // inherit (black on white, light on dark)
+  const change = record.change ?? ''
+  const isUp   = /[⇑↑]/.test(change) || /^\s*\+?\d+\s*$/.test(change)        // legacy: "+3" / "3" → green
+  const isDown = /[⇓↓]/.test(change) || /^\s*-\d+\s*$/.test(change)          // legacy: "-3" → red
+  const color  = isUp   ? '#15803D'
+               : isDown ? '#B91C1C'
+               : undefined
 
-  const tip = [
-    record.previous ? `Prev: ${record.previous}` : '',
-    record.date     ? `Date: ${record.date}`     : '',
-  ].filter(Boolean).join(' · ')
+  // For arrow-bearing change strings ("⇑ (6)", "⇓ 10"), render verbatim.
+  // For legacy numeric strings, recreate the old "↑ (n)" notation so
+  // existing Supabase rows stay readable without a re-upload.
+  let suffix = ''
+  if (change) {
+    if (/[⇑⇓↑↓]/.test(change)) {
+      suffix = ` ${change.trim()}`
+    } else {
+      const n = parseFloat(change)
+      if (!isNaN(n) && n !== 0) {
+        suffix = ` ${n > 0 ? '↑' : '↓'} (${Math.abs(n)})`
+      }
+    }
+  }
 
   return (
     <span
       className="text-[11px] font-normal whitespace-nowrap"
       style={color ? { color } : undefined}
-      title={tip || undefined}
     >
-      {pos}
-      {isUp   && <> {'↑'} ({Math.abs(chg!)})</>}
-      {isDown && <> {'↓'} ({Math.abs(chg!)})</>}
+      {pos}{suffix}
     </span>
   )
 }

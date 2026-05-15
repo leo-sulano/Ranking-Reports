@@ -228,9 +228,27 @@ export function parsePosition(pos: string): number | 'NR' | null {
   return isNaN(n) ? 'NR' : n
 }
 
+// Parses the `change` field for sign + magnitude. Handles:
+//   "⇑ (6)" / "⇓ (3)"   — BP matrix raw (number inside parens)
+//   "⇑ 10"  / "⇓ 10"    — LP matrix raw
+//   "⇑" / "⇓"           — bare arrow, magnitude unknown → ±1 sentinel
+//   "6" / "-3"          — legacy or flat-format numeric values
+// Note: magnitude reflects what the source cell shows (often the
+// previous-position number), not the true delta between snapshots —
+// good enough for sign-based stats and rough mover ordering.
 export function parseChange(chg: string): number | null {
   if (!chg) return null
-  const n = parseFloat(chg.trim())
+  const s = chg.trim()
+  const m = /^([⇑⇓↑↓])\s*\(?\s*(\d+)\s*\)?\s*$/.exec(s)
+  if (m) {
+    const arrow = m[1]
+    const n = parseInt(m[2], 10)
+    if (isNaN(n)) return null
+    return (arrow === '⇑' || arrow === '↑') ? n : -n
+  }
+  if (/^[⇑↑]$/.test(s)) return 1
+  if (/^[⇓↓]$/.test(s)) return -1
+  const n = parseFloat(s)
   return isNaN(n) ? null : n
 }
 
@@ -405,30 +423,20 @@ function parseMatrixDate(raw: string): string {
   return `${yy.toString().padStart(4, '0')}-${mm.toString().padStart(2, '0')}-${dd.toString().padStart(2, '0')}`
 }
 
-// Parse a position cell that may carry change info: "4 ⇓ (1)", "3 ⇑ (6)",
-// or a bare value like "1" / "Not in top 100".
-//
-// AHREFs convention: the parenthesised number is the PREVIOUS position,
-// NOT a delta. So "3 ⇑ (6)" reads as "now at 3, was at 6 — improved by 3
-// spots". The signed change is derived from the actual delta:
-//   ⇑ improved → +(prev − curr) > 0
-//   ⇓ dropped  → −(curr − prev) < 0
+// Parse a position cell like "4 ⇓ (1)", "3 ⇑ (6)", a bare "1", or
+// "Not in top 100". The arrow + parenthesised number are preserved
+// verbatim in `change` so the matrix badge can render exactly what the
+// source file shows — no derived deltas, no computed previous, no
+// surprises about which side of the parens the prior value lives on.
 function parseMatrixPositionCell(cell: string): { position: string; change: string; previous: string } {
   const s = cell.trim()
   if (!s) return { position: '', change: '', previous: '' }
 
-  const m = /^(.+?)\s*([⇑⇓↑↓])\s*\(\s*(\d+)\s*\)\s*$/.exec(s)
+  const m = /^(.+?)\s*([⇑⇓↑↓]\s*\(\s*\d+\s*\))\s*$/.exec(s)
   if (!m) return { position: s, change: '', previous: '' }
 
-  const posPart = m[1].trim()
-  const arrow   = m[2]
-  const prevNum = parseInt(m[3], 10)
-  const posNum  = parseInt(posPart, 10)
-  if (isNaN(posNum) || isNaN(prevNum)) {
-    return { position: posPart, change: '', previous: '' }
-  }
-  const signed = (arrow === '⇑' || arrow === '↑') ? (prevNum - posNum) : -(posNum - prevNum)
-  return { position: posPart, change: `${signed}`, previous: `${prevNum}` }
+  // Collapse interior whitespace so the rendered badge isn't double-spaced.
+  return { position: m[1].trim(), change: m[2].replace(/\s+/g, ' ').trim(), previous: '' }
 }
 
 function parseMatrixWorkbook(
@@ -616,26 +624,17 @@ function parseLpPositionCell(cell: string): { position: string; change: string; 
   const s = cell.trim()
   if (!s) return { position: '', change: '', previous: '' }
 
-  // Arrow with trailing previous-position: "12 ⇓ 10" / "9 ⇑ 10".
-  const m = /^(.+?)\s*([⇑⇓↑↓])\s*(\d+)\s*$/.exec(s)
+  // LP cells use "current ⇑/⇓ previous" (no parens) or a bare "current ⇑/⇓".
+  // We store the arrow + trailing previous-position verbatim in `change`
+  // so the badge can render exactly what the source file shows.
+  const m = /^(.+?)\s*([⇑⇓↑↓]\s*\d+)\s*$/.exec(s)
   if (m) {
-    const posPart = m[1].trim()
-    const arrow   = m[2]
-    const prevNum = parseInt(m[3], 10)
-    const posNum  = parseInt(posPart, 10)
-    if (!isNaN(posNum) && !isNaN(prevNum)) {
-      // Improved (⇑) → previous > current, signed change is positive (gain).
-      // Dropped  (⇓) → previous < current, signed change is negative (loss).
-      const signed = (arrow === '⇑' || arrow === '↑') ? (prevNum - posNum) : -(posNum - prevNum)
-      return { position: posPart, change: `${signed}`, previous: `${prevNum}` }
-    }
-    return { position: posPart, change: '', previous: '' }
+    return { position: m[1].trim(), change: m[2].replace(/\s+/g, ' ').trim(), previous: '' }
   }
-
-  // Bare arrow with no previous: "49 ⇑" — record the position only.
   const m2 = /^(.+?)\s*([⇑⇓↑↓])\s*$/.exec(s)
-  if (m2) return { position: m2[1].trim(), change: '', previous: '' }
-
+  if (m2) {
+    return { position: m2[1].trim(), change: m2[2], previous: '' }
+  }
   return { position: s, change: '', previous: '' }
 }
 
