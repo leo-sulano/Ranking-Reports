@@ -4,6 +4,7 @@ import { BRANDS } from '../lib/brands'
 const PAGES: Array<{ path: string; label: string; icon: string }> = [
   { path: '/',                label: 'Home',     icon: '⌂' },
   { path: '/bp-sites',        label: 'BP Sites', icon: '◫' },
+  { path: '/lp-sites',        label: 'LP Sites', icon: '◨' },
   { path: '/ftds',            label: 'FTDs',     icon: '◇' },
 ]
 
@@ -12,6 +13,8 @@ interface Props {
   onOpenUpload: () => void
   activeBPBrand: string | null
   onSelectBPBrand: (name: string | null) => void
+  activeLPBrand: string | null
+  onSelectLPBrand: (name: string | null) => void
 }
 
 export function Sidebar({
@@ -19,10 +22,13 @@ export function Sidebar({
   onOpenUpload,
   activeBPBrand,
   onSelectBPBrand,
+  activeLPBrand,
+  onSelectLPBrand,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
+  const isLPSitesRoute = location.pathname.startsWith('/lp-sites')
 
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
@@ -98,8 +104,39 @@ export function Sidebar({
         </>
       )}
 
-      {/* Spacer for non-BP routes */}
-      {!isBPSitesRoute && <div className="flex-1" />}
+      {isLPSitesRoute && (
+        <>
+          <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+              LP Sites
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
+            {BRANDS.map((brand) => {
+              const isActive = activeLPBrand === brand.name
+              return (
+                <button
+                  key={brand.name}
+                  onClick={() => onSelectLPBrand(brand.name)}
+                  className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
+                    isActive ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'
+                  }`}
+                >
+                  <div className="text-[12px] font-semibold text-[#0F172A] truncate">{brand.name}</div>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Spacer for routes without a brand list */}
+      {!isBPSitesRoute && !isLPSitesRoute && <div className="flex-1" />}
 
       {/* Footer */}
       <div className="p-3 border-t border-[#E2E8F0] shrink-0">

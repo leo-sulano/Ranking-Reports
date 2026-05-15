@@ -45,7 +45,7 @@ export function UploadModal({ onImport, onClose }: Props) {
     reader.onload = (e) => {
       try {
         const buf = e.target?.result as ArrayBuffer
-        const { snapshots, unknownDomains } = parseXlsx(buf)
+        const { snapshots, unknownDomains } = parseXlsx(buf, category)
         if (snapshots.length === 0) {
           setError('No valid records found. For flat files: check columns match Domain, Keyword, Country, Position. For matrix files: ensure per-brand sheets are named LUCKY7, LUCKYVIBE, etc.')
           setParsing(false)

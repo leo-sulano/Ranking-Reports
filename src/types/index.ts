@@ -29,6 +29,9 @@ export interface Brand {
   color: string
   mainDomain: string
   domains: string[]
+  // Landing-page domains for the same brand. Tracked separately from `domains`
+  // (BP / MAIN) so the BP and LP namespaces stay independent during parse + display.
+  lpDomains: string[]
 }
 
 export type SortDir = 'asc' | 'desc'
@@ -57,8 +60,10 @@ export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
   bpFilterBrand: string | null
+  lpFilterBrand: string | null
   onSelectSnapshot: (id: string) => void
   onSelectBPBrand: (name: string | null) => void
+  onSelectLPBrand: (name: string | null) => void
   onOpenUpload: () => void
   onDeleteSnapshot: (id: string) => void
   // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows

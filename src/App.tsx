@@ -20,6 +20,7 @@ import type { ToastItem } from './types'
 
 import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
+import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ function Layout() {
   const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
+  const [lpFilterBrand, setLPFilterBrand] = useState<string | null>(null)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -284,6 +286,7 @@ function Layout() {
 
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
+    '/lp-sites':    ['LP Sites', 'Landing page ranking report'],
     '/ftds':        ['FTDs', 'First-time depositors'],
   }
   const currentPath =
@@ -301,7 +304,9 @@ function Layout() {
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
     bpFilterBrand,
+    lpFilterBrand,
     onSelectBPBrand:   setBPFilterBrand,
+    onSelectLPBrand:   setLPFilterBrand,
     onEditCell:        handleEditCell,
   }
 
@@ -330,6 +335,8 @@ function Layout() {
         onOpenUpload={() => setShowUpload(true)}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
+        activeLPBrand={lpFilterBrand}
+        onSelectLPBrand={setLPFilterBrand}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
@@ -389,6 +396,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="/bp-sites"    element={<BPSites />} />
+        <Route path="/lp-sites"    element={<LPSites />} />
         <Route path="/ftds"        element={<FTDs />} />
       </Route>
     </Routes>

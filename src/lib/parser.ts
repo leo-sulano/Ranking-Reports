@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 import type { RankingRecord } from '../types'
-import { DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
+import type { CategoryId } from './categories'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
 
 export interface UnknownDomain {
   domain: string
@@ -25,14 +26,18 @@ const MATRIX_BRAND_SHEETS = new Set([
   'FORTUNEPLAY', 'ROCKETSPIN', 'PLAYMOJO', 'ROLLERO',
 ])
 
-export function parseXlsx(buffer: ArrayBuffer): ParseResult {
+export function parseXlsx(buffer: ArrayBuffer, category: CategoryId = 'bp-sites'): ParseResult {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
 
   // Auto-detect matrix layout: if any sheet name matches a known per-brand
-  // tab, treat the workbook as the legacy stacked format.
+  // tab, treat the workbook as the legacy stacked format. The matrix shape
+  // differs between categories (BP uses GSV/SV/AFF + col-B keywords; LP is
+  // POS-only with col-A keywords), so dispatch on the selected category.
   const matrixSheets = wb.SheetNames.filter((n) => MATRIX_BRAND_SHEETS.has(n.toUpperCase()))
   if (matrixSheets.length > 0) {
-    return parseMatrixWorkbook(wb, matrixSheets)
+    return category === 'lp-sites'
+      ? parseLpMatrixWorkbook(wb, matrixSheets)
+      : parseMatrixWorkbook(wb, matrixSheets)
   }
 
   // Flat single-sheet format (current upload format).
@@ -42,7 +47,8 @@ export function parseXlsx(buffer: ArrayBuffer): ParseResult {
     defval: '',
     raw: false,
   })
-  const flat = parseRows(rows as (string | number | Date)[][])
+  const domainMap = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
+  const flat = parseRows(rows as (string | number | Date)[][], domainMap)
   // The flat format has one date per upload — derive it from the records.
   const rawDate = extractSnapshotDate(flat.records)
   return {
@@ -121,7 +127,7 @@ interface FlatParseResult {
   unknownDomains: UnknownDomain[]
 }
 
-function parseRows(rows: (string | number | Date)[][]): FlatParseResult {
+function parseRows(rows: (string | number | Date)[][], domainMap: Record<string, string> = DOMAIN_TO_BRAND): FlatParseResult {
   if (!rows || rows.length < 2) return { records: [], unknownDomains: [] }
 
   let headerIdx = 0
@@ -160,7 +166,7 @@ function parseRows(rows: (string | number | Date)[][]): FlatParseResult {
     const keyword = String(row[iKeyword] ?? '').trim()
     if (!domain || !keyword) continue
     const dk = domain.toLowerCase()
-    if (!DOMAIN_TO_BRAND[dk]) {
+    if (!domainMap[dk]) {
       const existing = unknownByKey.get(dk)
       if (existing) existing.count++
       else unknownByKey.set(dk, { domain, count: 1 })
@@ -511,6 +517,163 @@ function parseMatrixWorkbook(
     if (records.length > 0) snapshots.push({ rawDate, records })
   }
   // Newest first.
+  snapshots.sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
+
+  const unknownDomains = Array.from(unknownByKey.values()).sort((a, b) => b.count - a.count)
+  return { snapshots, unknownDomains }
+}
+
+// ─── LP matrix parser ─────────────────────────────────────────────────────────
+// Sheet shape (one per brand: LUCKY7, SPINSUP, …):
+//   Row 0  — noise (col A blank, col B leftover total, then a country header
+//            band we ignore; row 5 is the canonical country sub-header).
+//   Row 1  — col A = "Domain"; col B onward holds the LP domain at the FIRST
+//            column of every 5-country block (col 1, 6, 11, 16, 21, …).
+//   Row 4  — first date marker in col A ("05/11/26"). Date markers continue to
+//            appear in col A every N rows as new snapshots stack downward.
+//   Row 5  — col A = "Country "; cols B+ = AU,CA,DE,IT,NZ repeating per block.
+//   Rows 6+ — keyword in col A; per-(LP-domain, country) position cells across cols.
+//
+// Position cell format (LP-specific — differs from BP):
+//   "12  ⇓ 10"  — current 12, previous 10, dropped (signed change = -(12-10) = -2)
+//   "9  ⇑  10"  — current 9, previous 10, improved (signed change = +(10-9) = +1)
+//   "49 ⇑"      — current 49, improved, previous unknown (came from NR)
+//   "Not in top 100" / bare number — no arrow, no change.
+
+function parseLpPositionCell(cell: string): { position: string; change: string; previous: string } {
+  const s = cell.trim()
+  if (!s) return { position: '', change: '', previous: '' }
+
+  // Arrow with trailing previous-position: "12 ⇓ 10" / "9 ⇑ 10".
+  const m = /^(.+?)\s*([⇑⇓↑↓])\s*(\d+)\s*$/.exec(s)
+  if (m) {
+    const posPart = m[1].trim()
+    const arrow   = m[2]
+    const prevNum = parseInt(m[3], 10)
+    const posNum  = parseInt(posPart, 10)
+    if (!isNaN(posNum) && !isNaN(prevNum)) {
+      // Improved (⇑) → previous > current, signed change is positive (gain).
+      // Dropped  (⇓) → previous < current, signed change is negative (loss).
+      const signed = (arrow === '⇑' || arrow === '↑') ? (prevNum - posNum) : -(posNum - prevNum)
+      return { position: posPart, change: `${signed}`, previous: `${prevNum}` }
+    }
+    return { position: posPart, change: '', previous: '' }
+  }
+
+  // Bare arrow with no previous: "49 ⇑" — record the position only.
+  const m2 = /^(.+?)\s*([⇑⇓↑↓])\s*$/.exec(s)
+  if (m2) return { position: m2[1].trim(), change: '', previous: '' }
+
+  return { position: s, change: '', previous: '' }
+}
+
+function parseLpMatrixWorkbook(
+  wb: XLSX.WorkBook,
+  matrixSheetNames: string[],
+): ParseResult {
+  const byDate = new Map<string, Map<string, RankingRecord>>()
+  const unknownByKey = new Map<string, { domain: string; count: number }>()
+
+  const upsertRecord = (
+    rawDate: string,
+    rec: RankingRecord,
+    patch: Partial<Pick<RankingRecord, 'position' | 'previous' | 'change'>>,
+  ) => {
+    let bucket = byDate.get(rawDate)
+    if (!bucket) { bucket = new Map(); byDate.set(rawDate, bucket) }
+    const k = `${rec.domain.toLowerCase()}|${rec.keyword.toLowerCase()}|${rec.country}`
+    const existing = bucket.get(k)
+    if (existing) Object.assign(existing, patch)
+    else bucket.set(k, { ...rec, ...patch })
+  }
+
+  for (const sheetName of matrixSheetNames) {
+    const ws = wb.Sheets[sheetName]
+    if (!ws) continue
+    const rows = XLSX.utils.sheet_to_json<(string | number | Date)[]>(ws, {
+      header: 1,
+      defval: '',
+      raw:    false,
+    }) as (string | number | Date)[][]
+    if (rows.length < 6) continue
+
+    // Build column → (domain, country) map. Row 1 = sparse domains (first col
+    // of each 5-country block); row 5 = country sub-header.
+    const domainRow  = rows[1] ?? []
+    const countryRow = rows[5] ?? []
+    const colMap = new Map<number, { domain: string; country: string }>()
+    let curDomain = ''
+    for (let c = 1; c < Math.max(domainRow.length, countryRow.length); c++) {
+      const d = extractDomain(domainRow[c])
+      if (d) curDomain = d
+      const ctry = String(countryRow[c] ?? '').trim().toUpperCase()
+      if (curDomain && COUNTRY_CODES.has(ctry)) {
+        colMap.set(c, { domain: curDomain, country: ctry })
+      }
+    }
+    if (colMap.size === 0) continue
+
+    // Validate distinct LP domains once per sheet.
+    const distinctDomains = new Set<string>()
+    colMap.forEach((v) => distinctDomains.add(v.domain))
+    for (const d of distinctDomains) {
+      if (!LP_DOMAIN_TO_BRAND[d]) {
+        const e = unknownByKey.get(d)
+        if (e) e.count++
+        else unknownByKey.set(d, { domain: d, count: 1 })
+      }
+    }
+
+    // Find all date-marker rows (col A = MM/DD/YY).
+    const dateRows: Array<{ row: number; rawDate: string }> = []
+    for (let r = 0; r < rows.length; r++) {
+      const colA = String(rows[r]?.[0] ?? '').trim()
+      const iso  = parseMatrixDate(colA)
+      if (iso) dateRows.push({ row: r, rawDate: iso })
+    }
+    if (dateRows.length === 0) continue
+
+    for (let i = 0; i < dateRows.length; i++) {
+      const { row: startRow, rawDate } = dateRows[i]
+      const endRow = i + 1 < dateRows.length ? dateRows[i + 1].row : rows.length
+
+      for (let r = startRow + 1; r < endRow; r++) {
+        const row = rows[r]
+        const keyword = String(row?.[0] ?? '').trim()
+        if (!keyword) continue
+        const kwLc = keyword.toLowerCase()
+        if (kwLc === 'country' || kwLc === 'domain' || kwLc === 'keyword') continue
+
+        colMap.forEach((role, c) => {
+          if (!LP_DOMAIN_TO_BRAND[role.domain]) return
+          const cell = String(row?.[c] ?? '').trim()
+          if (!cell) return
+
+          const parsed = parseLpPositionCell(cell)
+          const base: RankingRecord = {
+            domain:   role.domain,
+            keyword,
+            country:  role.country,
+            position: '',
+            previous: '',
+            change:   '',
+            date:     rawDate,
+          }
+          upsertRecord(rawDate, base, {
+            position: parsed.position,
+            previous: parsed.previous,
+            change:   parsed.change,
+          })
+        })
+      }
+    }
+  }
+
+  const snapshots: ParsedSnapshot[] = []
+  for (const [rawDate, bucket] of byDate) {
+    const records = Array.from(bucket.values()).filter((r) => r.position)
+    if (records.length > 0) snapshots.push({ rawDate, records })
+  }
   snapshots.sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
 
   const unknownDomains = Array.from(unknownByKey.values()).sort((a, b) => b.count - a.count)

@@ -13,6 +13,14 @@ export const BRANDS: Brand[] = [
       'lucky7evencasino.org',
       'lucky7seven.com',
     ],
+    lpDomains: [
+      'lucky7even.club',
+      'lucky7evencasino.org',
+      'lucky7casino.de',
+      'lucky7seven.net',
+      'lucky7seven.org',
+      'lucky7seven.de',
+    ],
   },
   {
     name: 'RoosterBet',
@@ -24,6 +32,12 @@ export const BRANDS: Brand[] = [
       'roosters.bet',
       'roostersbet.com',
       'casinoroosters.com',
+    ],
+    lpDomains: [
+      'roosterbet.club',
+      'roostercasino.de',
+      'roosterbet.io',
+      'roosterbet.info',
     ],
   },
   {
@@ -37,6 +51,16 @@ export const BRANDS: Brand[] = [
       'casinoluckyvibe.com',
       'luckyvibecasino.com',
     ],
+    lpDomains: [
+      'luckyvibe.net',
+      'casino-luckyvibe.com',
+      'casinos-luckyvibe.com',
+      'casinosluckyvibe.com',
+      'luckyvibe-casino.com',
+      'luckyvibe.casino',
+      'luckyvibe.club',
+      'luckyvibescasino.com',
+    ],
   },
   {
     name: 'SpinsUp',
@@ -48,6 +72,16 @@ export const BRANDS: Brand[] = [
       'spinsup.io',
       'spinsupcasino.com',
       'casinospinsup.com',
+    ],
+    lpDomains: [
+      'spinsupcasinos.com',
+      'casino-spinsup.com',
+      'spinsup-casino.com',
+      'spinsup.casino',
+      'spinsup.club',
+      'spinsupcasinos.de',
+      'spinsupcasino.net',
+      'spinsupcasino.org',
     ],
   },
   {
@@ -61,6 +95,14 @@ export const BRANDS: Brand[] = [
       'spinjocasino.com',
       'casinospinjo.com',
     ],
+    lpDomains: [
+      'spinjo.club',
+      'spinjos.casino',
+      'spinjo.it.com',
+      'spinjo.info',
+      'spinjo.de',
+      'spinjocasino.net',
+    ],
   },
   {
     name: 'FortunePLay',
@@ -72,6 +114,12 @@ export const BRANDS: Brand[] = [
       'fortuneplay.casino',
       'fortuneplay.io',
       'fortuneplaycasino.net',
+    ],
+    lpDomains: [
+      'fortuneplay.club',
+      'fortuneplaylive.com',
+      'fortuneplaycasino.de',
+      'fortuneplaycasino.org',
     ],
   },
   {
@@ -85,6 +133,16 @@ export const BRANDS: Brand[] = [
       'rocketspincasino.com',
       'casinorocketspin.com',
     ],
+    lpDomains: [
+      'casino-rocketspin.com',
+      'casinosrocketspin.com',
+      'rocketspin-casino.com',
+      'rocketspin.casino',
+      'rocketspin.club',
+      'rocketspincasinos.com',
+      'rocketspins.net',
+      'rocketspinscasino.com',
+    ],
   },
   {
     name: 'PlayMojo',
@@ -96,6 +154,17 @@ export const BRANDS: Brand[] = [
       'playmojo.io',
       'playmojocasino.com',
       'casinoplaymojo.com',
+    ],
+    lpDomains: [
+      'casino-playmojo.com',
+      'casinosplaymojo.com',
+      'playmojo-casino.com',
+      'playmojo.casino',
+      'playmojo.club',
+      'playmojo.net',
+      'playmojo.org',
+      'playmojocasinos.com',
+      'playmojos.com',
     ],
   },
   {
@@ -109,6 +178,17 @@ export const BRANDS: Brand[] = [
       'rollerocasino.com',
       'casinorollero.com',
     ],
+    lpDomains: [
+      'rollero.net',
+      'rollerocasinos.com',
+      'rolleros.casino',
+      'rolleroscasino.com',
+      'casino-rollero.com',
+      'casinosrollero.com',
+      'rollero-casino.com',
+      'rollero.casino',
+      'rollero.club',
+    ],
   },
 ]
 
@@ -116,9 +196,14 @@ export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.name, b]),
 )
 
-// domain (lowercase) → brand name
+// domain (lowercase) → brand name. BP/MAIN domains only.
 export const DOMAIN_TO_BRAND: Record<string, string> = {}
 BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
+
+// Landing-page domain → brand name. Kept separate from DOMAIN_TO_BRAND so the
+// BP and LP namespaces don't bleed across category-tagged uploads.
+export const LP_DOMAIN_TO_BRAND: Record<string, string> = {}
+BRANDS.forEach((b) => b.lpDomains.forEach((d) => { LP_DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
 
 export const COUNTRY_LABELS: Record<string, string> = {
   Australia: 'AU',

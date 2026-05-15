@@ -1,4 +1,4 @@
-export type CategoryId = 'bp-sites'
+export type CategoryId = 'bp-sites' | 'lp-sites'
 
 export interface Category {
   id:    CategoryId
@@ -8,6 +8,7 @@ export interface Category {
 
 export const CATEGORIES: Category[] = [
   { id: 'bp-sites', label: 'BP Sites', path: '/bp-sites' },
+  { id: 'lp-sites', label: 'LP Sites', path: '/lp-sites' },
 ]
 
 export const DEFAULT_CATEGORY: CategoryId = 'bp-sites'
