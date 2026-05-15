@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { RankingRecord } from '../types'
 import type { UnknownDomain } from '../lib/parser'
-import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND } from '../lib/brands'
+import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from '../lib/brands'
 import { ChevronDown, X, AlertCircle, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
@@ -45,7 +45,7 @@ function aggregate(records: RankingRecord[]) {
   for (const r of records) {
     const dk = r.domain.toLowerCase()
     domainSet.add(dk)
-    const brand = DOMAIN_TO_BRAND[dk]
+    const brand = DOMAIN_TO_BRAND[dk] ?? LP_DOMAIN_TO_BRAND[dk]
     if (!brand) continue
 
     const country = (r.country && (COUNTRY_LABELS[r.country] ?? r.country.toUpperCase())) || '—'

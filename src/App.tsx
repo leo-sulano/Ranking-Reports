@@ -3,9 +3,9 @@ import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
-import { DOMAIN_TO_BRAND } from './lib/brands'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from './lib/brands'
 import {
-  countBrands, formatDisplayDate, applyCarryForward,
+  summarizeRecords, formatDisplayDate, applyCarryForward,
 } from './lib/parser'
 import { loadSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields } from './lib/storage'
 
@@ -160,8 +160,11 @@ function Layout() {
       if (!snap) return
       setShowUpload(false)
       setUploadSummary({ displayDate: snap.displayDate, records: parsed.records, unknownDomains })
-      const brandCount = countBrands(parsed.records, DOMAIN_TO_BRAND)
-      addToast(`✓ Imported ${parsed.records.length} records across ${brandCount} brands — ${snap.displayDate}`)
+      const domainMap = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
+      const counts = summarizeRecords(parsed.records, domainMap)
+      addToast(
+        `✓ Imported ${parsed.records.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
+      )
       reportUnknownDomains(unknownDomains)
       return
     }
@@ -173,17 +176,23 @@ function Layout() {
 
     let okCount = 0
     let totalRecords = 0
+    const aggregateRecords: RankingRecord[] = []
     for (let i = 0; i < snapshots.length; i++) {
       const snap = await persistOneSnapshot(snapshots[i], category)
       if (snap) {
         okCount++
         totalRecords += snapshots[i].records.length
+        aggregateRecords.push(...snapshots[i].records)
       }
       setBulkProgress({ done: i + 1, total: snapshots.length })
     }
     setBulkProgress(null)
 
-    addToast(`✓ Imported ${okCount}/${snapshots.length} snapshots — ${totalRecords.toLocaleString()} records total`)
+    const domainMap = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
+    const counts = summarizeRecords(aggregateRecords, domainMap)
+    addToast(
+      `✓ Imported ${okCount} snapshot${okCount !== 1 ? 's' : ''} · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${totalRecords.toLocaleString()} records total`,
+    )
     reportUnknownDomains(unknownDomains)
   }, [addToast, persistOneSnapshot, reportUnknownDomains, state.snapshots])
 
@@ -205,8 +214,11 @@ function Layout() {
     )
     if (!snap) return
     setUploadSummary({ displayDate: snap.displayDate, records: pendingRecords, unknownDomains })
-    const brandCount = countBrands(pendingRecords, DOMAIN_TO_BRAND)
-    addToast(`✓ Imported ${pendingRecords.length} records across ${brandCount} brands — ${snap.displayDate}`)
+    const domainMap = existing.category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
+    const counts = summarizeRecords(pendingRecords, domainMap)
+    addToast(
+      `✓ Imported ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
+    )
     reportUnknownDomains(unknownDomains)
   }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains])
 

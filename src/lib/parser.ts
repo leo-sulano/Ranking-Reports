@@ -239,6 +239,33 @@ export function countBrands(records: RankingRecord[], domainMap: Record<string, 
   return brands.size
 }
 
+// Returns headline counts for an import — unique brands, unique sites
+// (domains), and unique keywords. Driven by the supplied domain map so the
+// same helper works for BP and LP uploads.
+export interface UploadCounts {
+  brands:   number
+  sites:    number
+  keywords: number
+}
+
+export function summarizeRecords(
+  records:   RankingRecord[],
+  domainMap: Record<string, string>,
+): UploadCounts {
+  const brands   = new Set<string>()
+  const sites    = new Set<string>()
+  const keywords = new Set<string>()
+  for (const r of records) {
+    const dk = r.domain.toLowerCase()
+    const brand = domainMap[dk]
+    if (!brand) continue
+    brands.add(brand)
+    sites.add(dk)
+    if (r.keyword) keywords.add(r.keyword.toLowerCase())
+  }
+  return { brands: brands.size, sites: sites.size, keywords: keywords.size }
+}
+
 // ─── Carry-forward of "sticky" fields ──────────────────────────────────────────
 // GSV / SV / AFF rarely change week-to-week; newer ranking exports often leave
 // them blank. Walk snapshots oldest → newest within a category and inherit any
@@ -597,10 +624,22 @@ function parseLpMatrixWorkbook(
     }) as (string | number | Date)[][]
     if (rows.length < 6) continue
 
-    // Build column → (domain, country) map. Row 1 = sparse domains (first col
-    // of each 5-country block); row 5 = country sub-header.
+    // Find all date-marker rows (col A = MM/DD/YY). The country sub-header
+    // is always the row immediately AFTER a date marker — true across both
+    // the LUCKY7-style layout (header at row 5) and the ROLLERO-style layout
+    // (header at row 4), since the per-block sub-header position varies.
+    const dateRows: Array<{ row: number; rawDate: string }> = []
+    for (let r = 0; r < rows.length; r++) {
+      const colA = String(rows[r]?.[0] ?? '').trim()
+      const iso  = parseMatrixDate(colA)
+      if (iso) dateRows.push({ row: r, rawDate: iso })
+    }
+    if (dateRows.length === 0) continue
+
+    // Build column → (domain, country) map. Row 1 = sparse domains; the
+    // country sub-header is the row right after the first date marker.
     const domainRow  = rows[1] ?? []
-    const countryRow = rows[5] ?? []
+    const countryRow = rows[dateRows[0].row + 1] ?? []
     const colMap = new Map<number, { domain: string; country: string }>()
     let curDomain = ''
     for (let c = 1; c < Math.max(domainRow.length, countryRow.length); c++) {
@@ -623,15 +662,6 @@ function parseLpMatrixWorkbook(
         else unknownByKey.set(d, { domain: d, count: 1 })
       }
     }
-
-    // Find all date-marker rows (col A = MM/DD/YY).
-    const dateRows: Array<{ row: number; rawDate: string }> = []
-    for (let r = 0; r < rows.length; r++) {
-      const colA = String(rows[r]?.[0] ?? '').trim()
-      const iso  = parseMatrixDate(colA)
-      if (iso) dateRows.push({ row: r, rawDate: iso })
-    }
-    if (dateRows.length === 0) continue
 
     for (let i = 0; i < dateRows.length; i++) {
       const { row: startRow, rawDate } = dateRows[i]
