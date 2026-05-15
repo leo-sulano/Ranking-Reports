@@ -34,15 +34,14 @@ interface Props {
   unchanged: number
 }
 
-export function StatsRow({ total, top3, improved, dropped, notRanking, unchanged }: Props) {
+export function StatsRow({ top3, improved, dropped, notRanking, unchanged }: Props) {
   return (
-    <div className="grid grid-cols-6 gap-3 px-7 py-4 shrink-0">
-      <StatCard label="Total Records" value={total || '—'} accent="#0F172A" sub="BP rows" />
-      <StatCard label="Top 3"         value={top3}         accent="#0F172A" sub="positions" />
-      <StatCard label="Improved"      value={improved}     accent="#10B981" sub="moved up" />
-      <StatCard label="Dropped"       value={dropped}      accent="#F43F5E" sub="moved down" />
-      <StatCard label="Unchanged"     value={unchanged}    accent="#94A3B8" sub="flat" />
-      <StatCard label="Not Ranking"   value={notRanking}   accent="#64748B" sub="records" />
+    <div className="grid grid-cols-5 gap-3 px-7 py-4 shrink-0">
+      <StatCard label="Top 3"       value={top3}       accent="#0F172A" sub="positions" />
+      <StatCard label="Improved"    value={improved}   accent="#10B981" sub="moved up" />
+      <StatCard label="Dropped"     value={dropped}    accent="#F43F5E" sub="moved down" />
+      <StatCard label="Unchanged"   value={unchanged}  accent="#94A3B8" sub="flat" />
+      <StatCard label="Not Ranking" value={notRanking} accent="#64748B" sub="records" />
     </div>
   )
 }
