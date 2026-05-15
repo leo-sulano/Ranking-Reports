@@ -65,7 +65,11 @@ export function BPSites() {
 
   if (activeBrand) {
     return (
+      // key={brand.name} forces a fresh mount on brand switch so the chip
+      // filter state resets to "everything selected" instead of carrying
+      // over from the previous brand.
       <BrandView
+        key={activeBrand.name}
         brand={activeBrand}
         snapshots={bpSnapshots}
         onBack={() => onSelectBPBrand(null)}
