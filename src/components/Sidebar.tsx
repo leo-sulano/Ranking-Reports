@@ -1,11 +1,31 @@
+import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { BRANDS } from '../lib/brands'
 
-const PAGES: Array<{ path: string; label: string; icon: string }> = [
-  { path: '/',                label: 'Home',     icon: '⌂' },
-  { path: '/bp-sites',        label: 'BP Sites', icon: '◫' },
-  { path: '/lp-sites',        label: 'LP Sites', icon: '◨' },
-  { path: '/ftds',            label: 'FTDs',     icon: '◇' },
+const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
+  { path: '/', label: 'Home', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  )},
+  { path: '/bp-sites', label: 'BP Sites', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  )},
+  { path: '/lp-sites', label: 'LP Sites', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+      <line x1="9" y1="21" x2="9" y2="9"/>
+    </svg>
+  )},
+  { path: '/ftds', label: 'FTDs', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+  )},
 ]
 
 interface Props {
@@ -80,7 +100,7 @@ export function Sidebar({
                 }`}
               >
                 <span
-                  className={`w-5 text-center text-[14px] shrink-0 ${active ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}
+                  className={`w-[18px] flex items-center justify-center shrink-0 ${active ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}
                 >
                   {p.icon}
                 </span>
@@ -137,7 +157,7 @@ export function Sidebar({
             title="Import Data"
             className="w-full flex items-center gap-3 px-3 py-2 bg-[#0F172A] text-white rounded-md text-[12px] font-bold transition-colors hover:bg-[#1E293B] active:scale-95"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
