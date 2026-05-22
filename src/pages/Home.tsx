@@ -319,7 +319,6 @@ export function Home() {
                             />
                             <div className="min-w-0">
                               <div className="text-[13px] font-semibold text-[#111827] truncate leading-tight">{row.brand.name}</div>
-                              <div className="text-[11px] text-[#9CA3AF] truncate mt-0.5">{row.brand.mainDomain}</div>
                             </div>
                           </div>
                         </td>
