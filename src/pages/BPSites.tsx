@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { EditableCell } from '../components/EditableCell'
-import { computeStats } from '../lib/parser'
+import { computeStats, parsePosition } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -404,10 +404,14 @@ function BrandView({
             {(statsFilter === 'all'
               ? brandSnapshots
               : brandSnapshots.filter((s) => s.id === statsFilter)
-            ).map((snap) => (
+            ).map((snap) => {
+              const snapIdx = brandSnapshots.findIndex((s) => s.id === snap.id)
+              const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
+              return (
               <SnapshotMatrix
                 key={snap.id}
                 snapshot={snap}
+                prevSnapshot={prevSnap}
                 brand={brand}
                 mainDomain={mainDomain}
                 bpDomains={visibleBpDomains}
@@ -417,7 +421,8 @@ function BrandView({
                 onEditCell={onEditCell}
                 isLatest={snap.id === latestSnap?.id}
               />
-            ))}
+              )
+            })}
           </div>
         </>
       )}
@@ -583,6 +588,7 @@ function DateOption({
 
 function SnapshotMatrix({
   snapshot,
+  prevSnapshot,
   brand,
   mainDomain,
   bpDomains,
@@ -593,6 +599,7 @@ function SnapshotMatrix({
   isLatest,
 }: {
   snapshot: Snapshot
+  prevSnapshot: Snapshot | null
   brand: Brand
   mainDomain: string
   bpDomains: string[]
@@ -605,6 +612,22 @@ function SnapshotMatrix({
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
   const bpColCount   = visibleCountries.length
+
+  // keyword → domain → country → record for the immediately prior snapshot.
+  // null when there is no older snapshot to compare against.
+  const prevLookup = useMemo(() => {
+    if (!prevSnapshot) return null
+    const map: Lookup = {}
+    for (const r of prevSnapshot.records) {
+      const kk = r.keyword.toLowerCase()
+      const dk = r.domain.toLowerCase()
+      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      if (!map[kk]) map[kk] = {}
+      if (!map[kk][dk]) map[kk][dk] = {}
+      map[kk][dk][ck] = r
+    }
+    return map
+  }, [prevSnapshot])
 
   // Sorted keyword list for this snapshot, with kw search applied
   const keywords = useMemo(() => {
@@ -841,6 +864,10 @@ function SnapshotMatrix({
                       const rec = lookup?.[kw]?.[mainDomain]?.[c]
                       const sv  = rec?.searchVolume ?? ''
                       const aff = rec?.affiliateUrl ?? ''
+                      const prevRec = prevLookup?.[kw]?.[mainDomain]?.[c]
+                      const crossSnapPrevPos = prevLookup !== null
+                        ? parsePosition(prevRec?.position ?? '')
+                        : undefined
                       return (
                         <Fragment key={`main-cell-${kw}-${c}`}>
                           <td
@@ -851,7 +878,7 @@ function SnapshotMatrix({
                               borderBottom: borderStyle,
                             }}
                           >
-                            {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                            {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                           </td>
                           <td
                             className="px-1 py-1 text-center text-[11px] w-[60px]"
@@ -902,6 +929,10 @@ function SnapshotMatrix({
                   const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                   return visibleCountries.map((c, ci) => {
                     const rec = lookup?.[kw]?.[dk]?.[c]
+                    const prevRec = prevLookup?.[kw]?.[dk]?.[c]
+                    const crossSnapPrevPos = prevLookup !== null
+                      ? parsePosition(prevRec?.position ?? '')
+                      : undefined
                     return (
                       <td
                         key={`bp-cell-${kw}-${bp}-${c}`}
@@ -913,7 +944,7 @@ function SnapshotMatrix({
                           borderBottom: borderStyle,
                         }}
                       >
-                        {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                       </td>
                     )
                   })
