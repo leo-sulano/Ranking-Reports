@@ -5,43 +5,36 @@ import { parsePosition, parseChange } from '../lib/parser'
 import type { RankingRecord, RROutletContext } from '../types'
 
 // ─── Tier definitions ─────────────────────────────────────────────────────────
-//
-// Page-1 buckets are P1, Top-3, Top-10. Page-2-onwards is collapsed into a
-// single "11-100" bucket plus "NR" (not ranking) so the track stays readable.
 
 const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR' | null) => boolean; tier: 'p1' | 'top3' | 'top10' | 'page2' | 'nr' }> = [
-  { label: '1',  key: 'p1',  test: (p) => p === 1,                    tier: 'p1'    },
-  { label: '2',  key: 'p2',  test: (p) => p === 2,                    tier: 'top3'  },
-  { label: '3',  key: 'p3',  test: (p) => p === 3,                    tier: 'top3'  },
-  { label: '4',  key: 'p4',  test: (p) => p === 4,                    tier: 'top10' },
-  { label: '5',  key: 'p5',  test: (p) => p === 5,                    tier: 'top10' },
-  { label: '6',  key: 'p6',  test: (p) => p === 6,                    tier: 'top10' },
-  { label: '7',  key: 'p7',  test: (p) => p === 7,                    tier: 'top10' },
-  { label: '8',  key: 'p8',  test: (p) => p === 8,                    tier: 'top10' },
-  { label: '9',  key: 'p9',  test: (p) => p === 9,                    tier: 'top10' },
-  { label: '10', key: 'p10', test: (p) => p === 10,                   tier: 'top10' },
-  { label: '11–100', key: 'page2', test: (p) => typeof p === 'number' && p >= 11, tier: 'page2' },
-  { label: 'NR', key: 'nr',  test: (p) => p === 'NR',                 tier: 'nr'    },
+  { label: '1',     key: 'p1',    test: (p) => p === 1,                                    tier: 'p1'    },
+  { label: '2',     key: 'p2',    test: (p) => p === 2,                                    tier: 'top3'  },
+  { label: '3',     key: 'p3',    test: (p) => p === 3,                                    tier: 'top3'  },
+  { label: '4',     key: 'p4',    test: (p) => p === 4,                                    tier: 'top10' },
+  { label: '5',     key: 'p5',    test: (p) => p === 5,                                    tier: 'top10' },
+  { label: '6',     key: 'p6',    test: (p) => p === 6,                                    tier: 'top10' },
+  { label: '7',     key: 'p7',    test: (p) => p === 7,                                    tier: 'top10' },
+  { label: '8',     key: 'p8',    test: (p) => p === 8,                                    tier: 'top10' },
+  { label: '9',     key: 'p9',    test: (p) => p === 9,                                    tier: 'top10' },
+  { label: '10',    key: 'p10',   test: (p) => p === 10,                                   tier: 'top10' },
+  { label: '11–100',key: 'page2', test: (p) => typeof p === 'number' && p >= 11,           tier: 'page2' },
+  { label: 'NR',    key: 'nr',    test: (p) => p === 'NR',                                 tier: 'nr'    },
 ]
 
-// Positions 1-10 share a green family (deep emerald → light lime) to signal
-// "page 1 = healthy". 11–100 flips to yellow as a warning, NR to red.
 const POSITION_COLOR: Record<string, string> = {
-  p1:    '#047857', // emerald-700
-  p2:    '#059669', // emerald-600
-  p3:    '#10B981', // emerald-500
-  p4:    '#16A34A', // green-600
-  p5:    '#22C55E', // green-500
-  p6:    '#4ADE80', // green-400
-  p7:    '#65A30D', // lime-600
-  p8:    '#84CC16', // lime-500
-  p9:    '#A3E635', // lime-400
-  p10:   '#BEF264', // lime-300
-  page2: '#EAB308', // yellow-500
-  nr:    '#DC2626', // red-600
+  p1:    '#047857',
+  p2:    '#059669',
+  p3:    '#10B981',
+  p4:    '#16A34A',
+  p5:    '#22C55E',
+  p6:    '#4ADE80',
+  p7:    '#65A30D',
+  p8:    '#84CC16',
+  p9:    '#A3E635',
+  p10:   '#BEF264',
+  page2: '#F59E0B',
+  nr:    '#EF4444',
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function brandOfDomain(domain: string): string | undefined {
   return DOMAIN_TO_BRAND[domain.toLowerCase()]
@@ -56,7 +49,6 @@ export function Home() {
   const latestSnapshot = ctx.snapshots[0]
   const records: RankingRecord[] = latestSnapshot?.records ?? []
 
-  // ── Top-line totals ─────────────────────────────────────────────────────
   const totals = useMemo(() => {
     const keywords  = new Set(records.map((r) => r.keyword.toLowerCase()))
     const countries = new Set(records.map((r) => r.country))
@@ -74,7 +66,6 @@ export function Home() {
     }
   }, [records, ctx.snapshots])
 
-  // ── SERP distribution buckets ───────────────────────────────────────────
   const buckets = useMemo(() => {
     const counts = TRACK_BUCKETS.map((b) => ({ ...b, count: 0 }))
     for (const r of records) {
@@ -87,7 +78,6 @@ export function Home() {
     return counts.map((b) => ({ ...b, pct: b.count / max }))
   }, [records])
 
-  // ── Tier rollups ────────────────────────────────────────────────────────
   const tier = useMemo(() => {
     let p1 = 0, top3 = 0, top10 = 0, page2 = 0, nr = 0
     for (const r of records) {
@@ -103,7 +93,6 @@ export function Home() {
 
   const page1Pct = totals.records ? Math.round((tier.top10 / totals.records) * 100) : 0
 
-  // ── Per-brand leaderboard ───────────────────────────────────────────────
   const leaderboard = useMemo(() => {
     return BRANDS.map((brand) => {
       const set = new Set(brand.domains.map((d) => d.toLowerCase()))
@@ -121,7 +110,6 @@ export function Home() {
       .sort((a, b) => b.t10 - a.t10 || b.total - a.total)
   }, [records])
 
-  // ── Movers (compared to "previous" column) ──────────────────────────────
   const movers = useMemo(() => {
     type Mover = { record: RankingRecord; delta: number; brand: string }
     const list: Mover[] = []
@@ -131,20 +119,11 @@ export function Home() {
       const b = brandOfDomain(r.domain) ?? '—'
       list.push({ record: r, delta: d, brand: b })
     }
-    // Note: change column convention here treats positive number as climbing
-    // upward (better position). If your sheet uses the opposite sign, flip.
-    const climbers = list
-      .filter((m) => m.delta > 0)
-      .sort((a, b) => b.delta - a.delta)
-      .slice(0, 6)
-    const droppers = list
-      .filter((m) => m.delta < 0)
-      .sort((a, b) => a.delta - b.delta)
-      .slice(0, 6)
+    const climbers = list.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 6)
+    const droppers = list.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 6)
     return { climbers, droppers }
   }, [records])
 
-  // ── Country distribution ────────────────────────────────────────────────
   const countryBars = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const r of records) {
@@ -156,21 +135,22 @@ export function Home() {
     return entries.map(([c, n]) => ({ country: c, count: n, pct: n / max }))
   }, [records])
 
-  // ─── Empty state ──────────────────────────────────────────────────────
   if (!latestSnapshot) {
     return (
-      <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
-        <div className="flex flex-col items-center justify-center py-32 gap-5 text-center">
-          <div className="font-display text-[88px] tracking-[0.15em] text-[#CBD5E1] leading-none">SERP</div>
-          <div className="font-display text-[22px] tracking-[0.2em] text-[#0F172A]">NO DATA STREAM</div>
-          <p className="text-[12px] text-[#64748B] max-w-sm font-mono">
-            Import a ranking export to wake the terminal.
-          </p>
+      <div className="flex-1 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-xl bg-[#F3F4F6] flex items-center justify-center mx-auto mb-4">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
+              <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
+            </svg>
+          </div>
+          <h2 className="text-[15px] font-semibold text-[#111827] mb-1">No data yet</h2>
+          <p className="text-[13px] text-[#6B7280] mb-5 max-w-[260px]">Import a ranking export to get started.</p>
           <button
             onClick={ctx.onOpenUpload}
-            className="mt-4 px-5 py-2 bg-[#0F172A] text-white rounded-md text-[12px] font-bold tracking-wider hover:bg-[#1E293B]"
+            className="px-4 py-2 bg-[#111827] text-white text-[13px] font-medium rounded-lg hover:bg-[#1F2937] transition-colors"
           >
-            IMPORT DATA →
+            Import data
           </button>
         </div>
       </div>
@@ -178,223 +158,188 @@ export function Home() {
   }
 
   return (
-    <div className="flex-1 overflow-auto relative">
+    <div className="flex-1 overflow-auto bg-[#F9FAFB]">
+      <div className="px-6 py-6 max-w-[1400px] mx-auto">
 
-      {/* Subtle horizontal-rule texture for visual rhythm on the light surface */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.06] mix-blend-multiply"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, #94A3B8 0px, #94A3B8 1px, transparent 1px, transparent 5px)',
-        }}
-      />
-
-      <div className="relative z-[1] px-7 pb-12 pt-6 max-w-[1600px] mx-auto">
-
-        {/* ─── HERO BAND ─────────────────────────────────────────────────── */}
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
-          className="relative overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-gradient-to-b from-white to-[#F8FAFC] mb-8 shadow-sm"
-          style={{ animation: 'fadeUp 0.4s ease both' }}
+          className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden mb-5"
+          style={{ animation: 'fadeUp 0.3s ease both' }}
         >
-          {/* Top status strip */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#10B981]" />
+          <div className="flex items-center justify-between px-6 py-3 border-b border-[#E5E7EB]">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
+              Rooster Partners
+            </span>
+            <div className="flex items-center gap-3 text-[12px] text-[#6B7280]">
+              <span>
+                Latest: <span className="text-[#111827] font-semibold">{latestSnapshot.displayDate}</span>
               </span>
-              <span className="font-mono text-[10px] tracking-[0.2em] text-[#10B981]">LIVE</span>
-              <span className="font-mono text-[10px] tracking-[0.16em] text-[#64748B] ml-2">
-                RANKING.REPORTS // ROOSTER PARTNERS
-              </span>
-            </div>
-            <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.14em] text-[#64748B]">
-              <span>SNAPSHOT: <span className="text-[#0F172A]">{latestSnapshot.displayDate}</span></span>
-              <span>SERIES: <span className="text-[#0F172A]">{totals.snapshots}</span></span>
+              <span className="text-[#E5E7EB]">·</span>
+              <span>{totals.snapshots} snapshots</span>
             </div>
           </div>
 
-          {/* Big numeric readouts */}
-          <div className="grid grid-cols-4 divide-x divide-[#E2E8F0]">
-            <HeroMetric label="KEYWORDS"  value={totals.keywords}  accent="#0F172A" />
-            <HeroMetric label="BRANDS"    value={totals.brands}    accent="#0F172A" />
-            <HeroMetric label="COUNTRIES" value={totals.countries} accent="#0F172A" />
-            <HeroMetric label="RECORDS"   value={totals.records}   accent="#0F172A" suffix="rows" />
+          <div className="grid grid-cols-4 divide-x divide-[#E5E7EB]">
+            <HeroMetric label="Keywords"  value={totals.keywords}  />
+            <HeroMetric label="Brands"    value={totals.brands}    />
+            <HeroMetric label="Countries" value={totals.countries} />
+            <HeroMetric label="Records"   value={totals.records}   />
           </div>
 
-          {/* Page-1 progress bar */}
-          <div className="px-6 py-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="font-mono text-[10px] tracking-[0.2em] text-[#64748B]">PAGE-1 OCCUPANCY</span>
-              <span className="font-display text-[26px] tracking-wider text-[#0F172A] leading-none">
-                {page1Pct}<span className="text-[14px] text-[#64748B] ml-0.5">%</span>
+          <div className="px-6 py-4 border-t border-[#E5E7EB] bg-[#F9FAFB]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                Page-1 Occupancy
+              </span>
+              <span className="text-[22px] font-bold text-[#111827] tabular-nums leading-none">
+                {page1Pct}
+                <span className="text-[13px] text-[#9CA3AF] font-normal ml-0.5">%</span>
               </span>
             </div>
-            <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#F3F4F6] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#0F172A] via-[#FBBF24] to-[#10B981]"
+                className="h-full rounded-full bg-[#111827]"
                 style={{ width: `${page1Pct}%`, transition: 'width 1s ease' }}
               />
             </div>
-            <div className="flex justify-between mt-2 font-mono text-[10px] tracking-wider text-[#94A3B8]">
-              <span><span className="text-[#0F172A]">{tier.p1}</span> @ P1</span>
-              <span><span className="text-[#FBBF24]">{tier.top3}</span> Top-3</span>
-              <span><span className="text-[#10B981]">{tier.top10}</span> Top-10</span>
-              <span><span className="text-[#3B82F6]">{tier.page2}</span> 11–100</span>
-              <span><span className="text-[#475569]">{tier.nr}</span> NR</span>
+            <div className="flex items-center gap-5 mt-2.5">
+              {([
+                { label: 'P1',     value: tier.p1,    color: '#111827' },
+                { label: 'Top-3',  value: tier.top3,  color: '#F59E0B' },
+                { label: 'Top-10', value: tier.top10, color: '#10B981' },
+                { label: '11–100', value: tier.page2, color: '#6366F1' },
+                { label: 'NR',     value: tier.nr,    color: '#EF4444' },
+              ] as const).map((t) => (
+                <div key={t.label} className="flex items-baseline gap-1">
+                  <span className="text-[13px] font-bold tabular-nums" style={{ color: t.color }}>{t.value}</span>
+                  <span className="text-[11px] text-[#9CA3AF]">{t.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ─── SERP DISTRIBUTION TRACK ───────────────────────────────────── */}
+        {/* ── SERP Distribution ────────────────────────────────────────────── */}
         <section
-          className="rounded-[14px] border border-[#E2E8F0] bg-white mb-8 overflow-hidden"
-          style={{ animation: 'fadeUp 0.5s ease 0.1s both' }}
+          className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden mb-5"
+          style={{ animation: 'fadeUp 0.3s ease 0.05s both' }}
         >
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
 
-          <div className="px-6 pb-6 pt-2">
-            {/* Page-1 / Page-2 group labels */}
-            <div className="grid grid-cols-[88px_1fr] gap-3 mb-2 items-center">
-              <div />
-              <div className="grid grid-cols-12 gap-2 px-1">
-                <div className="col-span-10 flex items-center gap-2">
-                  <div className="h-px flex-1 bg-[#E2E8F0]" />
-                  <span className="font-mono text-[9px] tracking-[0.2em] text-[#0F172A]">PAGE 1</span>
-                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+          <div className="px-6 py-5">
+            <div className="flex gap-1 items-end h-[140px]">
+              {buckets.map((b, i) => (
+                <div
+                  key={b.key}
+                  className="flex-1 flex flex-col items-center gap-1.5 h-full"
+                  style={{ animation: `fadeUp 0.4s ease ${0.1 + i * 0.03}s both` }}
+                >
+                  <span className="text-[11px] text-[#9CA3AF] tabular-nums">{b.count || ''}</span>
+                  <div className="relative w-full flex-1 bg-[#F3F4F6] rounded-md overflow-hidden">
+                    <div
+                      className="absolute bottom-0 left-0 right-0 rounded-md transition-all duration-700"
+                      style={{
+                        height: `${Math.max(b.pct * 100, b.count > 0 ? 6 : 0)}%`,
+                        background: POSITION_COLOR[b.key],
+                        opacity: 0.85,
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-[#9CA3AF]">{b.label}</span>
                 </div>
-                <div className="col-span-2 flex items-center gap-2">
-                  <div className="h-px flex-1 bg-[#E2E8F0]" />
-                  <span className="font-mono text-[9px] tracking-[0.2em] text-[#94A3B8]">BEYOND</span>
-                  <div className="h-px flex-1 bg-[#E2E8F0]" />
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* RECORDS row (count above each bar) */}
-            <div className="grid grid-cols-[88px_1fr] gap-3 mb-1.5 items-center">
-              <div className="text-right font-mono text-[10px] tracking-[0.2em] text-[#64748B] uppercase">
-                Records
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
+                <span className="text-[11px] text-[#6B7280]">Page 1 (1–10)</span>
               </div>
-              <div className="grid grid-cols-12 gap-2">
-                {buckets.map((b) => (
-                  <div
-                    key={b.key}
-                    className="text-center font-mono text-[12px] tabular-nums text-[#0F172A]"
-                  >
-                    {b.count}
-                  </div>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#F59E0B]" />
+                <span className="text-[11px] text-[#6B7280]">11–100</span>
               </div>
-            </div>
-
-            {/* Bars */}
-            <div className="grid grid-cols-[88px_1fr] gap-3 items-end">
-              <div />
-              <div className="grid grid-cols-12 gap-2 items-end h-[150px]">
-                {buckets.map((b, i) => (
-                  <div
-                    key={b.key}
-                    className="relative flex flex-col items-center group h-full"
-                    style={{ animation: `fadeUp 0.5s ease ${0.15 + i * 0.04}s both` }}
-                  >
-                    <div className="relative w-full h-full bg-[#E2E8F0] rounded-sm overflow-hidden">
-                      <div
-                        className="absolute bottom-0 left-0 right-0 rounded-sm"
-                        style={{
-                          height: `${Math.max(b.pct * 100, b.count > 0 ? 4 : 0)}%`,
-                          background: `linear-gradient(180deg, ${POSITION_COLOR[b.key]}, ${POSITION_COLOR[b.key]}88)`,
-                          boxShadow: `0 0 12px ${POSITION_COLOR[b.key]}40, inset 0 1px 0 ${POSITION_COLOR[b.key]}cc`,
-                        }}
-                      />
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-30"
-                        style={{
-                          backgroundImage: 'repeating-linear-gradient(0deg, transparent 0, transparent 6px, rgba(0,0,0,0.4) 6px, rgba(0,0,0,0.4) 7px)',
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* POSITION row (x-axis labels) */}
-            <div className="grid grid-cols-[88px_1fr] gap-3 mt-2 items-center">
-              <div className="text-right font-mono text-[10px] tracking-[0.2em] text-[#64748B] uppercase">
-                Position
-              </div>
-              <div className="grid grid-cols-12 gap-2">
-                {buckets.map((b) => (
-                  <div key={b.key} className="text-center font-mono text-[10px] tracking-wider text-[#64748B]">
-                    {b.label}
-                  </div>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#EF4444]" />
+                <span className="text-[11px] text-[#6B7280]">Not ranking</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ─── TWO-COLUMN: LEADERBOARD + MOVERS ──────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 mb-8">
+        {/* ── Leaderboard + Movers ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5 mb-5">
 
           {/* Brand Leaderboard */}
           <section
-            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
-            style={{ animation: 'fadeUp 0.5s ease 0.2s both' }}
+            className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden"
+            style={{ animation: 'fadeUp 0.3s ease 0.1s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[12px]">
+              <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
-                    <th className="px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">#</th>
-                    <th className="px-3 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">Brand</th>
-                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#0F172A]">P1</th>
-                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#FBBF24]">Top-3</th>
-                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#10B981]">Top-10</th>
-                    <th className="px-3 py-2.5 text-right font-mono text-[10px] tracking-[0.16em] text-[#64748B]">Total</th>
-                    <th className="px-5 py-2.5 font-mono text-[10px] tracking-[0.16em] text-[#64748B]">SHARE</th>
+                  <tr className="border-b border-[#E5E7EB]">
+                    <th className="pl-5 pr-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF] w-10">#</th>
+                    <th className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">Brand</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">P1</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#F59E0B]">Top-3</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#10B981]">Top-10</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">Total</th>
+                    <th className="pl-3 pr-5 py-2.5 w-[100px] text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">Share</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboard.length === 0 && (
-                    <tr><td colSpan={7} className="px-5 py-6 text-center text-[11px] font-mono text-[#94A3B8]">No brand data in current snapshot.</td></tr>
+                    <tr>
+                      <td colSpan={7} className="px-5 py-8 text-center text-[12px] text-[#9CA3AF]">
+                        No brand data in current snapshot.
+                      </td>
+                    </tr>
                   )}
                   {leaderboard.map((row, i) => {
                     const maxT10 = leaderboard[0].t10 || 1
-                    const share = row.t10 / maxT10
+                    const share  = row.t10 / maxT10
                     return (
                       <tr
                         key={row.brand.name}
                         onClick={() => { ctx.onSelectBPBrand(row.brand.name); navigate('/bp-sites') }}
-                        className="border-b border-[#F1F5F9] hover:bg-[#F1F5F9] cursor-pointer transition-colors group"
-                        style={{ animation: `fadeUp 0.4s ease ${0.25 + i * 0.04}s both` }}
+                        className="border-b border-[#F3F4F6] hover:bg-[#F9FAFB] cursor-pointer transition-colors"
+                        style={{ animation: `fadeUp 0.3s ease ${0.12 + i * 0.03}s both` }}
                       >
-                        <td className="pl-5 pr-2 py-2.5 font-mono text-[11px] text-[#64748B] tabular-nums w-12">
+                        <td className="pl-5 pr-3 py-3 text-[12px] text-[#9CA3AF] tabular-nums font-medium">
                           {String(i + 1).padStart(2, '0')}
                         </td>
-                        <td className="px-3 py-2.5">
+                        <td className="px-3 py-3">
                           <div className="flex items-center gap-2.5">
-                            <span
-                              className="inline-block w-1 h-7 rounded-sm"
+                            <div
+                              className="w-[3px] h-8 rounded-full shrink-0"
                               style={{ background: row.brand.color }}
                             />
                             <div className="min-w-0">
-                              <div className="font-semibold text-[#0F172A] truncate">{row.brand.name}</div>
-                              <div className="font-mono text-[10px] text-[#64748B] truncate">{row.brand.mainDomain}</div>
+                              <div className="text-[13px] font-semibold text-[#111827] truncate leading-tight">{row.brand.name}</div>
+                              <div className="text-[11px] text-[#9CA3AF] truncate mt-0.5">{row.brand.mainDomain}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#0F172A]">{row.p1 || '·'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#FBBF24]">{row.t3 || '·'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#10B981]">{row.t10 || '·'}</td>
-                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-[#475569]">{row.total}</td>
-                        <td className="pl-3 pr-5 py-2.5 w-[120px]">
-                          <div className="h-1 bg-[#E2E8F0] rounded-full overflow-hidden">
+                        <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums text-[#111827]">
+                          {row.p1 || <span className="text-[#D1D5DB]">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums text-[#F59E0B]">
+                          {row.t3 || <span className="text-[#D1D5DB]">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums text-[#10B981]">
+                          {row.t10 || <span className="text-[#D1D5DB]">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-right text-[12px] tabular-nums text-[#6B7280]">
+                          {row.total}
+                        </td>
+                        <td className="pl-3 pr-5 py-3">
+                          <div className="h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
                             <div
-                              className="h-full rounded-full"
-                              style={{ width: `${share * 100}%`, background: row.brand.color, transition: 'width 0.8s ease' }}
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${share * 100}%`, background: row.brand.color }}
                             />
                           </div>
                         </td>
@@ -408,81 +353,75 @@ export function Home() {
 
           {/* Top Movers */}
           <section
-            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
-            style={{ animation: 'fadeUp 0.5s ease 0.25s both' }}
+            className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden"
+            style={{ animation: 'fadeUp 0.3s ease 0.12s both' }}
           >
             <SectionHeader title="Top Movers" subtitle="vs. previous snapshot" />
 
-            <div className="px-5 pb-5 pt-2 space-y-4">
-
-              <MoverColumn
-                heading="CLIMBERS"
+            <div className="px-5 pb-5 pt-3 space-y-4">
+              <MoverGroup
+                label="Climbers"
                 tint="#10B981"
-                arrow="↑"
+                bgTint="#F0FDF4"
+                borderTint="#BBF7D0"
                 rows={movers.climbers}
                 empty="No upward movement."
+                sign="+"
               />
-
-              <div className="h-px bg-[#E2E8F0]" />
-
-              <MoverColumn
-                heading="DROPPERS"
+              <div className="h-px bg-[#F3F4F6]" />
+              <MoverGroup
+                label="Droppers"
                 tint="#EF4444"
-                arrow="↓"
+                bgTint="#FEF2F2"
+                borderTint="#FECACA"
                 rows={movers.droppers}
                 empty="No downward movement."
+                sign=""
               />
             </div>
           </section>
         </div>
 
-        {/* ─── COUNTRY DISTRIBUTION + QUICK NAV ──────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-6">
+        {/* ── Country + Navigate ────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5">
 
           <section
-            className="rounded-[14px] border border-[#E2E8F0] bg-white overflow-hidden"
-            style={{ animation: 'fadeUp 0.5s ease 0.3s both' }}
+            className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden"
+            style={{ animation: 'fadeUp 0.3s ease 0.15s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-
-            <div className="px-5 pb-5 pt-2 space-y-2.5">
+            <div className="px-5 pb-5 pt-3 space-y-3">
               {countryBars.length === 0 && (
-                <p className="text-[11px] font-mono text-[#94A3B8] px-1">No country data.</p>
+                <p className="text-[12px] text-[#9CA3AF]">No country data.</p>
               )}
               {countryBars.map((c) => (
                 <div key={c.country} className="flex items-center gap-3">
-                  <div className="w-10 font-display tracking-widest text-[15px] text-[#0F172A]">{c.country}</div>
-                  <div className="flex-1 h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
+                  <span className="text-[13px] font-semibold text-[#111827] w-10 shrink-0">{c.country}</span>
+                  <div className="flex-1 h-1.5 bg-[#F3F4F6] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-[#3B82F6] to-[#10B981] rounded-full"
-                      style={{ width: `${c.pct * 100}%`, transition: 'width 0.8s ease' }}
+                      className="h-full rounded-full bg-[#6366F1] transition-all duration-700"
+                      style={{ width: `${c.pct * 100}%` }}
                     />
                   </div>
-                  <div className="w-12 text-right font-mono text-[11px] tabular-nums text-[#475569]">{c.count}</div>
+                  <span className="text-[12px] tabular-nums text-[#6B7280] w-10 text-right">{c.count}</span>
                 </div>
               ))}
             </div>
           </section>
 
           <section
-            className="rounded-[14px] border border-[#E2E8F0] bg-gradient-to-br from-white to-[#F1F5F9] overflow-hidden shadow-sm"
-            style={{ animation: 'fadeUp 0.5s ease 0.35s both' }}
+            className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden"
+            style={{ animation: 'fadeUp 0.3s ease 0.17s both' }}
           >
             <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
-
-            <div className="grid grid-cols-2 gap-2.5 p-5">
-              <QuickLink label="BP Sites"     hint="Brand × keyword matrix"    onClick={() => navigate('/bp-sites')} accent="#0F172A" />
-              <QuickLink label="FTDs"         hint="First-time depositors"      onClick={() => navigate('/ftds')} accent="#8B5CF6" />
-              <QuickLink label="Import Data"  hint="Upload an XLSX snapshot"    onClick={ctx.onOpenUpload} accent="#FBBF24" filled />
+            <div className="grid grid-cols-2 gap-3 p-5">
+              <NavCard label="BP Sites"    hint="Brand × keyword matrix"  onClick={() => navigate('/bp-sites')} />
+              <NavCard label="FTDs"        hint="First-time depositors"   onClick={() => navigate('/ftds')} />
+              <NavCard label="Import Data" hint="Upload an XLSX snapshot" onClick={ctx.onOpenUpload} highlight />
             </div>
           </section>
         </div>
 
-        {/* Footer signature */}
-        <div className="mt-10 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-[#CBD5E1]">
-          <span>END OF FEED ▎</span>
-          <span>// {new Date().toISOString().slice(0, 10).replace(/-/g, '.')} //</span>
-        </div>
       </div>
     </div>
   )
@@ -490,78 +429,69 @@ export function Home() {
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
-function HeroMetric({
-  label, value, accent, suffix,
-}: { label: string; value: number; accent: string; suffix?: string }) {
+function HeroMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="px-6 py-7 relative">
-      <div className="font-mono text-[10px] tracking-[0.22em] text-[#64748B] mb-2">{label}</div>
-      <div className="flex items-baseline gap-2">
-        <span className="font-display tracking-wider leading-none text-[64px]" style={{ color: accent }}>
-          {value.toLocaleString()}
-        </span>
-        {suffix && <span className="font-mono text-[10px] tracking-widest text-[#94A3B8] uppercase">{suffix}</span>}
+    <div className="px-6 py-5">
+      <div className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF] mb-2">{label}</div>
+      <div className="text-[40px] font-bold tabular-nums text-[#111827] leading-none">
+        {value.toLocaleString()}
       </div>
-      {/* Decorative corner ticks */}
-      <span className="absolute top-2 right-3 font-mono text-[9px] tracking-widest text-[#CBD5E1]">◇</span>
     </div>
   )
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex items-end justify-between px-6 py-3 border-b border-[#E2E8F0]">
-      <div>
-        <h2 className="font-display text-[18px] tracking-[0.16em] text-[#0F172A] leading-none">{title}</h2>
-        <p className="font-mono text-[10px] tracking-[0.16em] text-[#64748B] mt-1.5">{subtitle}</p>
-      </div>
-      <span className="font-mono text-[10px] tracking-widest text-[#CBD5E1]">▎▎▎</span>
+    <div className="px-5 py-4 border-b border-[#E5E7EB]">
+      <h2 className="text-[14px] font-semibold text-[#111827] leading-none">{title}</h2>
+      <p className="text-[11px] text-[#9CA3AF] mt-1">{subtitle}</p>
     </div>
   )
 }
 
-function MoverColumn({
-  heading, tint, arrow, rows, empty,
+function MoverGroup({
+  label, tint, bgTint, borderTint, rows, empty, sign,
 }: {
-  heading: string
+  label: string
   tint: string
-  arrow: string
+  bgTint: string
+  borderTint: string
   rows: { record: RankingRecord; delta: number; brand: string }[]
   empty: string
+  sign: string
 }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2.5">
-        <span style={{ color: tint }} className="font-mono text-[14px] leading-none">{arrow}</span>
-        <span className="font-mono text-[10px] tracking-[0.22em]" style={{ color: tint }}>{heading}</span>
-        <div className="flex-1 h-px" style={{ background: `${tint}33` }} />
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: tint }}>{label}</span>
+        <div className="flex-1 h-px bg-[#F3F4F6]" />
       </div>
       {rows.length === 0 && (
-        <p className="text-[11px] font-mono text-[#94A3B8] pl-1">{empty}</p>
+        <p className="text-[12px] text-[#9CA3AF] px-1">{empty}</p>
       )}
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {rows.map((m, i) => {
           const brand = BRAND_BY_NAME[m.brand]
           return (
             <li
               key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-md hover:bg-[#F1F5F9] transition-colors"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F9FAFB] transition-colors"
             >
-              <span
-                className="inline-block w-1 h-5 rounded-sm shrink-0"
-                style={{ background: brand?.color ?? '#94A3B8' }}
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: brand?.color ?? '#9CA3AF' }}
               />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] text-[#0F172A] truncate">{m.record.keyword}</div>
-                <div className="font-mono text-[10px] text-[#64748B] truncate">
+                <div className="text-[13px] font-medium text-[#111827] truncate leading-tight">{m.record.keyword}</div>
+                <div className="text-[11px] text-[#9CA3AF] truncate mt-0.5">
                   {m.brand} · {m.record.country} · pos {m.record.position}
                 </div>
               </div>
               <span
-                className="font-mono text-[11px] tabular-nums font-bold px-2 py-0.5 rounded"
-                style={{ color: tint, background: `${tint}1A`, border: `1px solid ${tint}40` }}
+                className="text-[12px] font-semibold tabular-nums px-2 py-0.5 rounded-md shrink-0"
+                style={{ color: tint, background: bgTint, border: `1px solid ${borderTint}` }}
               >
-                {m.delta > 0 ? '+' : ''}{m.delta}
+                {m.delta > 0 ? `+${m.delta}` : m.delta}
               </span>
             </li>
           )
@@ -571,39 +501,23 @@ function MoverColumn({
   )
 }
 
-function QuickLink({
-  label, hint, onClick, accent, filled,
-}: { label: string; hint: string; onClick: () => void; accent: string; filled?: boolean }) {
+function NavCard({
+  label, hint, onClick, highlight,
+}: { label: string; hint: string; onClick: () => void; highlight?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="group text-left p-3.5 rounded-lg border transition-all duration-150 hover:-translate-y-0.5"
+      className="group text-left p-4 rounded-lg border transition-all duration-150 hover:shadow-sm"
       style={{
-        background: filled ? accent : '#FFFFFF',
-        borderColor: filled ? accent : '#E2E8F0',
-        color: filled ? '#0B0F1A' : '#0F172A',
+        background:   highlight ? '#FEFCE8' : '#FFFFFF',
+        borderColor:  highlight ? '#FDE68A' : '#E5E7EB',
       }}
     >
-      <div className="flex items-center justify-between mb-1">
-        <span
-          className="font-display text-[15px] tracking-[0.12em]"
-          style={{ color: filled ? '#0B0F1A' : '#0F172A' }}
-        >
-          {label.toUpperCase()}
-        </span>
-        <span
-          className="font-mono text-[14px] transition-transform group-hover:translate-x-0.5"
-          style={{ color: filled ? '#0B0F1A' : accent }}
-        >
-          →
-        </span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[13px] font-semibold text-[#111827] leading-tight">{label}</span>
+        <span className="text-[#9CA3AF] text-[14px] transition-transform group-hover:translate-x-0.5 shrink-0">→</span>
       </div>
-      <div
-        className="font-mono text-[10px] tracking-[0.1em]"
-        style={{ color: filled ? '#0B0F1A99' : '#64748B' }}
-      >
-        {hint}
-      </div>
+      <div className="text-[11px] text-[#9CA3AF] mt-1">{hint}</div>
     </button>
   )
 }
