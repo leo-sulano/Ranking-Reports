@@ -274,11 +274,22 @@ export interface StatsCounts {
   unchanged:  number
 }
 
+// For BP-matrix "⇑ (n)" / "⇓ (n)" cells, n is the previous position not a
+// delta. If n === current position there is no actual movement; return 0.
+function effectiveDelta(change: string, currentPos: number | 'NR' | null): number {
+  const d = parseChange(change) ?? 0
+  if (d !== 0 && typeof currentPos === 'number') {
+    const m = /^[⇑⇓↑↓]\s*\(\s*(\d+)\s*\)$/.exec(change.trim())
+    if (m && parseInt(m[1], 10) === currentPos) return 0
+  }
+  return d
+}
+
 export function computeStats(records: RankingRecord[]): StatsCounts {
   let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
   for (const r of records) {
     const p = parsePosition(r.position)
-    const d = parseChange(r.change) ?? 0
+    const d = effectiveDelta(r.change ?? '', p)
 
     // Movement bucket — exclusive.
     if (p === 'NR')      notRanking++

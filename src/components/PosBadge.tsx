@@ -28,8 +28,15 @@ export function PosBadge({ record }: Props) {
   }
 
   const change = record.change ?? ''
-  const isUp   = /[⇑↑]/.test(change) || /^\s*\+?\d+\s*$/.test(change)        // legacy: "+3" / "3" → green
-  const isDown = /[⇓↓]/.test(change) || /^\s*-\d+\s*$/.test(change)          // legacy: "-3" → red
+
+  // BP-matrix cells use "⇑ (n)" where n is the previous position, not the delta.
+  // If previous position === current position, there is no actual movement.
+  const bpParensMatch = /^[⇑⇓↑↓]\s*\(\s*(\d+)\s*\)$/.exec(change.trim())
+  const prevPos = bpParensMatch ? parseInt(bpParensMatch[1], 10) : null
+  const noActualMovement = prevPos !== null && typeof pos === 'number' && prevPos === pos
+
+  const isUp   = !noActualMovement && (/[⇑↑]/.test(change) || /^\s*\+?\d+\s*$/.test(change))
+  const isDown = !noActualMovement && (/[⇓↓]/.test(change) || /^\s*-\d+\s*$/.test(change))
   const color  = isUp   ? '#15803D'
                : isDown ? '#B91C1C'
                : undefined
@@ -37,8 +44,9 @@ export function PosBadge({ record }: Props) {
   // For arrow-bearing change strings ("⇑ (6)", "⇓ 10"), render verbatim.
   // For legacy numeric strings, recreate the old "↑ (n)" notation so
   // existing Supabase rows stay readable without a re-upload.
+  // Suppress suffix entirely when prev position === current position.
   let suffix = ''
-  if (change) {
+  if (change && !noActualMovement) {
     if (/[⇑⇓↑↓]/.test(change)) {
       suffix = ` ${change.trim()}`
     } else {
