@@ -24,10 +24,7 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
 
   const ids = snaps.map((s) => s.id)
 
-  // Supabase/PostgREST caps a single response at 1000 rows by default. Page
-  // through with .range() until a short page comes back.
-  const PAGE = 1000
-  const allRecords: Array<{
+  type RecordRow = {
     snapshot_id: string
     domain: string
     keyword: string
@@ -39,17 +36,33 @@ export async function loadSnapshots(): Promise<Snapshot[]> {
     search_volume: string | null
     affiliate_url: string | null
     global_search_volume: string | null
-  }> = []
-  for (let from = 0; ; from += PAGE) {
-    const { data: page, error: e2 } = await supabase
+  }
+
+  const COLS = 'snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume'
+  const PAGE = 1000
+
+  // Get the total row count first, then fetch all pages in parallel instead
+  // of sequentially — turns N round-trips into 1 + ceil(N/PAGE) parallel ones.
+  const { count, error: eCnt } = await supabase
+    .from('ranking_records')
+    .select('*', { count: 'exact', head: true })
+    .in('snapshot_id', ids)
+  if (eCnt) throw eCnt
+
+  const total = count ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / PAGE))
+  const pagePromises = Array.from({ length: pageCount }, (_, i) =>
+    supabase
       .from('ranking_records')
-      .select('snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume')
+      .select(COLS)
       .in('snapshot_id', ids)
-      .range(from, from + PAGE - 1)
-    if (e2) throw e2
-    if (!page || page.length === 0) break
-    allRecords.push(...page)
-    if (page.length < PAGE) break
+      .range(i * PAGE, i * PAGE + PAGE - 1)
+  )
+  const pages = await Promise.all(pagePromises)
+  const allRecords: RecordRow[] = []
+  for (const { data, error } of pages) {
+    if (error) throw error
+    if (data) allRecords.push(...(data as RecordRow[]))
   }
 
   // Group records by snapshot, deduping any rows that share
