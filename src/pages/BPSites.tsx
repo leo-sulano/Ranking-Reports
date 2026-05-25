@@ -51,7 +51,8 @@ const GRID_BRAND_COLORS: Record<string, string> = {
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function rawDateToMonthKey(rawDate: string): string {
-  const [m, , y] = rawDate.split('/')
+  // rawDate is stored as "yyyy-MM-dd"
+  const [y, m] = rawDate.split('-')
   const idx = parseInt(m, 10) - 1
   return `${MONTH_NAMES[idx] ?? '?'} ${y ?? ''}`
 }
