@@ -430,6 +430,12 @@ function BrandView({
   )
 }
 
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+function snapMonthKey(snap: Snapshot): string {
+  const [y, m] = snap.rawDate.split('-')
+  return MONTH_NAMES[parseInt(m, 10) - 1] + ' ' + (y ?? '')
+}
+
 // ─── StatsDateFilter — small dropdown that scopes the StatsRow to a date ─────
 
 function StatsDateFilter({
@@ -443,6 +449,7 @@ function StatsDateFilter({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [monthly, setMonthly] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -469,16 +476,42 @@ function StatsDateFilter({
     }
   }, [open])
 
+  const availableMonths = useMemo(() => {
+    const seen = new Set<string>()
+    const months: string[] = []
+    for (const snap of snapshots) {
+      const mk = snapMonthKey(snap)
+      if (!seen.has(mk)) { seen.add(mk); months.push(mk) }
+    }
+    return months
+  }, [snapshots])
+
   const selected = snapshots.find((s) => s.id === value)
+
+  const allLabel = monthly
+    ? 'All months'
+    : snapshots[0] ? 'All · latest ' + snapshots[0].displayDate : 'All'
   const label = value === 'all'
-    ? `All${snapshots[0] ? ` · latest ${snapshots[0].displayDate}` : ''}`
-    : (selected?.displayDate ?? 'Unknown date')
+    ? allLabel
+    : monthly
+      ? (selected ? snapMonthKey(selected) : 'Unknown')
+      : (selected?.displayDate ?? 'Unknown date')
 
   const q = query.trim().toLowerCase()
+  const filteredMonths = q ? availableMonths.filter((m) => m.toLowerCase().includes(q)) : availableMonths
+  const showAllMonths = !q || 'all months'.includes(q)
   const filteredSnapshots = q
     ? snapshots.filter((s) => s.displayDate.toLowerCase().includes(q) || s.rawDate.toLowerCase().includes(q))
     : snapshots
   const showAllOption = !q || 'all (latest)'.includes(q) || 'latest'.includes(q)
+
+  const handleToggleMonthly = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = !monthly
+    setMonthly(next)
+    if (next) onChange('all')
+    setQuery('')
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -528,29 +561,43 @@ function StatsDateFilter({
           role="listbox"
           className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
-          <div className="max-h-[260px] overflow-y-auto">
-            {showAllOption && (
-              <DateOption
-                label="All (latest)"
-                selected={value === 'all'}
-                onClick={() => { onChange('all'); setOpen(false) }}
-              />
-            )}
-            {showAllOption && filteredSnapshots.length > 0 && (
-              <div className="border-t border-[#E2E8F0]" />
-            )}
-            {filteredSnapshots.map((s) => (
-              <DateOption
-                key={s.id}
-                label={s.displayDate}
-                selected={value === s.id}
-                onClick={() => { onChange(s.id); setOpen(false) }}
-              />
-            ))}
-            {!showAllOption && filteredSnapshots.length === 0 && (
-              <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">
-                No dates match “{query}”.
-              </p>
+          <button type="button" onClick={handleToggleMonthly} className="w-full flex items-center justify-between px-3 py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Monthly</span>
+            <div className={`w-7 h-4 rounded-full transition-colors relative shrink-0 ${monthly ? 'bg-[#0F172A]' : 'bg-[#CBD5E1]'}`}>
+              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all duration-150 ${monthly ? 'left-3.5' : 'left-0.5'}`} />
+            </div>
+          </button>
+          <div className="max-h-[240px] overflow-y-auto">
+            {monthly ? (
+              <>
+                {showAllMonths && (
+                  <DateOption label="All months" selected={value === 'all'} onClick={() => { onChange('all'); setOpen(false) }} />
+                )}
+                {showAllMonths && filteredMonths.length > 0 && <div className="border-t border-[#E2E8F0]" />}
+                {filteredMonths.map((m) => {
+                  const snap = snapshots.find((s) => snapMonthKey(s) === m)
+                  const isSelected = value !== 'all' && !!selected && snapMonthKey(selected) === m
+                  return (
+                    <DateOption key={m} label={m} selected={isSelected} onClick={() => { if (snap) onChange(snap.id); setOpen(false) }} />
+                  )
+                })}
+                {!showAllMonths && filteredMonths.length === 0 && (
+                  <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">No months match.</p>
+                )}
+              </>
+            ) : (
+              <>
+                {showAllOption && (
+                  <DateOption label="All (latest)" selected={value === 'all'} onClick={() => { onChange('all'); setOpen(false) }} />
+                )}
+                {showAllOption && filteredSnapshots.length > 0 && <div className="border-t border-[#E2E8F0]" />}
+                {filteredSnapshots.map((s) => (
+                  <DateOption key={s.id} label={s.displayDate} selected={value === s.id} onClick={() => { onChange(s.id); setOpen(false) }} />
+                ))}
+                {!showAllOption && filteredSnapshots.length === 0 && (
+                  <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">No dates match.</p>
+                )}
+              </>
             )}
           </div>
         </div>
