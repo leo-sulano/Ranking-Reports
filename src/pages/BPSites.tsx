@@ -217,10 +217,12 @@ function BrandView({
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id.
   const [statsFilter, setStatsFilter] = useState<string>('all')
+  const monthKey = statsFilter.startsWith('month:') ? statsFilter.slice(6) : null
   const statsSnap = useMemo(() => {
+    if (monthKey) return brandSnapshots.find((s) => snapMonthKey(s) === monthKey) ?? latestSnap
     if (statsFilter === 'all') return latestSnap
     return brandSnapshots.find((s) => s.id === statsFilter) ?? latestSnap
-  }, [statsFilter, brandSnapshots, latestSnap])
+  }, [statsFilter, monthKey, brandSnapshots, latestSnap])
 
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
@@ -403,7 +405,9 @@ function BrandView({
           <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
               ? brandSnapshots
-              : brandSnapshots.filter((s) => s.id === statsFilter)
+              : monthKey
+                ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
+                : brandSnapshots.filter((s) => s.id === statsFilter)
             ).map((snap) => {
               const snapIdx = brandSnapshots.findIndex((s) => s.id === snap.id)
               const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
@@ -493,9 +497,11 @@ function StatsDateFilter({
     : snapshots[0] ? 'All · latest ' + snapshots[0].displayDate : 'All'
   const label = value === 'all'
     ? allLabel
-    : monthly
-      ? (selected ? snapMonthKey(selected) : 'Unknown')
-      : (selected?.displayDate ?? 'Unknown date')
+    : value.startsWith('month:')
+      ? value.slice(6)
+      : monthly
+        ? (selected ? snapMonthKey(selected) : 'Unknown')
+        : (selected?.displayDate ?? 'Unknown date')
 
   const q = query.trim().toLowerCase()
   const filteredMonths = q ? availableMonths.filter((m) => m.toLowerCase().includes(q)) : availableMonths
@@ -509,7 +515,7 @@ function StatsDateFilter({
     e.stopPropagation()
     const next = !monthly
     setMonthly(next)
-    if (next) onChange('all')
+    if (next || value.startsWith('month:')) onChange('all')
     setQuery('')
   }
 
@@ -575,10 +581,9 @@ function StatsDateFilter({
                 )}
                 {showAllMonths && filteredMonths.length > 0 && <div className="border-t border-[#E2E8F0]" />}
                 {filteredMonths.map((m) => {
-                  const snap = snapshots.find((s) => snapMonthKey(s) === m)
-                  const isSelected = value !== 'all' && !!selected && snapMonthKey(selected) === m
+                  const isSelected = value === 'month:' + m
                   return (
-                    <DateOption key={m} label={m} selected={isSelected} onClick={() => { if (snap) onChange(snap.id); setOpen(false) }} />
+                    <DateOption key={m} label={m} selected={isSelected} onClick={() => { onChange('month:' + m); setOpen(false) }} />
                   )
                 })}
                 {!showAllMonths && filteredMonths.length === 0 && (
