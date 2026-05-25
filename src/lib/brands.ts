@@ -196,6 +196,14 @@ export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.name, b]),
 )
 
+export function brandToSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+export const BRAND_BY_SLUG: Record<string, Brand> = Object.fromEntries(
+  BRANDS.map((b) => [brandToSlug(b.name), b]),
+)
+
 // domain (lowercase) → brand name. BP/MAIN domains only.
 export const DOMAIN_TO_BRAND: Record<string, string> = {}
 BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))

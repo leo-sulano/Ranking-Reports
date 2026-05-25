@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { RankingRecord, RROutletContext } from '../types'
 
@@ -304,7 +304,7 @@ export function Home() {
                     return (
                       <tr
                         key={row.brand.name}
-                        onClick={() => { ctx.onSelectBPBrand(row.brand.name); navigate('/bp-sites') }}
+                        onClick={() => navigate(`/bp-sites/${brandToSlug(row.brand.name)}`)}
                         className="border-b border-[#F3F4F6] hover:bg-[#F9FAFB] cursor-pointer transition-colors"
                         style={{ animation: `fadeUp 0.3s ease ${0.12 + i * 0.03}s both` }}
                       >

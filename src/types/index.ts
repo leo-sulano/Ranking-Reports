@@ -59,13 +59,11 @@ export interface EditCellPatch {
 export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
-  bpFilterBrand: string | null
-  lpFilterBrand: string | null
   onSelectSnapshot: (id: string) => void
-  onSelectBPBrand: (name: string | null) => void
-  onSelectLPBrand: (name: string | null) => void
   onOpenUpload: () => void
   onDeleteSnapshot: (id: string) => void
+  lpFilterBrand: string | null
+  onSelectLPBrand: (name: string | null) => void
   // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows
   // which rows are patched within the snapshot.
   onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>

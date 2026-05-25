@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BRANDS } from '../lib/brands'
+import { BRANDS, brandToSlug } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
   { path: '/', label: 'Home', icon: (
@@ -127,13 +127,19 @@ export function Sidebar({
 
             <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
               {BRANDS.map((brand) => {
-                const activeBrand = isBPSitesRoute ? activeBPBrand : activeLPBrand
-                const isActive    = activeBrand === brand.name
-                const handler     = isBPSitesRoute ? onSelectBPBrand : onSelectLPBrand
+                const bpSlug  = location.pathname.startsWith('/bp-sites/')
+                  ? location.pathname.slice('/bp-sites/'.length)
+                  : null
+                const isActive = isBPSitesRoute
+                  ? bpSlug === brandToSlug(brand.name)
+                  : activeLPBrand === brand.name
                 return (
                   <button
                     key={brand.name}
-                    onClick={() => handler(brand.name)}
+                    onClick={() => {
+                      if (isBPSitesRoute) navigate(`/bp-sites/${brandToSlug(brand.name)}`)
+                      else onSelectLPBrand(brand.name)
+                    }}
                     className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
                       isActive ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'
                     }`}

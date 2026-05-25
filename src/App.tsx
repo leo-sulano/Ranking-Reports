@@ -315,9 +315,7 @@ function Layout() {
     onSelectSnapshot:  selectSnapshot,
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
-    bpFilterBrand,
     lpFilterBrand,
-    onSelectBPBrand:   setBPFilterBrand,
     onSelectLPBrand:   setLPFilterBrand,
     onEditCell:        handleEditCell,
   }
@@ -407,7 +405,8 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="/bp-sites"    element={<BPSites />} />
+        <Route path="/bp-sites"              element={<BPSites />} />
+        <Route path="/bp-sites/:brandSlug"   element={<BPSites />} />
         <Route path="/lp-sites"    element={<LPSites />} />
         <Route path="/ftds"        element={<FTDs />} />
       </Route>

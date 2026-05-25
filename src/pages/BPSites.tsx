@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { EditableCell } from '../components/EditableCell'
@@ -56,29 +56,29 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
-  const { snapshots, bpFilterBrand, onSelectBPBrand, onEditCell } = ctx
+  const { snapshots, onEditCell } = ctx
+  const { brandSlug } = useParams<{ brandSlug: string }>()
+  const navigate = useNavigate()
+
   const bpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'bp-sites'),
     [snapshots],
   )
-  const activeBrand = bpFilterBrand ? BRAND_BY_NAME[bpFilterBrand] ?? null : null
+  const activeBrand = brandSlug ? (BRAND_BY_SLUG[brandSlug] ?? null) : null
 
   if (activeBrand) {
     return (
-      // key={brand.name} forces a fresh mount on brand switch so the chip
-      // filter state resets to "everything selected" instead of carrying
-      // over from the previous brand.
       <BrandView
         key={activeBrand.name}
         brand={activeBrand}
         snapshots={bpSnapshots}
-        onBack={() => onSelectBPBrand(null)}
+        onBack={() => navigate('/bp-sites')}
         onEditCell={onEditCell}
       />
     )
   }
 
-  return <BrandGrid snapshots={bpSnapshots} onSelect={(b) => onSelectBPBrand(b.name)} />
+  return <BrandGrid snapshots={bpSnapshots} onSelect={(b) => navigate(`/bp-sites/${brandToSlug(b.name)}`)} />
 }
 
 // ─── Brand Grid (unchanged from prior) ────────────────────────────────────────
