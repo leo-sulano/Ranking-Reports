@@ -49,14 +49,6 @@ const GRID_BRAND_COLORS: Record<string, string> = {
   'Rollero':     '#B8860B', // dark gold/crown
 }
 
-const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-function rawDateToMonthKey(rawDate: string): string {
-  // rawDate is stored as "yyyy-MM-dd"
-  const [y, m] = rawDate.split('-')
-  const idx = parseInt(m, 10) - 1
-  return `${MONTH_NAMES[idx] ?? '?'} ${y ?? ''}`
-}
-
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 
@@ -222,34 +214,13 @@ function BrandView({
   const [showMain, setShowMain] = useState(true)
   const [kwFilter, setKwFilter] = useState('')
 
-  // Month filter — derived from rawDate "M/D/YYYY"
-  const availableMonths = useMemo(() => {
-    const seen = new Set<string>()
-    const months: string[] = []
-    for (const snap of brandSnapshots) {
-      const mk = rawDateToMonthKey(snap.rawDate)
-      if (!seen.has(mk)) { seen.add(mk); months.push(mk) }
-    }
-    return months
-  }, [brandSnapshots])
-
-  const [activeMonth, setActiveMonth] = useState<string | null>(null)
-
-  // Reset stats filter when month changes
-  useEffect(() => { setStatsFilter('all') }, [activeMonth])
-
-  const visibleSnapshots = useMemo(
-    () => activeMonth ? brandSnapshots.filter((s) => rawDateToMonthKey(s.rawDate) === activeMonth) : brandSnapshots,
-    [brandSnapshots, activeMonth],
-  )
-
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id.
   const [statsFilter, setStatsFilter] = useState<string>('all')
   const statsSnap = useMemo(() => {
-    if (statsFilter === 'all') return visibleSnapshots[0] ?? null
-    return visibleSnapshots.find((s) => s.id === statsFilter) ?? visibleSnapshots[0] ?? null
-  }, [statsFilter, visibleSnapshots])
+    if (statsFilter === 'all') return latestSnap
+    return brandSnapshots.find((s) => s.id === statsFilter) ?? latestSnap
+  }, [statsFilter, brandSnapshots, latestSnap])
 
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
@@ -310,11 +281,11 @@ function BrandView({
 
         <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
 
-        {visibleSnapshots.length > 0 && (
+        {brandSnapshots.length > 0 && (
           <div className="ml-auto">
             <StatsDateFilter
               value={statsFilter}
-              snapshots={visibleSnapshots}
+              snapshots={brandSnapshots}
               onChange={setStatsFilter}
             />
           </div>
@@ -420,42 +391,8 @@ function BrandView({
               />
             </div>
 
-            {availableMonths.length > 0 && (
-              <>
-                <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
-                  Month
-                </span>
-                <button
-                  onClick={() => setActiveMonth(null)}
-                  className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
-                  style={
-                    activeMonth === null
-                      ? { background: '#0F172A', color: 'white', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-                  }
-                >
-                  All
-                </button>
-                {availableMonths.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setActiveMonth(m === activeMonth ? null : m)}
-                    className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
-                    style={
-                      activeMonth === m
-                        ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                        : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-                    }
-                  >
-                    {m}
-                  </button>
-                ))}
-              </>
-            )}
-
             <div className="ml-auto text-[11px] font-mono text-[#64748B]">
-              {visibleSnapshots.length} date{visibleSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
+              {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
               {' (1 main + ' + bpDomains.length + ' BP)'}
             </div>
           </div>
@@ -465,8 +402,8 @@ function BrandView({
               tables to that one date too. */}
           <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
-              ? visibleSnapshots
-              : visibleSnapshots.filter((s) => s.id === statsFilter)
+              ? brandSnapshots
+              : brandSnapshots.filter((s) => s.id === statsFilter)
             ).map((snap) => {
               const snapIdx = brandSnapshots.findIndex((s) => s.id === snap.id)
               const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
