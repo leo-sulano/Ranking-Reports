@@ -419,7 +419,7 @@ function BrandView({
               />
             </div>
 
-            {availableMonths.length > 1 && (
+            {availableMonths.length > 0 && (
               <>
                 <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
