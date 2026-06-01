@@ -10,6 +10,26 @@ export interface StreamHandlers {
 }
 
 /**
+ * Probe the assistant Edge Function with a lightweight GET. Resolves true only
+ * when the function is deployed AND has the OpenAI key configured — so the UI
+ * can hide the bubble until the backend is actually usable. Never throws.
+ */
+export async function checkAssistantHealth(signal?: AbortSignal): Promise<boolean> {
+  try {
+    const res = await fetch(FN_URL, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${ANON_KEY}` },
+      signal,
+    })
+    if (!res.ok) return false
+    const body = await res.json().catch(() => null)
+    return Boolean(body?.ok && body?.configured)
+  } catch {
+    return false
+  }
+}
+
+/**
  * POST the conversation + digest to the assistant Edge Function and stream the
  * reply. Resolves when the stream completes. Throws on non-2xx or network error.
  */

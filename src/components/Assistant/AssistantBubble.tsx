@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sparkles, X } from 'lucide-react'
 import type { Snapshot } from '../../types'
 import type { CategoryId } from '../../lib/categories'
 import { useAssistant } from '../../hooks/useAssistant'
+import { checkAssistantHealth } from '../../lib/assistantClient'
 import { AssistantPanel } from './AssistantPanel'
 
 interface Props {
@@ -12,8 +13,20 @@ interface Props {
 
 export function AssistantBubble({ snapshots, category }: Props) {
   const [open, setOpen] = useState(false)
+  // null = still probing; false = backend unreachable/unconfigured; true = ready.
+  const [reachable, setReachable] = useState<boolean | null>(null)
   const { messages, isStreaming, error, send, summarize, stop } = useAssistant(snapshots, category)
   const hasData = snapshots.some((s) => s.category === category && s.records.length > 0)
+
+  // Hide the assistant entirely until the Edge Function is deployed AND has the
+  // OpenAI key configured — avoids dangling a bubble that only ever errors.
+  useEffect(() => {
+    const controller = new AbortController()
+    checkAssistantHealth(controller.signal).then(setReachable)
+    return () => controller.abort()
+  }, [])
+
+  if (!reachable) return null
 
   return (
     <>
