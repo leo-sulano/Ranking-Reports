@@ -16,6 +16,7 @@ import { UploadSummary } from './components/UploadSummary'
 import type { UploadSummaryData } from './components/UploadSummary'
 import { DuplicateWarning } from './components/DuplicateWarning'
 import { ToastContainer } from './components/Toast'
+import { AssistantBubble } from './components/Assistant/AssistantBubble'
 import type { ToastItem } from './types'
 
 import { Home }         from './pages/Home'
@@ -296,6 +297,8 @@ function Layout() {
 
   const location = useLocation()
 
+  const activeCategory: CategoryId = location.pathname.startsWith('/lp-sites') ? 'lp-sites' : 'bp-sites'
+
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
     '/lp-sites':    ['LP Sites', 'Landing page ranking report'],
@@ -394,6 +397,8 @@ function Layout() {
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      <AssistantBubble snapshots={viewSnapshots} category={activeCategory} />
     </div>
   )
 }
