@@ -7,6 +7,8 @@ interface Props {
   isStreaming: boolean
   error: string | null
   hasData: boolean
+  // null = still probing the backend; false = unreachable/unconfigured; true = ready.
+  reachable: boolean | null
   onSend: (text: string) => void
   onSummarize: () => void
   onStop: () => void
@@ -14,7 +16,7 @@ interface Props {
 }
 
 export function AssistantPanel({
-  messages, isStreaming, error, hasData, onSend, onSummarize, onStop, onClose,
+  messages, isStreaming, error, hasData, reachable, onSend, onSummarize, onStop, onClose,
 }: Props) {
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -23,8 +25,21 @@ export function AssistantPanel({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages])
 
+  const online = reachable === true
+  const ready = online && hasData   // can actually send a message
+
+  // Empty-state copy, prioritised by what's blocking use.
+  const emptyState =
+    reachable === null ? 'Connecting to the assistant…'
+    : reachable === false ? "Assistant offline — the backend (Supabase Edge Function 'assistant') isn't deployed yet. Deploy it and set the OpenAI key, then reload."
+    : !hasData ? 'Load some ranking data first, then I can help analyze it.'
+    : 'Ask about ranking trends, or summarize the current view.'
+
+  const placeholder =
+    !online ? 'Assistant offline' : hasData ? 'Ask a question…' : 'No data loaded'
+
   const submit = () => {
-    if (!input.trim() || isStreaming) return
+    if (!input.trim() || isStreaming || !ready) return
     onSend(input)
     setInput('')
   }
@@ -43,10 +58,8 @@ export function AssistantPanel({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && (
-          <p className="text-[13px] text-[#64748B] mt-2">
-            {hasData
-              ? 'Ask about ranking trends, or summarize the current view.'
-              : 'Load some ranking data first, then I can help analyze it.'}
+          <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[#64748B]'}`}>
+            {emptyState}
           </p>
         )}
         {messages.map((m, i) => (
@@ -71,7 +84,7 @@ export function AssistantPanel({
       <div className="px-4 pb-2 shrink-0">
         <button
           onClick={onSummarize}
-          disabled={!hasData || isStreaming}
+          disabled={!ready || isStreaming}
           className="w-full text-[12px] font-mono tracking-wider text-[#0F172A] border border-[#E2E8F0] rounded-[8px] py-2 hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Summarize this view
@@ -84,8 +97,8 @@ export function AssistantPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
-          disabled={!hasData}
-          placeholder={hasData ? 'Ask a question…' : 'No data loaded'}
+          disabled={!ready}
+          placeholder={placeholder}
           className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
         />
         {isStreaming ? (
@@ -93,7 +106,7 @@ export function AssistantPanel({
             <Square size={16} />
           </button>
         ) : (
-          <button onClick={submit} disabled={!input.trim() || !hasData} className="bg-[#0F172A] text-white rounded-[8px] p-2 disabled:opacity-40" aria-label="Send">
+          <button onClick={submit} disabled={!input.trim() || !ready} className="bg-[#0F172A] text-white rounded-[8px] p-2 disabled:opacity-40" aria-label="Send">
             <Send size={16} />
           </button>
         )}

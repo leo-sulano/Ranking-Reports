@@ -18,15 +18,14 @@ export function AssistantBubble({ snapshots, category }: Props) {
   const { messages, isStreaming, error, send, summarize, stop } = useAssistant(snapshots, category)
   const hasData = snapshots.some((s) => s.category === category && s.records.length > 0)
 
-  // Hide the assistant entirely until the Edge Function is deployed AND has the
-  // OpenAI key configured — avoids dangling a bubble that only ever errors.
+  // Probe the Edge Function so the panel can degrade gracefully (show an
+  // "offline" state) when it isn't deployed / key-configured yet. The bubble
+  // itself is always shown.
   useEffect(() => {
     const controller = new AbortController()
     checkAssistantHealth(controller.signal).then(setReachable)
     return () => controller.abort()
   }, [])
-
-  if (!reachable) return null
 
   return (
     <>
@@ -36,6 +35,7 @@ export function AssistantBubble({ snapshots, category }: Props) {
           isStreaming={isStreaming}
           error={error}
           hasData={hasData}
+          reachable={reachable}
           onSend={send}
           onSummarize={summarize}
           onStop={stop}
