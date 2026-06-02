@@ -220,3 +220,45 @@ describe('rangeMovers', () => {
     expect(d.rangeMovers.movers).toEqual([])
   })
 })
+
+// ---------------------------------------------------------------------------
+// positions lookup
+// ---------------------------------------------------------------------------
+describe('positions lookup', () => {
+  it('maps brand → country → keyword → position string for all latest records', () => {
+    const d = buildHistoryDigest(snaps, 'bp-sites')
+    // snaps latest: rooster.bet casino/Germany/'2', bonus/Germany/'11'
+    expect(d.positions['RoosterBet']['Germany']['casino']).toBe('2')
+    expect(d.positions['RoosterBet']['Germany']['bonus']).toBe('11')
+  })
+
+  it('includes NR keywords — not filtered out', () => {
+    const d = buildHistoryDigest(snaps, 'bp-sites')
+    // snaps latest: slots/Germany/'NR'
+    expect(d.positions['RoosterBet']['Germany']['slots']).toBe('NR')
+  })
+
+  it('returns empty object when no snapshots provided', () => {
+    const d = buildHistoryDigest([], 'bp-sites')
+    expect(d.positions).toEqual({})
+  })
+
+  it('uses only the latest snapshot — prior-only keywords are absent', () => {
+    const twoSnaps: Snapshot[] = [
+      {
+        id: 's2', category: 'bp-sites' as const, rawDate: '2026-05-20', displayDate: '20 May 26',
+        records: [rec('rooster.bet', 'casino', 'Germany', '5')],
+      },
+      {
+        id: 's1', category: 'bp-sites' as const, rawDate: '2026-05-13', displayDate: '13 May 26',
+        records: [
+          rec('rooster.bet', 'casino', 'Germany', '8'),
+          rec('rooster.bet', 'poker', 'Germany', '3'),  // only in prior snapshot
+        ],
+      },
+    ]
+    const d = buildHistoryDigest(twoSnaps, 'bp-sites')
+    expect(d.positions['RoosterBet']['Germany']['casino']).toBe('5')        // latest value wins
+    expect(d.positions['RoosterBet']?.['Germany']?.['poker']).toBeUndefined() // prior-only absent
+  })
+})

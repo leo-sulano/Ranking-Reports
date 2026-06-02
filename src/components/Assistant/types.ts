@@ -69,4 +69,5 @@ export interface HistoryDigest {
   gained: Transition[]
   lost: Transition[]
   rangeMovers: RangeMovers
+  positions: Record<string, Record<string, Record<string, string>>>
 }
