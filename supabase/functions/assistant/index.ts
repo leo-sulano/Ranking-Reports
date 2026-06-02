@@ -74,6 +74,7 @@ function systemPrompt(digest: unknown): string {
     '- `movers` — keywords with the largest position changes between the **two most recent** snapshots.',
     '- `gained` / `lost` — keywords that newly started or stopped ranking between the two most recent snapshots.',
     `- \`rangeMovers\` — largest position changes across the **full retained range** (${rangeLabel}).`,
+    '- `positions` — full keyword lookup: brand → country → keyword → current position string ("3", "NR"). Use this to answer any specific keyword position question not covered by the aggregate stats.',
     '',
     '## Answer format',
     '- Lead with the direct answer; no preamble.',
