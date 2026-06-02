@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
+import { AuthGate } from './components/AuthGate'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
@@ -407,14 +408,16 @@ function Layout() {
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="/bp-sites"              element={<BPSites />} />
-        <Route path="/bp-sites/:brandSlug"   element={<BPSites />} />
-        <Route path="/lp-sites"    element={<LPSites />} />
-        <Route path="/ftds"        element={<FTDs />} />
-      </Route>
-    </Routes>
+    <AuthGate>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="/bp-sites"              element={<BPSites />} />
+          <Route path="/bp-sites/:brandSlug"   element={<BPSites />} />
+          <Route path="/lp-sites"    element={<LPSites />} />
+          <Route path="/ftds"        element={<FTDs />} />
+        </Route>
+      </Routes>
+    </AuthGate>
   )
 }

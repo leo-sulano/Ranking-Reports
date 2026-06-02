@@ -9,6 +9,16 @@ if (!url || !anonKey) {
   )
 }
 
+// persistSession/autoRefreshToken are enabled so that once a user logs in
+// (when VITE_REQUIRE_AUTH=true), supabase-js stores their session and
+// automatically attaches their JWT to every DB request — which is what
+// satisfies the authenticated-only RLS policies in auth-lockdown.sql. When no
+// one is logged in (the default today), requests fall back to the anon key, so
+// this is harmless until auth is switched on.
 export const supabase = createClient(url, anonKey, {
-  auth: { persistSession: false },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
 })
