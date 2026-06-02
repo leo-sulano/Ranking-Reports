@@ -82,6 +82,21 @@ describe('byCountry', () => {
     const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
     expect(rb.byCountry).toHaveLength(8)
   })
+
+  it('sorts byCountry by rankingKeywords desc', () => {
+    const records = [
+      rec('rooster.bet', 'kw1', 'GB', '2'),
+      rec('rooster.bet', 'kw2', 'GB', '4'),  // GB: 2 keywords
+      rec('rooster.bet', 'kw3', 'DE', '1'),  // DE: 1 keyword
+    ]
+    const d = buildHistoryDigest(
+      [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
+      'bp-sites',
+    )
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.byCountry[0].country).toBe('GB')   // 2 keywords — sorted first
+    expect(rb.byCountry[1].country).toBe('DE')   // 1 keyword — sorted second
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -105,6 +120,20 @@ describe('topKeywords', () => {
     expect(rb.topKeywords).toHaveLength(5)
     expect(rb.topKeywords[0]).toMatchObject({ keyword: 'kw2', position: 1 })
     expect(rb.topKeywords.some((k) => k.keyword === 'kw3')).toBe(false)
+  })
+
+  it('returns all keywords when fewer than 5 numeric positions exist', () => {
+    const records = [
+      rec('rooster.bet', 'kw1', 'DE', '3'),
+      rec('rooster.bet', 'kw2', 'DE', 'NR'),
+    ]
+    const d = buildHistoryDigest(
+      [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
+      'bp-sites',
+    )
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.topKeywords).toHaveLength(1)
+    expect(rb.topKeywords[0]).toMatchObject({ keyword: 'kw1', position: 3 })
   })
 })
 
