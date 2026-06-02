@@ -5,33 +5,68 @@ export interface ChatMessage {
   content: string
 }
 
-// Per-brand aggregate for one snapshot date.
-export interface BrandSnapshotStat {
-  brand: string
-  rankingKeywords: number  // records with a numeric position
-  avgPosition: number      // mean of numeric positions, 1 decimal
+export interface CountryStat {
+  country: string
+  rankingKeywords: number
+  avgPosition: number
   top3: number
   top10: number
 }
 
-// A single keyword's position change between the latest two snapshots.
+export interface TopKeyword {
+  keyword: string
+  country: string
+  position: number
+}
+
+// Per-brand aggregate for one snapshot date.
+export interface BrandSnapshotStat {
+  brand: string
+  rankingKeywords: number
+  avgPosition: number
+  top3: number
+  top10: number
+  byCountry: CountryStat[]    // top 8 countries by rankingKeywords
+  topKeywords: TopKeyword[]   // 5 best numeric positions
+}
+
+// A single keyword's position change between two snapshots.
 export interface Mover {
   brand: string
   keyword: string
   country: string
-  from: string    // previous position or 'NR'
-  to: string      // current position or 'NR'
-  delta: number   // negative = improved (moved toward #1)
+  from: string
+  to: string
+  delta: number
+}
+
+// NR transition entry. `to` present on gained; `from` present on lost.
+export interface Transition {
+  brand: string
+  keyword: string
+  country: string
+  to?: string
+  from?: string
+}
+
+// Movement across the full retained snapshot window.
+export interface RangeMovers {
+  fromDate: string
+  toDate: string
+  movers: Mover[]
 }
 
 export interface HistoryDigest {
   category: CategoryId
-  generatedFor: string          // active snapshot displayDate (newest)
+  generatedFor: string
   brands: string[]
   timeline: {
-    date: string                // displayDate
+    date: string
     rawDate: string
     perBrand: BrandSnapshotStat[]
-  }[]                           // newest-first, capped at 12
-  movers: Mover[]              // top 20 by absolute delta
+  }[]
+  movers: Mover[]
+  gained: Transition[]
+  lost: Transition[]
+  rangeMovers: RangeMovers
 }
