@@ -55,3 +55,139 @@ describe('buildHistoryDigest', () => {
     expect(d.brands).toEqual([])
   })
 })
+
+// ---------------------------------------------------------------------------
+// byCountry
+// ---------------------------------------------------------------------------
+describe('byCountry', () => {
+  it('aggregates per-country stats within a brand', () => {
+    const d = buildHistoryDigest(snaps, 'bp-sites')
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.byCountry).toHaveLength(1)
+    const de = rb.byCountry[0]
+    expect(de.country).toBe('Germany')
+    expect(de.rankingKeywords).toBe(2)  // positions 2 and 11
+    expect(de.top3).toBe(1)             // position 2
+    expect(de.top10).toBe(1)            // position 2 (11 > 10)
+    expect(de.avgPosition).toBe(6.5)    // (2 + 11) / 2
+  })
+
+  it('caps byCountry at 8 countries sorted by rankingKeywords desc', () => {
+    const countries = ['DE', 'GB', 'AU', 'NZ', 'CA', 'US', 'ZA', 'IE', 'MT']
+    const manyRecs = countries.map((c, i) => rec('rooster.bet', `kw${i}`, c, String(i + 1)))
+    const d = buildHistoryDigest(
+      [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records: manyRecs }],
+      'bp-sites',
+    )
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.byCountry).toHaveLength(8)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// topKeywords
+// ---------------------------------------------------------------------------
+describe('topKeywords', () => {
+  it('returns the 5 best numeric positions, excludes NR', () => {
+    const records = [
+      rec('rooster.bet', 'kw1', 'DE', '3'),
+      rec('rooster.bet', 'kw2', 'DE', '1'),
+      rec('rooster.bet', 'kw3', 'DE', 'NR'),
+      rec('rooster.bet', 'kw4', 'DE', '7'),
+      rec('rooster.bet', 'kw5', 'DE', '2'),
+      rec('rooster.bet', 'kw6', 'DE', '5'),
+    ]
+    const d = buildHistoryDigest(
+      [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
+      'bp-sites',
+    )
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.topKeywords).toHaveLength(5)
+    expect(rb.topKeywords[0]).toMatchObject({ keyword: 'kw2', position: 1 })
+    expect(rb.topKeywords.some((k) => k.keyword === 'kw3')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gained / lost
+// ---------------------------------------------------------------------------
+
+function gainedLostSnaps(): Snapshot[] {
+  return [
+    {
+      id: 's2', category: 'bp-sites' as const, rawDate: '2026-05-20', displayDate: '20 May 26',
+      records: [
+        rec('rooster.bet', 'casino', 'Germany', '5'),  // numeric → numeric — NOT a transition
+        rec('rooster.bet', 'slots',  'Germany', 'NR'), // numeric → NR — lost
+        rec('rooster.bet', 'poker',  'Germany', '8'),  // NR → numeric — gained
+      ],
+    },
+    {
+      id: 's1', category: 'bp-sites' as const, rawDate: '2026-05-13', displayDate: '13 May 26',
+      records: [
+        rec('rooster.bet', 'casino', 'Germany', '3'),
+        rec('rooster.bet', 'slots',  'Germany', '6'),
+        rec('rooster.bet', 'poker',  'Germany', 'NR'),
+      ],
+    },
+  ]
+}
+
+describe('gained and lost', () => {
+  it('detects NR → numeric as gained and excludes numeric-to-numeric', () => {
+    const d = buildHistoryDigest(gainedLostSnaps(), 'bp-sites')
+    expect(d.gained).toHaveLength(1)
+    expect(d.gained[0]).toMatchObject({ keyword: 'poker', country: 'Germany', to: '8' })
+  })
+
+  it('detects numeric → NR as lost and excludes numeric-to-numeric', () => {
+    const d = buildHistoryDigest(gainedLostSnaps(), 'bp-sites')
+    expect(d.lost).toHaveLength(1)
+    expect(d.lost[0]).toMatchObject({ keyword: 'slots', country: 'Germany', from: '6' })
+  })
+
+  it('returns empty gained/lost with fewer than 2 snapshots', () => {
+    const d = buildHistoryDigest([gainedLostSnaps()[0]], 'bp-sites')
+    expect(d.gained).toEqual([])
+    expect(d.lost).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// rangeMovers
+// ---------------------------------------------------------------------------
+
+const threeSnaps: Snapshot[] = [
+  {
+    id: 's3', category: 'bp-sites', rawDate: '2026-06-01', displayDate: '01 Jun 26',
+    records: [rec('rooster.bet', 'casino', 'DE', '2')],
+  },
+  {
+    id: 's2', category: 'bp-sites', rawDate: '2026-05-15', displayDate: '15 May 26',
+    records: [rec('rooster.bet', 'casino', 'DE', '5')],
+  },
+  {
+    id: 's1', category: 'bp-sites', rawDate: '2026-05-01', displayDate: '01 May 26',
+    records: [rec('rooster.bet', 'casino', 'DE', '10')],
+  },
+]
+
+describe('rangeMovers', () => {
+  it('uses the oldest snapshot as baseline, not the prior snapshot', () => {
+    const d = buildHistoryDigest(threeSnaps, 'bp-sites')
+    expect(d.rangeMovers.fromDate).toBe('01 May 26')
+    expect(d.rangeMovers.toDate).toBe('01 Jun 26')
+    const casino = d.rangeMovers.movers.find((m) => m.keyword === 'casino')!
+    expect(casino).toMatchObject({ from: '10', to: '2', delta: -8 })
+  })
+
+  it('returns empty movers with fewer than 2 snapshots', () => {
+    const d = buildHistoryDigest([threeSnaps[0]], 'bp-sites')
+    expect(d.rangeMovers.movers).toEqual([])
+  })
+
+  it('returns empty movers with exactly 2 snapshots (same pair as movers)', () => {
+    const d = buildHistoryDigest(threeSnaps.slice(0, 2), 'bp-sites')
+    expect(d.rangeMovers.movers).toEqual([])
+  })
+})
