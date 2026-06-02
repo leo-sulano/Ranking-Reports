@@ -13,6 +13,10 @@ const MAX_TRANSITIONS  = 15
 const MAX_COUNTRIES    = 8
 const MAX_TOP_KEYWORDS = 5
 
+function recordKey(r: RankingRecord): string {
+  return `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
+}
+
 function brandOf(domain: string, category: CategoryId): string | undefined {
   const map = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
   return map[domain.toLowerCase()]
@@ -94,15 +98,13 @@ function computeMovers(
   category: CategoryId,
   cap: number,
 ): Mover[] {
-  const key = (r: RankingRecord) =>
-    `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
-  const prevByKey = new Map(prev.records.map((r) => [key(r), r]))
+  const prevByKey = new Map(prev.records.map((r) => [recordKey(r), r]))
   const movers: Mover[] = []
 
   for (const r of latest.records) {
     const brand = brandOf(r.domain, category)
     if (!brand) continue
-    const before = prevByKey.get(key(r))
+    const before = prevByKey.get(recordKey(r))
     if (!before) continue
     const pNow = parsePosition(r.position)
     const pPrev = parsePosition(before.position)
@@ -120,23 +122,21 @@ function computeTransitions(
   prev: Snapshot,
   category: CategoryId,
 ): { gained: Transition[]; lost: Transition[] } {
-  const key = (r: RankingRecord) =>
-    `${r.domain.toLowerCase()}|${r.keyword.toLowerCase()}|${r.country}`
-  const prevByKey = new Map(prev.records.map((r) => [key(r), r]))
+  const prevByKey = new Map(prev.records.map((r) => [recordKey(r), r]))
   const gained: Transition[] = []
   const lost: Transition[] = []
 
   for (const r of latest.records) {
     const brand = brandOf(r.domain, category)
     if (!brand) continue
-    const before = prevByKey.get(key(r))
+    const before = prevByKey.get(recordKey(r))
     if (!before) continue
     const pNow = parsePosition(r.position)
     const pPrev = parsePosition(before.position)
 
-    if (typeof pPrev !== 'number' && typeof pNow === 'number') {
+    if (pPrev === 'NR' && typeof pNow === 'number') {
       gained.push({ brand, keyword: r.keyword, country: r.country, to: r.position })
-    } else if (typeof pPrev === 'number' && typeof pNow !== 'number') {
+    } else if (typeof pPrev === 'number' && pNow === 'NR') {
       lost.push({ brand, keyword: r.keyword, country: r.country, from: before.position })
     }
   }
@@ -169,7 +169,7 @@ export function buildHistoryDigest(snapshots: Snapshot[], category: CategoryId):
   const rangeMovers: RangeMovers = {
     fromDate: capped.length >= 2 ? capped[capped.length - 1].displayDate : '',
     toDate: capped[0]?.displayDate ?? '',
-    movers: capped.length >= 2
+    movers: capped.length > 2
       ? computeMovers(capped[0], capped[capped.length - 1], category, MAX_RANGE_MOVERS)
       : [],
   }
