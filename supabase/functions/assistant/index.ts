@@ -74,7 +74,7 @@ function systemPrompt(digest: unknown): string {
     '- `movers` — keywords with the largest position changes between the **two most recent** snapshots.',
     '- `gained` / `lost` — keywords that newly started or stopped ranking between the two most recent snapshots.',
     `- \`rangeMovers\` — largest position changes across the **full retained range** (${rangeLabel}).`,
-    '- `positions` — full keyword lookup: brand → country → keyword → current position string ("3", "NR"). Use this to answer any specific keyword position question not covered by the aggregate stats.',
+    '- `positions` — full keyword lookup: domain → country → keyword → current position string ("3", "NR"). E.g. positions["luckyvibe.io"]["AU"]["casino lucky vibe"]. Use this to answer any specific keyword position question for a given domain.',
     '',
     '## Answer format',
     '- Lead with the direct answer; no preamble.',

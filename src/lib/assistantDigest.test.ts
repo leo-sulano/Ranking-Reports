@@ -225,17 +225,17 @@ describe('rangeMovers', () => {
 // positions lookup
 // ---------------------------------------------------------------------------
 describe('positions lookup', () => {
-  it('maps brand → country → keyword → position string for all latest records', () => {
+  it('maps domain → country → keyword → position string for all latest records', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
     // snaps latest: rooster.bet casino/Germany/'2', bonus/Germany/'11'
-    expect(d.positions['RoosterBet']['Germany']['casino']).toBe('2')
-    expect(d.positions['RoosterBet']['Germany']['bonus']).toBe('11')
+    expect(d.positions['rooster.bet']['Germany']['casino']).toBe('2')
+    expect(d.positions['rooster.bet']['Germany']['bonus']).toBe('11')
   })
 
   it('includes NR keywords — not filtered out', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
     // snaps latest: slots/Germany/'NR'
-    expect(d.positions['RoosterBet']['Germany']['slots']).toBe('NR')
+    expect(d.positions['rooster.bet']['Germany']['slots']).toBe('NR')
   })
 
   it('returns empty object when no snapshots provided', () => {
@@ -258,7 +258,7 @@ describe('positions lookup', () => {
       },
     ]
     const d = buildHistoryDigest(twoSnaps, 'bp-sites')
-    expect(d.positions['RoosterBet']['Germany']['casino']).toBe('5')        // latest value wins
-    expect(d.positions['RoosterBet']?.['Germany']?.['poker']).toBeUndefined() // prior-only absent
+    expect(d.positions['rooster.bet']['Germany']['casino']).toBe('5')        // latest value wins
+    expect(d.positions['rooster.bet']?.['Germany']?.['poker']).toBeUndefined() // prior-only absent
   })
 })

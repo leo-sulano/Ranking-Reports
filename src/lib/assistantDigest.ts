@@ -154,11 +154,11 @@ function buildPositionLookup(
   const result: Record<string, Record<string, Record<string, string>>> = {}
 
   for (const r of snapshot.records) {
-    const brand = brandOf(r.domain, category)
-    if (!brand) continue
-    if (!result[brand]) result[brand] = {}
-    if (!result[brand][r.country]) result[brand][r.country] = {}
-    result[brand][r.country][r.keyword] = r.position
+    if (!brandOf(r.domain, category)) continue  // skip unknown domains
+    const domain = r.domain.toLowerCase()
+    if (!result[domain]) result[domain] = {}
+    if (!result[domain][r.country]) result[domain][r.country] = {}
+    result[domain][r.country][r.keyword] = r.position
   }
 
   return result
