@@ -147,6 +147,23 @@ function computeTransitions(
   return { gained: gained.slice(0, MAX_TRANSITIONS), lost: lost.slice(0, MAX_TRANSITIONS) }
 }
 
+function buildPositionLookup(
+  snapshot: Snapshot,
+  category: CategoryId,
+): Record<string, Record<string, Record<string, string>>> {
+  const result: Record<string, Record<string, Record<string, string>>> = {}
+
+  for (const r of snapshot.records) {
+    const brand = brandOf(r.domain, category)
+    if (!brand) continue
+    if (!result[brand]) result[brand] = {}
+    if (!result[brand][r.country]) result[brand][r.country] = {}
+    result[brand][r.country][r.keyword] = r.position
+  }
+
+  return result
+}
+
 export function buildHistoryDigest(snapshots: Snapshot[], category: CategoryId): HistoryDigest {
   const inCat = snapshots.filter((s) => s.category === category)
   const capped = inCat.slice(0, MAX_SNAPSHOTS)
@@ -183,5 +200,6 @@ export function buildHistoryDigest(snapshots: Snapshot[], category: CategoryId):
     gained,
     lost,
     rangeMovers,
+    positions: capped.length > 0 ? buildPositionLookup(capped[0], category) : {},
   }
 }
