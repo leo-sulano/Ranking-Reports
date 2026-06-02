@@ -2,6 +2,14 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, Sparkles, X, Square } from 'lucide-react'
 import type { ChatMessage } from './types'
 
+const STARTER_QUESTIONS = [
+  'Biggest drops since last week?',
+  'Which brand improved the most?',
+  'Any keywords that fell off (NR)?',
+  'Which brand has the best avg position?',
+  'Summarize wins and losses',
+] as const
+
 interface Props {
   messages: ChatMessage[]
   isStreaming: boolean
@@ -58,9 +66,24 @@ export function AssistantPanel({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && (
-          <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[#64748B]'}`}>
-            {emptyState}
-          </p>
+          <>
+            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[#64748B]'}`}>
+              {emptyState}
+            </p>
+            {ready && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {STARTER_QUESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => onSend(q)}
+                    className="text-[11px] border border-[#E2E8F0] rounded-[8px] px-2 py-1 text-[#475569] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
