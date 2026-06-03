@@ -46,6 +46,7 @@ function useVoice(onResult: (text: string) => void) {
         onerror?: (event: unknown) => void
         onend?: () => void
         start: () => void
+        stop: () => void
       }
 
       rec.interimResults = false
@@ -73,17 +74,23 @@ function useVoice(onResult: (text: string) => void) {
       recognitionRef.current = recognition
       rec.start()
       setRecording(true)
-    } catch (err) {
+    } catch {
       setVoiceError('Voice recognition error.')
       setTimeout(() => setVoiceError(null), 3000)
     }
   }, [onResult])
+
+  const stopListening = useCallback(() => {
+    const rec = recognitionRef.current as { stop?: () => void } | null
+    rec?.stop?.()
+  }, [])
 
   return {
     supported: Boolean(getSpeechRecognitionAPI()),
     recording,
     voiceError,
     startListening,
+    stopListening,
   }
 }
 
@@ -102,8 +109,8 @@ export function AskAI() {
   const online = reachable === true
   const ready = online && hasData
 
-  const { supported: voiceSupported, recording, voiceError, startListening } =
-    useVoice((text) => setInput(text))
+  const { supported: voiceSupported, recording, voiceError, startListening, stopListening } =
+    useVoice(send)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -129,10 +136,10 @@ export function AskAI() {
     : 'Ask about rankings, trends, or specific keyword positions across all brands and sites.'
 
   const inputPlaceholder = recording
-    ? 'Listening…'
+    ? 'Listening… release to send'
     : !online ? 'Assistant offline'
     : !hasData ? 'No data loaded'
-    : 'Ask a question…'
+    : 'Ask a question or hold 🎤 to speak'
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
@@ -220,13 +227,18 @@ export function AskAI() {
             className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
           />
 
-          {/* Mic button — only on supported browsers */}
+          {/* Mic button — hold to record, release to send */}
           {voiceSupported && (
             <button
-              onClick={startListening}
-              disabled={!ready || isStreaming || recording}
-              aria-label={recording ? 'Listening…' : 'Speak a question'}
-              className={`rounded-[8px] p-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              onMouseDown={startListening}
+              onMouseUp={stopListening}
+              onMouseLeave={stopListening}
+              onTouchStart={startListening}
+              onTouchEnd={stopListening}
+              disabled={!ready || isStreaming}
+              aria-label={recording ? 'Release to send' : 'Hold to speak'}
+              title={recording ? 'Release to send' : 'Hold to speak'}
+              className={`rounded-[8px] p-2.5 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
                 recording
                   ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
                   : 'bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
