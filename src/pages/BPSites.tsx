@@ -689,9 +689,6 @@ function SiteFilter({
           {bpDomains.length > 0 && (
             <>
               <div className="border-t border-[#E2E8F0]" />
-              <div className="px-3 py-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">Individual</span>
-              </div>
               {bpDomains.map((d) => (
                 <SiteOption
                   key={d}
