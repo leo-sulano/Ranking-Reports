@@ -415,8 +415,9 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="/bp-sites"              element={<BPSites />} />
-          <Route path="/bp-sites/:brandSlug"   element={<BPSites />} />
+          <Route path="/bp-sites"                          element={<BPSites />} />
+          <Route path="/bp-sites/:brandSlug"               element={<BPSites />} />
+          <Route path="/bp-sites/:brandSlug/:domainFilter" element={<BPSites />} />
           <Route path="/lp-sites"    element={<LPSites />} />
           <Route path="/ftds"        element={<FTDs />} />
           <Route path="/ask-ai"      element={<AskAI />} />
