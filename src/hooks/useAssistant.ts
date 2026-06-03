@@ -21,7 +21,10 @@ export function useAssistant(snapshots: Snapshot[], category: CategoryId) {
     // Push an empty assistant message we stream into.
     setMessages([...history, { role: 'assistant', content: '' }])
 
-    const digest = buildHistoryDigest(snapshots, category)
+    const digest = {
+      bp: buildHistoryDigest(snapshots, 'bp-sites'),
+      lp: buildHistoryDigest(snapshots, 'lp-sites'),
+    }
     const upstream = history.slice(-MAX_TURNS)
     const controller = new AbortController()
     abortRef.current = controller

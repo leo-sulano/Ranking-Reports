@@ -47,11 +47,16 @@ function json(body: unknown, status: number, cors: Record<string, string>): Resp
 
 function systemPrompt(digest: unknown): string {
   const d = digest as {
-    rangeMovers?: { fromDate?: string; toDate?: string }
+    bp?: { rangeMovers?: { fromDate?: string; toDate?: string } }
+    lp?: { rangeMovers?: { fromDate?: string; toDate?: string } }
   }
-  const rangeLabel =
-    d.rangeMovers?.fromDate && d.rangeMovers?.toDate
-      ? `${d.rangeMovers.fromDate} → ${d.rangeMovers.toDate}`
+  const bpRangeLabel =
+    d.bp?.rangeMovers?.fromDate && d.bp?.rangeMovers?.toDate
+      ? `${d.bp.rangeMovers.fromDate} → ${d.bp.rangeMovers.toDate}`
+      : 'full retained range'
+  const lpRangeLabel =
+    d.lp?.rangeMovers?.fromDate && d.lp?.rangeMovers?.toDate
+      ? `${d.lp.rangeMovers.fromDate} → ${d.lp.rangeMovers.toDate}`
       : 'full retained range'
 
   return [
@@ -68,16 +73,19 @@ function systemPrompt(digest: unknown): string {
     '- Only use data present in the digest below. If something is not in the data, say so rather than guessing.',
     '',
     '## Digest structure',
+    'The digest has two top-level sections: `bp` (Brand/Main sites) and `lp` (Landing Page sites).',
+    'Each section has identical structure:',
     '- `timeline` — per-brand stats across snapshots, **newest first**, capped at 12.',
     '  Each entry has `perBrand[]` with: `rankingKeywords`, `avgPosition`, `top3`, `top10`,',
     '  `byCountry[]` (top 8 countries by keyword count), and `topKeywords[]` (5 best numeric positions).',
     '- `movers` — keywords with the largest position changes between the **two most recent** snapshots.',
     '- `gained` / `lost` — keywords that newly started or stopped ranking between the two most recent snapshots.',
-    `- \`rangeMovers\` — largest position changes across the **full retained range** (${rangeLabel}).`,
+    `- \`rangeMovers\` — largest position changes (BP range: ${bpRangeLabel} / LP range: ${lpRangeLabel}).`,
     '- `positions` — full keyword lookup: domain (lowercase) → country code → keyword → current position string ("3", "NR", "Not in top 100").',
     '  Contains EVERY keyword for EVERY domain and country in the latest snapshot. Always use this for specific position questions.',
-    '  Country codes used: AU=Australia, CA=Canada, DE=Germany, IT=Italy, NZ=New Zealand, GB=UK, IE=Ireland, and others.',
-    '  Example: positions["luckyvibe.io"]["AU"]["casino lucky vibe"] → "3".',
+    '  Country codes: AU=Australia, CA=Canada, DE=Germany, IT=Italy, NZ=New Zealand, GB=UK, IE=Ireland.',
+    '  BP example: digest.bp.positions["roosters.bet"]["AU"]["rooster bet"] → "1".',
+    '  LP example: digest.lp.positions["luckyvibe.net"]["AU"]["lucky vibe casino"] → "5".',
     '  If a user asks about a country by name, map it to the code (e.g. "Australia" → "AU").',
     '',
     '## Answer format',

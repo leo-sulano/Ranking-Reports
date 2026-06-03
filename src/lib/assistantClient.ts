@@ -1,4 +1,4 @@
-import type { ChatMessage, HistoryDigest } from '../components/Assistant/types'
+import type { ChatMessage } from '../components/Assistant/types'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -35,7 +35,7 @@ export async function checkAssistantHealth(signal?: AbortSignal): Promise<boolea
  */
 export async function streamChat(
   messages: ChatMessage[],
-  digest: HistoryDigest,
+  digest: unknown,
   { onToken, signal }: StreamHandlers,
 ): Promise<void> {
   const res = await fetch(FN_URL, {
