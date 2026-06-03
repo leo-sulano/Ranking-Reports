@@ -198,14 +198,21 @@ function BrandView({
 
   const navigate = useNavigate()
 
-  // Derived from URL param — no local state needed
-  const showMain = !domainFilter || domainFilter === 'main'
-  const visibleBpDomains = useMemo(() => {
-    if (!domainFilter || domainFilter === 'bp') return bpDomains
-    if (domainFilter === 'main') return []
-    const match = bpDomains.find((d) => d.toLowerCase() === domainFilter.toLowerCase())
-    return match ? [match] : bpDomains // unknown filter → show all (graceful fallback)
+  // Resolve domainFilter — unknown values fall back to undefined (All)
+  const resolvedFilter = useMemo(() => {
+    if (!domainFilter) return undefined
+    if (domainFilter === 'main' || domainFilter === 'bp') return domainFilter
+    if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
+    return undefined
   }, [domainFilter, bpDomains])
+
+  const showMain = !resolvedFilter || resolvedFilter === 'main'
+  const visibleBpDomains = useMemo(() => {
+    if (!resolvedFilter || resolvedFilter === 'bp') return bpDomains
+    if (resolvedFilter === 'main') return []
+    const match = bpDomains.find((d) => d.toLowerCase() === resolvedFilter.toLowerCase())
+    return match ? [match] : bpDomains
+  }, [resolvedFilter, bpDomains])
 
   // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
