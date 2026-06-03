@@ -103,7 +103,7 @@ export function AskAI() {
   const ready = online && hasData
 
   const { supported: voiceSupported, recording, voiceError, startListening } =
-    useVoice(send)
+    useVoice((text) => setInput(text))
 
   useEffect(() => {
     const controller = new AbortController()
