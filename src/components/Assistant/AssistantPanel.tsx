@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, X, Square } from 'lucide-react'
+import { Send, Sparkles, X, Square, Mic } from 'lucide-react'
 import type { ChatMessage } from './types'
+import { useVoice } from '../../hooks/useVoice'
 
 const STARTER_QUESTIONS = [
   'Biggest drops since last week?',
@@ -36,6 +37,9 @@ export function AssistantPanel({
   const online = reachable === true
   const ready = online && hasData   // can actually send a message
 
+  const { supported: voiceSupported, recording, voiceError, startListening, stopListening } =
+    useVoice(onSend)
+
   // Empty-state copy, prioritised by what's blocking use.
   const emptyState =
     reachable === null ? 'Connecting to the assistant…'
@@ -43,8 +47,11 @@ export function AssistantPanel({
     : !hasData ? 'Load some ranking data first, then I can help analyze it.'
     : 'Ask about ranking trends, or summarize the current view.'
 
-  const placeholder =
-    !online ? 'Assistant offline' : hasData ? 'Ask a question…' : 'No data loaded'
+  const placeholder = recording
+    ? 'Listening…'
+    : !online ? 'Assistant offline'
+    : !hasData ? 'No data loaded'
+    : 'Ask a question…'
 
   const submit = () => {
     if (!input.trim() || isStreaming || !ready) return
@@ -114,19 +121,50 @@ export function AssistantPanel({
         </button>
       </div>
 
+      {/* Voice error */}
+      {voiceError && (
+        <div className="px-4 pb-1 shrink-0">
+          <p className="text-[11px] text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[6px] px-2 py-1">
+            {voiceError}
+          </p>
+        </div>
+      )}
+
       {/* Input */}
       <div className="flex items-center gap-2 px-4 pb-4 shrink-0">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
-          disabled={!ready}
+          disabled={!ready || recording}
           placeholder={placeholder}
           className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
         />
+        {voiceSupported && (
+          <button
+            onClick={startListening}
+            disabled={!ready || isStreaming || recording}
+            aria-label="Click to speak"
+            className={`rounded-[8px] p-2 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
+              recording
+                ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
+                : 'bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
+            }`}
+          >
+            <Mic size={16} />
+          </button>
+        )}
         {isStreaming ? (
           <button onClick={onStop} className="bg-[#F1F5F9] text-[#0F172A] rounded-[8px] p-2" aria-label="Stop">
             <Square size={16} />
+          </button>
+        ) : recording ? (
+          <button
+            onClick={stopListening}
+            className="bg-[#EF4444] text-white rounded-[8px] p-2 animate-pulse"
+            aria-label="Stop and send"
+          >
+            <Send size={16} />
           </button>
         ) : (
           <button onClick={submit} disabled={!input.trim() || !ready} className="bg-[#0F172A] text-white rounded-[8px] p-2 disabled:opacity-40" aria-label="Send">

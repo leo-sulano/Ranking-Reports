@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Sparkles, Send, Square, RotateCcw, Mic, MicOff } from 'lucide-react'
+import { Sparkles, Send, Square, RotateCcw, Mic } from 'lucide-react'
 import type { RROutletContext } from '../types'
 import { useAssistant } from '../hooks/useAssistant'
 import { checkAssistantHealth } from '../lib/assistantClient'
+import { useVoice } from '../hooks/useVoice'
 
 const STARTER_QUESTIONS = [
   'Biggest drops since last week?',
@@ -12,104 +13,6 @@ const STARTER_QUESTIONS = [
   'Which brand has the best avg position?',
   'Summarize wins and losses',
 ] as const
-
-// ── Voice hook ────────────────────────────────────────────────────────────────
-
-const ERROR_MESSAGES: Record<string, string> = {
-  'not-allowed': 'Microphone access denied.',
-  'no-speech':   'No speech detected.',
-  'network':     'Voice recognition unavailable.',
-}
-
-function getSpeechRecognitionAPI() {
-  if (typeof window === 'undefined') return null
-  const win = window as unknown as Record<string, unknown>
-  return (win.SpeechRecognition ?? win.webkitSpeechRecognition) as unknown
-}
-
-function useVoice(onResult: (text: string) => void) {
-  const [recording, setRecording] = useState(false)
-  const [voiceError, setVoiceError] = useState<string | null>(null)
-  const recognitionRef = useRef<unknown>(null)
-  const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const manualStopRef = useRef(false)
-
-  const startListening = useCallback(() => {
-    const SpeechRecognitionAPI = getSpeechRecognitionAPI()
-    if (!SpeechRecognitionAPI) return
-
-    try {
-      const recognition = new (SpeechRecognitionAPI as unknown as { new (): unknown })()
-      const rec = recognition as unknown as {
-        interimResults?: boolean
-        continuous?: boolean
-        lang?: string
-        onresult?: (event: unknown) => void
-        onerror?: (event: unknown) => void
-        onend?: () => void
-        start: () => void
-        stop: () => void
-      }
-
-      rec.interimResults = false
-      rec.continuous = false
-      rec.lang = 'en-US'
-
-      rec.onresult = (event: unknown) => {
-        const evt = event as unknown as {
-          results: Array<Array<{ transcript: string }>>
-        }
-        const transcript = evt.results?.[0]?.[0]?.transcript?.trim()
-        if (transcript) {
-          if (manualStopRef.current) {
-            // User clicked Send — fire immediately
-            manualStopRef.current = false
-            onResult(transcript)
-          } else {
-            // Natural pause — wait 5 seconds so breathing doesn't trigger a send
-            sendTimerRef.current = setTimeout(() => onResult(transcript), 5000)
-          }
-        }
-      }
-
-      rec.onerror = (event: unknown) => {
-        const evt = event as unknown as { error: string }
-        const msg = ERROR_MESSAGES[evt.error] ?? 'Voice recognition error.'
-        setVoiceError(msg)
-        setTimeout(() => setVoiceError(null), 3000)
-        setRecording(false)
-      }
-
-      rec.onend = () => setRecording(false)
-
-      recognitionRef.current = recognition
-      rec.start()
-      setRecording(true)
-    } catch {
-      setVoiceError('Voice recognition error.')
-      setTimeout(() => setVoiceError(null), 3000)
-    }
-  }, [onResult])
-
-  const stopListening = useCallback(() => {
-    // Flag as manual stop so onresult sends immediately (not after 5s delay)
-    manualStopRef.current = true
-    if (sendTimerRef.current) {
-      clearTimeout(sendTimerRef.current)
-      sendTimerRef.current = null
-    }
-    const rec = recognitionRef.current as { stop?: () => void } | null
-    rec?.stop?.()
-  }, [])
-
-  return {
-    supported: Boolean(getSpeechRecognitionAPI()),
-    recording,
-    voiceError,
-    startListening,
-    stopListening,
-  }
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
