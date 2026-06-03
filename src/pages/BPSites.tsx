@@ -57,7 +57,7 @@ type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
 export function BPSites() {
   const ctx = useOutletContext<RROutletContext>()
   const { snapshots, onEditCell } = ctx
-  const { brandSlug } = useParams<{ brandSlug: string }>()
+  const { brandSlug, domainFilter } = useParams<{ brandSlug: string; domainFilter: string }>()
   const navigate = useNavigate()
 
   const bpSnapshots = useMemo(
@@ -72,6 +72,7 @@ export function BPSites() {
         key={activeBrand.name}
         brand={activeBrand}
         snapshots={bpSnapshots}
+        domainFilter={domainFilter}
         onBack={() => navigate('/bp-sites')}
         onEditCell={onEditCell}
       />
@@ -174,11 +175,13 @@ function BrandGrid({
 function BrandView({
   brand,
   snapshots,
+  domainFilter,
   onBack,
   onEditCell,
 }: {
   brand: Brand
   snapshots: Snapshot[]
+  domainFilter: string | undefined
   onBack: () => void
   onEditCell: EditCellFn
 }) {
