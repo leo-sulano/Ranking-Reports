@@ -196,6 +196,17 @@ function BrandView({
     [brand, mainDomain],
   )
 
+  const navigate = useNavigate()
+
+  // Derived from URL param — no local state needed
+  const showMain = !domainFilter || domainFilter === 'main'
+  const visibleBpDomains = useMemo(() => {
+    if (!domainFilter || domainFilter === 'bp') return bpDomains
+    if (domainFilter === 'main') return []
+    const match = bpDomains.find((d) => d.toLowerCase() === domainFilter.toLowerCase())
+    return match ? [match] : bpDomains // unknown filter → show all (graceful fallback)
+  }, [domainFilter, bpDomains])
+
   // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
     () =>
@@ -213,8 +224,6 @@ function BrandView({
 
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
-  const [activeBpDomains, setActiveBpDomains] = useState<string[]>(() => bpDomains)
-  const [showMain, setShowMain] = useState(true)
   const [kwFilter, setKwFilter] = useState('')
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
@@ -231,13 +240,6 @@ function BrandView({
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
       return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-    })
-  }
-
-  const toggleBpDomain = (d: string) => {
-    setActiveBpDomains((prev) => {
-      if (prev.includes(d) && prev.length === 1) return prev
-      return prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     })
   }
 
@@ -266,9 +268,6 @@ function BrandView({
 
   // Country columns honor the chip filter, but preserve canonical order
   const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
-
-  // BP domain columns honor the chip filter, preserving registered order
-  const visibleBpDomains = bpDomains.filter((d) => activeBpDomains.includes(d))
 
   return (
     <>
@@ -314,43 +313,37 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* Sites filter — toggles which domain columns/sections show.
-              MAIN chip can be hidden too; BPs keep the min-one-active rule.  */}
-          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0 flex-wrap">
+          {/* Sites filter — dropdown; selection navigates to new URL slug */}
+          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Sites
             </span>
-
-            <button
-              onClick={() => setShowMain((v) => !v)}
-              className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all flex items-center gap-1.5"
-              style={
-                showMain
-                  ? { background: '#0F172A', color: 'white', borderColor: 'transparent', fontWeight: 700 }
-                  : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-              }
-            >
-              <span className="text-[9px] font-bold uppercase tracking-[0.1em] opacity-70">Main</span>
-              {brand.mainDomain}
-            </button>
-
-            {bpDomains.map((d) => {
-              const active = activeBpDomains.includes(d)
-              return (
-                <button
-                  key={d}
-                  onClick={() => toggleBpDomain(d)}
-                  className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
-                  style={
-                    active
-                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-                  }
-                >
-                  {d}
-                </button>
-              )
-            })}
+            <div className="relative">
+              <select
+                value={(() => {
+                  if (!domainFilter) return ''
+                  if (domainFilter === 'main' || domainFilter === 'bp') return domainFilter
+                  if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
+                  return ''
+                })()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  const base = `/bp-sites/${brandToSlug(brand.name)}`
+                  navigate(val ? `${base}/${val}` : base)
+                }}
+                className="appearance-none pl-3 pr-7 py-1 bg-white border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] font-medium cursor-pointer outline-none focus:border-[#CBD5E1] transition-colors"
+              >
+                <option value="">All — {mainDomain} + {bpDomains.length} BP</option>
+                <option value="main">Main — {mainDomain}</option>
+                <option value="bp">BP Sites — all {bpDomains.length}</option>
+                <optgroup label="Individual">
+                  {bpDomains.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </optgroup>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none w-3 h-3 text-[#94A3B8]" />
+            </div>
           </div>
 
           {/* Inline filter bar — countries + keyword search */}
