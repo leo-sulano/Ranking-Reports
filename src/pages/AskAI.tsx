@@ -136,10 +136,10 @@ export function AskAI() {
     : 'Ask about rankings, trends, or specific keyword positions across all brands and sites.'
 
   const inputPlaceholder = recording
-    ? 'Listening… release to send'
+    ? 'Listening… click 🎤 to send'
     : !online ? 'Assistant offline'
     : !hasData ? 'No data loaded'
-    : 'Ask a question or hold 🎤 to speak'
+    : 'Ask a question or click 🎤 to speak'
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
@@ -227,17 +227,13 @@ export function AskAI() {
             className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
           />
 
-          {/* Mic button — hold to record, release to send */}
+          {/* Mic button — click to start, click again to stop and send */}
           {voiceSupported && (
             <button
-              onMouseDown={startListening}
-              onMouseUp={stopListening}
-              onMouseLeave={stopListening}
-              onTouchStart={startListening}
-              onTouchEnd={stopListening}
+              onClick={recording ? stopListening : startListening}
               disabled={!ready || isStreaming}
-              aria-label={recording ? 'Release to send' : 'Hold to speak'}
-              title={recording ? 'Release to send' : 'Hold to speak'}
+              aria-label={recording ? 'Stop and send' : 'Start recording'}
+              title={recording ? 'Click to send' : 'Click to speak'}
               className={`rounded-[8px] p-2.5 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
                 recording
                   ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
