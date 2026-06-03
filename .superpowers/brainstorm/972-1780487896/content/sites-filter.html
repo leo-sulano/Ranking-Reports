@@ -1,0 +1,114 @@
+<h2>Sites Filter — Dropdown Design</h2>
+<p class="subtitle">Replacing pill buttons with a hierarchical dropdown. How should each option affect the URL?</p>
+
+<div class="section">
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Current — pill buttons</div>
+      <div class="mockup-body" style="padding:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+          <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">SITES</span>
+          <span style="background:#CBD5E1;color:#0F172A;font-weight:700;padding:5px 12px;border-radius:999px;font-size:12px;border:1px solid transparent">MAIN lucky7even.com</span>
+          <span style="background:white;color:#475569;padding:5px 12px;border-radius:999px;font-size:12px;border:1px solid #E2E8F0">lucky7evencasino.com</span>
+          <span style="background:white;color:#475569;padding:5px 12px;border-radius:999px;font-size:12px;border:1px solid #E2E8F0">lucky7evencasino.io</span>
+          <span style="background:white;color:#475569;padding:5px 12px;border-radius:999px;font-size:12px;border:1px solid #E2E8F0">lucky7evencasino.org</span>
+          <span style="background:white;color:#475569;padding:5px 12px;border-radius:999px;font-size:12px;border:1px solid #E2E8F0">lucky7seven.com</span>
+        </div>
+        <div style="font-size:12px;color:#94a3b8">URL: /bp-sites/lucky7even</div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Proposed — dropdown</div>
+      <div class="mockup-body" style="padding:16px">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">SITES</span>
+          <div style="position:relative;display:inline-block">
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:6px 32px 6px 12px;font-size:13px;color:#0F172A;font-weight:500;min-width:200px;cursor:pointer">
+              All — lucky7even.com + 4 BP
+              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#94a3b8">▾</span>
+            </div>
+            <div style="position:absolute;top:calc(100% + 4px);left:0;background:white;border:1px solid #E2E8F0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:220px;z-index:10">
+              <div style="padding:4px 0;">
+                <div style="padding:7px 14px;font-size:13px;font-weight:700;color:#0F172A;background:#f1f5f9">All <span style="font-weight:400;color:#64748b;font-size:12px">— main + all BP sites</span></div>
+                <div style="height:1px;background:#f1f5f9;margin:2px 0"></div>
+                <div style="padding:7px 14px;font-size:13px;color:#334155">Main <span style="color:#64748b;font-size:12px">— lucky7even.com</span></div>
+                <div style="height:1px;background:#f1f5f9;margin:2px 0"></div>
+                <div style="padding:7px 14px;font-size:13px;color:#334155">BP Sites <span style="color:#64748b;font-size:12px">— all 4 domains</span></div>
+                <div style="height:1px;background:#f1f5f9;margin:2px 0"></div>
+                <div style="padding:4px 0 2px;padding-left:14px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Individual</div>
+                <div style="padding:7px 14px 7px 24px;font-size:13px;color:#334155">lucky7evencasino.com</div>
+                <div style="padding:7px 14px 7px 24px;font-size:13px;color:#334155">lucky7evencasino.io</div>
+                <div style="padding:7px 14px 7px 24px;font-size:13px;color:#334155">lucky7evencasino.org</div>
+                <div style="padding:7px 14px 7px 24px;font-size:13px;color:#334155">lucky7seven.com</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#94a3b8">URL: /bp-sites/lucky7even</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Proposed URL mapping</h3>
+  <p class="subtitle">Each selection updates the URL slug</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+    <thead>
+      <tr style="border-bottom:2px solid #e2e8f0">
+        <th style="text-align:left;padding:8px 12px;color:#64748b;font-weight:600">Dropdown selection</th>
+        <th style="text-align:left;padding:8px 12px;color:#64748b;font-weight:600">URL</th>
+        <th style="text-align:left;padding:8px 12px;color:#64748b;font-weight:600">Columns shown</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:8px 12px;font-weight:600">All</td>
+        <td style="padding:8px 12px;font-family:monospace;color:#5B21B6">/bp-sites/lucky7even</td>
+        <td style="padding:8px 12px;color:#475569">Main + all BP domains</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:8px 12px;font-weight:600">Main</td>
+        <td style="padding:8px 12px;font-family:monospace;color:#5B21B6">/bp-sites/lucky7even/main</td>
+        <td style="padding:8px 12px;color:#475569">lucky7even.com only</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:8px 12px;font-weight:600">BP Sites</td>
+        <td style="padding:8px 12px;font-family:monospace;color:#5B21B6">/bp-sites/lucky7even/bp</td>
+        <td style="padding:8px 12px;color:#475569">All BP domains (no main)</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:8px 12px;font-weight:600">lucky7evencasino.com</td>
+        <td style="padding:8px 12px;font-family:monospace;color:#5B21B6">/bp-sites/lucky7even/lucky7evencasino.com</td>
+        <td style="padding:8px 12px;color:#475569">That domain only</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-weight:600">lucky7evencasino.io</td>
+        <td style="padding:8px 12px;font-family:monospace;color:#5B21B6">/bp-sites/lucky7even/lucky7evencasino.io</td>
+        <td style="padding:8px 12px;color:#475569">That domain only</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h3>One question</h3>
+  <p class="subtitle">When "BP Sites" is selected — should the main domain column be hidden, or shown alongside the BP columns?</p>
+  <div class="options">
+    <div class="option" data-choice="bp-hide-main" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Hide main</h3>
+        <p>BP Sites = only the 4 BP domain columns. Main column is hidden. URL: <code>/bp-sites/lucky7even/bp</code></p>
+      </div>
+    </div>
+    <div class="option" data-choice="bp-include-main" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Include main alongside</h3>
+        <p>BP Sites = main column + all 4 BP columns (same as "All" but with a different label). Only differs from All if "All" also adds something.</p>
+      </div>
+    </div>
+  </div>
+</div>
