@@ -62,8 +62,6 @@ export interface RROutletContext {
   onSelectSnapshot: (id: string) => void
   onOpenUpload: () => void
   onDeleteSnapshot: (id: string) => void
-  lpFilterBrand: string | null
-  onSelectLPBrand: (name: string | null) => void
   // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows
   // which rows are patched within the snapshot.
   onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>

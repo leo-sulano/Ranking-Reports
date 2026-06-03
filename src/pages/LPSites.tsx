@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow } from '../components/StatsRow'
 import { computeStats } from '../lib/parser'
@@ -49,28 +49,29 @@ type Lookup = Record<string, Record<string, Record<string, import('../types').Ra
 
 export function LPSites() {
   const ctx = useOutletContext<RROutletContext>()
-  const { snapshots, lpFilterBrand, onSelectLPBrand } = ctx
+  const { snapshots } = ctx
+  const { brandSlug, domainFilter } = useParams<{ brandSlug: string; domainFilter: string }>()
+  const navigate = useNavigate()
+
   const lpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'lp-sites'),
     [snapshots],
   )
-  const activeBrand = lpFilterBrand ? BRAND_BY_NAME[lpFilterBrand] ?? null : null
+  const activeBrand = brandSlug ? (BRAND_BY_SLUG[brandSlug] ?? null) : null
 
   if (activeBrand) {
     return (
-      // key={brand.name} forces a fresh mount on brand switch so the chip
-      // filter state resets to "everything selected" instead of carrying
-      // over from the previous brand.
       <BrandView
         key={activeBrand.name}
         brand={activeBrand}
         snapshots={lpSnapshots}
-        onBack={() => onSelectLPBrand(null)}
+        domainFilter={domainFilter}
+        onBack={() => navigate('/lp-sites')}
       />
     )
   }
 
-  return <BrandGrid snapshots={lpSnapshots} onSelect={(b) => onSelectLPBrand(b.name)} />
+  return <BrandGrid snapshots={lpSnapshots} onSelect={(b) => navigate(`/lp-sites/${brandToSlug(b.name)}`)} />
 }
 
 // ─── Brand Grid — cards list LP domains (no MAIN marker) ──────────────────────
@@ -153,10 +154,12 @@ function BrandGrid({
 function BrandView({
   brand,
   snapshots,
+  domainFilter,
   onBack,
 }: {
   brand: Brand
   snapshots: Snapshot[]
+  domainFilter: string | undefined
   onBack: () => void
 }) {
   const lpDomains = brand.lpDomains
@@ -164,6 +167,21 @@ function BrandView({
     () => new Set(lpDomains.map((d) => d.toLowerCase())),
     [lpDomains],
   )
+
+  const navigate = useNavigate()
+
+  // Resolve domainFilter — only known LP domains are valid; everything else → All
+  const resolvedFilter = useMemo(() => {
+    if (!domainFilter) return undefined
+    if (lpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
+    return undefined
+  }, [domainFilter, lpDomains])
+
+  const visibleLpDomains = useMemo(() => {
+    if (!resolvedFilter) return lpDomains
+    const match = lpDomains.find((d) => d.toLowerCase() === resolvedFilter.toLowerCase())
+    return match ? [match] : lpDomains
+  }, [resolvedFilter, lpDomains])
 
   // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
@@ -180,7 +198,6 @@ function BrandView({
   const latestSnap = brandSnapshots[0] ?? null
 
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
-  const [activeLpDomains, setActiveLpDomains] = useState<string[]>(() => lpDomains)
   const [kwFilter, setKwFilter] = useState('')
 
   const [statsFilter, setStatsFilter] = useState<string>('all')
@@ -193,13 +210,6 @@ function BrandView({
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
       return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
-    })
-  }
-
-  const toggleLpDomain = (d: string) => {
-    setActiveLpDomains((prev) => {
-      if (prev.includes(d) && prev.length === 1) return prev
-      return prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     })
   }
 
@@ -224,7 +234,6 @@ function BrandView({
   }, [latestSnap, kwFilter])
 
   const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
-  const visibleLpDomains = lpDomains.filter((d) => activeLpDomains.includes(d))
 
   return (
     <>
@@ -269,28 +278,19 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* Sites filter — per-LP-domain toggles. No MAIN concept on LP. */}
-          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0 flex-wrap">
+          {/* Sites filter — dropdown; selection navigates to new URL slug */}
+          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Landing pages
             </span>
-            {lpDomains.map((d) => {
-              const active = activeLpDomains.includes(d)
-              return (
-                <button
-                  key={d}
-                  onClick={() => toggleLpDomain(d)}
-                  className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
-                  style={
-                    active
-                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
-                  }
-                >
-                  {d}
-                </button>
-              )
-            })}
+            <LPSiteFilter
+              resolvedFilter={resolvedFilter}
+              lpDomains={lpDomains}
+              onSelect={(val) => {
+                const base = `/lp-sites/${brandToSlug(brand.name)}`
+                navigate(val ? `${base}/${val}` : base)
+              }}
+            />
           </div>
 
           <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
@@ -508,6 +508,97 @@ function DateOption({
     >
       <span className="font-medium">{label}</span>
       {selected && <Check size={13} strokeWidth={2.5} />}
+    </button>
+  )
+}
+
+// ─── LPSiteFilter — custom dropdown for LP domain selection ──────────────────
+
+function LPSiteFilter({
+  resolvedFilter,
+  lpDomains,
+  onSelect,
+}: {
+  resolvedFilter: string | undefined
+  lpDomains: string[]
+  onSelect: (val: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const label = resolvedFilter ?? `All · ${lpDomains.length} sites`
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
+          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        }`}
+      >
+        <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
+        <ChevronDown
+          size={13}
+          strokeWidth={2.25}
+          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]">
+          <LPSiteOption
+            label="All"
+            selected={!resolvedFilter}
+            onClick={() => { onSelect(''); setOpen(false) }}
+          />
+          <div className="border-t border-[#E2E8F0]" />
+          {lpDomains.map((d) => (
+            <LPSiteOption
+              key={d}
+              label={d}
+              selected={resolvedFilter === d}
+              onClick={() => { onSelect(d); setOpen(false) }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LPSiteOption({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
+        selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+      }`}
+    >
+      <span className="font-medium truncate">{label}</span>
+      {selected && <Check size={13} strokeWidth={2.5} className="shrink-0 ml-2" />}
     </button>
   )
 }

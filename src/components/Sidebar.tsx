@@ -37,8 +37,6 @@ interface Props {
   onOpenUpload: () => void
   activeBPBrand: string | null
   onSelectBPBrand: (name: string | null) => void
-  activeLPBrand: string | null
-  onSelectLPBrand: (name: string | null) => void
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -53,8 +51,6 @@ export function Sidebar({
   onOpenUpload,
   activeBPBrand,
   onSelectBPBrand,
-  activeLPBrand,
-  onSelectLPBrand,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -131,18 +127,17 @@ export function Sidebar({
 
             <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
               {BRANDS.map((brand) => {
-                const bpSlug  = location.pathname.startsWith('/bp-sites/')
-                  ? location.pathname.slice('/bp-sites/'.length)
-                  : null
-                const isActive = isBPSitesRoute
-                  ? bpSlug === brandToSlug(brand.name)
-                  : activeLPBrand === brand.name
+                const activeSlug = isBPSitesRoute
+                  ? (location.pathname.startsWith('/bp-sites/') ? location.pathname.slice('/bp-sites/'.length).split('/')[0] : null)
+                  : (location.pathname.startsWith('/lp-sites/') ? location.pathname.slice('/lp-sites/'.length).split('/')[0] : null)
+                const isActive = activeSlug === brandToSlug(brand.name)
                 return (
                   <button
                     key={brand.name}
                     onClick={() => {
-                      if (isBPSitesRoute) navigate(`/bp-sites/${brandToSlug(brand.name)}`)
-                      else onSelectLPBrand(brand.name)
+                      navigate(isBPSitesRoute
+                        ? `/bp-sites/${brandToSlug(brand.name)}`
+                        : `/lp-sites/${brandToSlug(brand.name)}`)
                     }}
                     className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
                       isActive ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'

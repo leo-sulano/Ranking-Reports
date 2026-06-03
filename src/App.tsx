@@ -43,7 +43,6 @@ function Layout() {
   const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
-  const [lpFilterBrand, setLPFilterBrand] = useState<string | null>(null)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -320,8 +319,6 @@ function Layout() {
     onSelectSnapshot:  selectSnapshot,
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
-    lpFilterBrand,
-    onSelectLPBrand:   setLPFilterBrand,
     onEditCell:        handleEditCell,
   }
 
@@ -350,8 +347,6 @@ function Layout() {
         onOpenUpload={() => setShowUpload(true)}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
-        activeLPBrand={lpFilterBrand}
-        onSelectLPBrand={setLPFilterBrand}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
@@ -418,7 +413,9 @@ export function App() {
           <Route path="/bp-sites"                          element={<BPSites />} />
           <Route path="/bp-sites/:brandSlug"               element={<BPSites />} />
           <Route path="/bp-sites/:brandSlug/:domainFilter" element={<BPSites />} />
-          <Route path="/lp-sites"    element={<LPSites />} />
+          <Route path="/lp-sites"                          element={<LPSites />} />
+          <Route path="/lp-sites/:brandSlug"               element={<LPSites />} />
+          <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
           <Route path="/ftds"        element={<FTDs />} />
           <Route path="/ask-ai"      element={<AskAI />} />
         </Route>
