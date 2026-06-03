@@ -24,6 +24,7 @@ import { Home }         from './pages/Home'
 import { BPSites }      from './pages/BPSites'
 import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
+import { AskAI }        from './pages/AskAI'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -399,7 +400,9 @@ function Layout() {
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <AssistantBubble snapshots={viewSnapshots} category={activeCategory} />
+      {location.pathname !== '/ask-ai' && (
+        <AssistantBubble snapshots={viewSnapshots} category={activeCategory} />
+      )}
     </div>
   )
 }
@@ -416,6 +419,7 @@ export function App() {
           <Route path="/bp-sites/:brandSlug"   element={<BPSites />} />
           <Route path="/lp-sites"    element={<LPSites />} />
           <Route path="/ftds"        element={<FTDs />} />
+          <Route path="/ask-ai"      element={<AskAI />} />
         </Route>
       </Routes>
     </AuthGate>
