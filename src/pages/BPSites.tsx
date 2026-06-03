@@ -198,18 +198,17 @@ function BrandView({
 
   const navigate = useNavigate()
 
-  // Resolve domainFilter — unknown values fall back to undefined (All)
+  // Resolve domainFilter — only 'bp' and known BP domains are valid; everything else → All
   const resolvedFilter = useMemo(() => {
     if (!domainFilter) return undefined
-    if (domainFilter === 'main' || domainFilter === 'bp') return domainFilter
+    if (domainFilter === 'bp') return domainFilter
     if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
     return undefined
   }, [domainFilter, bpDomains])
 
-  const showMain = !resolvedFilter || resolvedFilter === 'main'
+  const showMain = !resolvedFilter
   const visibleBpDomains = useMemo(() => {
     if (!resolvedFilter || resolvedFilter === 'bp') return bpDomains
-    if (resolvedFilter === 'main') return []
     const match = bpDomains.find((d) => d.toLowerCase() === resolvedFilter.toLowerCase())
     return match ? [match] : bpDomains
   }, [resolvedFilter, bpDomains])
@@ -325,32 +324,14 @@ function BrandView({
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Sites
             </span>
-            <div className="relative">
-              <select
-                value={(() => {
-                  if (!domainFilter) return ''
-                  if (domainFilter === 'main' || domainFilter === 'bp') return domainFilter
-                  if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
-                  return ''
-                })()}
-                onChange={(e) => {
-                  const val = e.target.value
-                  const base = `/bp-sites/${brandToSlug(brand.name)}`
-                  navigate(val ? `${base}/${val}` : base)
-                }}
-                className="appearance-none pl-3 pr-7 py-1 bg-white border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] font-medium cursor-pointer outline-none focus:border-[#CBD5E1] transition-colors"
-              >
-                <option value="">All — {mainDomain} + {bpDomains.length} BP</option>
-                <option value="main">Main — {mainDomain}</option>
-                <option value="bp">BP Sites — all {bpDomains.length}</option>
-                <optgroup label="Individual">
-                  {bpDomains.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </optgroup>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none w-3 h-3 text-[#94A3B8]" />
-            </div>
+            <SiteFilter
+              resolvedFilter={resolvedFilter}
+              bpDomains={bpDomains}
+              onSelect={(val) => {
+                const base = `/bp-sites/${brandToSlug(brand.name)}`
+                navigate(val ? `${base}/${val}` : base)
+              }}
+            />
           </div>
 
           {/* Inline filter bar — countries + keyword search */}
@@ -635,6 +616,120 @@ function DateOption({
     >
       <span className="font-medium">{label}</span>
       {selected && <Check size={13} strokeWidth={2.5} />}
+    </button>
+  )
+}
+
+// ─── SiteFilter — custom dropdown matching StatsDateFilter style ──────────────
+
+function SiteFilter({
+  resolvedFilter,
+  bpDomains,
+  onSelect,
+}: {
+  resolvedFilter: string | undefined
+  bpDomains: string[]
+  onSelect: (val: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const label = !resolvedFilter
+    ? `All · ${bpDomains.length + 1} sites`
+    : resolvedFilter === 'bp'
+      ? `BP Sites · ${bpDomains.length}`
+      : resolvedFilter
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
+          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        }`}
+      >
+        <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
+        <ChevronDown
+          size={13}
+          strokeWidth={2.25}
+          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]">
+          {/* All */}
+          <SiteOption
+            label="All"
+            selected={!resolvedFilter}
+            onClick={() => { onSelect(''); setOpen(false) }}
+          />
+          <div className="border-t border-[#E2E8F0]" />
+          {/* BP Sites */}
+          <SiteOption
+            label="BP Sites"
+            selected={resolvedFilter === 'bp'}
+            onClick={() => { onSelect('bp'); setOpen(false) }}
+          />
+          {/* Individual */}
+          {bpDomains.length > 0 && (
+            <>
+              <div className="border-t border-[#E2E8F0]" />
+              <div className="px-3 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">Individual</span>
+              </div>
+              {bpDomains.map((d) => (
+                <SiteOption
+                  key={d}
+                  label={d}
+                  selected={resolvedFilter === d}
+                  onClick={() => { onSelect(d); setOpen(false) }}
+                  indent
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SiteOption({
+  label,
+  selected,
+  onClick,
+  indent = false,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+  indent?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center justify-between text-[12px] text-left transition-colors ${
+        indent ? 'px-5' : 'px-3'
+      } py-2 ${selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'}`}
+    >
+      <span className="font-medium truncate">{label}</span>
+      {selected && <Check size={13} strokeWidth={2.5} className="shrink-0 ml-2" />}
     </button>
   )
 }
