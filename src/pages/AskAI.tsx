@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Sparkles, Send, Square, RotateCcw } from 'lucide-react'
+import { Sparkles, Send, Square, RotateCcw, Mic, MicOff } from 'lucide-react'
 import type { RROutletContext } from '../types'
 import { useAssistant } from '../hooks/useAssistant'
 import { checkAssistantHealth } from '../lib/assistantClient'
@@ -12,6 +12,82 @@ const STARTER_QUESTIONS = [
   'Which brand has the best avg position?',
   'Summarize wins and losses',
 ] as const
+
+// ── Voice hook ────────────────────────────────────────────────────────────────
+
+const ERROR_MESSAGES: Record<string, string> = {
+  'not-allowed': 'Microphone access denied.',
+  'no-speech':   'No speech detected.',
+  'network':     'Voice recognition unavailable.',
+}
+
+function getSpeechRecognitionAPI() {
+  if (typeof window === 'undefined') return null
+  const win = window as unknown as Record<string, unknown>
+  return (win.SpeechRecognition ?? win.webkitSpeechRecognition) as unknown
+}
+
+function useVoice(onResult: (text: string) => void) {
+  const [recording, setRecording] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const recognitionRef = useRef<unknown>(null)
+
+  const startListening = useCallback(() => {
+    const SpeechRecognitionAPI = getSpeechRecognitionAPI()
+    if (!SpeechRecognitionAPI) return
+
+    try {
+      const recognition = new (SpeechRecognitionAPI as unknown as { new (): unknown })()
+      const rec = recognition as unknown as {
+        interimResults?: boolean
+        continuous?: boolean
+        lang?: string
+        onresult?: (event: unknown) => void
+        onerror?: (event: unknown) => void
+        onend?: () => void
+        start: () => void
+      }
+
+      rec.interimResults = false
+      rec.continuous = false
+      rec.lang = 'en-US'
+
+      rec.onresult = (event: unknown) => {
+        const evt = event as unknown as {
+          results: Array<Array<{ transcript: string }>>
+        }
+        const transcript = evt.results?.[0]?.[0]?.transcript?.trim()
+        if (transcript) onResult(transcript)
+      }
+
+      rec.onerror = (event: unknown) => {
+        const evt = event as unknown as { error: string }
+        const msg = ERROR_MESSAGES[evt.error] ?? 'Voice recognition error.'
+        setVoiceError(msg)
+        setTimeout(() => setVoiceError(null), 3000)
+        setRecording(false)
+      }
+
+      rec.onend = () => setRecording(false)
+
+      recognitionRef.current = recognition
+      rec.start()
+      setRecording(true)
+    } catch (err) {
+      setVoiceError('Voice recognition error.')
+      setTimeout(() => setVoiceError(null), 3000)
+    }
+  }, [onResult])
+
+  return {
+    supported: Boolean(getSpeechRecognitionAPI()),
+    recording,
+    voiceError,
+    startListening,
+  }
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AskAI() {
   const { snapshots } = useOutletContext<RROutletContext>()
@@ -25,6 +101,9 @@ export function AskAI() {
   const hasData = snapshots.length > 0
   const online = reachable === true
   const ready = online && hasData
+
+  const { supported: voiceSupported, recording, voiceError, startListening } =
+    useVoice(send)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -48,6 +127,12 @@ export function AskAI() {
     : reachable === false ? "Assistant offline — deploy the Edge Function and set the OpenAI key, then reload."
     : !hasData ? 'Load some ranking data first, then I can help analyze it.'
     : 'Ask about rankings, trends, or specific keyword positions across all brands and sites.'
+
+  const inputPlaceholder = recording
+    ? 'Listening…'
+    : !online ? 'Assistant offline'
+    : !hasData ? 'No data loaded'
+    : 'Ask a question…'
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
@@ -118,21 +203,50 @@ export function AskAI() {
         >
           Summarize this view
         </button>
+
+        {voiceError && (
+          <p className="text-[11px] text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[6px] px-3 py-1.5">
+            {voiceError}
+          </p>
+        )}
+
         <div className="flex items-center gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
-            disabled={!ready}
-            placeholder={!online ? 'Assistant offline' : !hasData ? 'No data loaded' : 'Ask a question…'}
+            disabled={!ready || recording}
+            placeholder={inputPlaceholder}
             className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
           />
+
+          {/* Mic button — only on supported browsers */}
+          {voiceSupported && (
+            <button
+              onClick={startListening}
+              disabled={!ready || isStreaming || recording}
+              aria-label={recording ? 'Listening…' : 'Speak a question'}
+              className={`rounded-[8px] p-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                recording
+                  ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
+                  : 'bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
+              }`}
+            >
+              {recording ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+          )}
+
           {isStreaming ? (
             <button onClick={stop} className="bg-[#F1F5F9] text-[#0F172A] rounded-[8px] p-2.5" aria-label="Stop">
               <Square size={16} />
             </button>
           ) : (
-            <button onClick={submit} disabled={!input.trim() || !ready} className="bg-[#0F172A] text-white rounded-[8px] p-2.5 disabled:opacity-40" aria-label="Send">
+            <button
+              onClick={submit}
+              disabled={!input.trim() || !ready}
+              className="bg-[#0F172A] text-white rounded-[8px] p-2.5 disabled:opacity-40"
+              aria-label="Send"
+            >
               <Send size={16} />
             </button>
           )}
