@@ -31,6 +31,8 @@ function useVoice(onResult: (text: string) => void) {
   const [recording, setRecording] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const recognitionRef = useRef<unknown>(null)
+  const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const manualStopRef = useRef(false)
 
   const startListening = useCallback(() => {
     const SpeechRecognitionAPI = getSpeechRecognitionAPI()
@@ -58,7 +60,16 @@ function useVoice(onResult: (text: string) => void) {
           results: Array<Array<{ transcript: string }>>
         }
         const transcript = evt.results?.[0]?.[0]?.transcript?.trim()
-        if (transcript) onResult(transcript)
+        if (transcript) {
+          if (manualStopRef.current) {
+            // User clicked Send — fire immediately
+            manualStopRef.current = false
+            onResult(transcript)
+          } else {
+            // Natural pause — wait 5 seconds so breathing doesn't trigger a send
+            sendTimerRef.current = setTimeout(() => onResult(transcript), 5000)
+          }
+        }
       }
 
       rec.onerror = (event: unknown) => {
@@ -81,6 +92,12 @@ function useVoice(onResult: (text: string) => void) {
   }, [onResult])
 
   const stopListening = useCallback(() => {
+    // Flag as manual stop so onresult sends immediately (not after 5s delay)
+    manualStopRef.current = true
+    if (sendTimerRef.current) {
+      clearTimeout(sendTimerRef.current)
+      sendTimerRef.current = null
+    }
     const rec = recognitionRef.current as { stop?: () => void } | null
     rec?.stop?.()
   }, [])
