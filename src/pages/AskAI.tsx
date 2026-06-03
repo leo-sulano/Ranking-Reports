@@ -227,26 +227,35 @@ export function AskAI() {
             className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
           />
 
-          {/* Mic button — click to start, auto-sends when you stop talking */}
+          {/* Mic button — click to start recording */}
           {voiceSupported && (
             <button
               onClick={startListening}
               disabled={!ready || isStreaming || recording}
-              aria-label={recording ? 'Listening…' : 'Click to speak'}
-              title={recording ? 'Listening…' : 'Click to speak'}
+              aria-label="Click to speak"
+              title="Click to speak"
               className={`rounded-[8px] p-2.5 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
                 recording
                   ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
                   : 'bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
               }`}
             >
-              {recording ? <MicOff size={16} /> : <Mic size={16} />}
+              <Mic size={16} />
             </button>
           )}
 
           {isStreaming ? (
             <button onClick={stop} className="bg-[#F1F5F9] text-[#0F172A] rounded-[8px] p-2.5" aria-label="Stop">
               <Square size={16} />
+            </button>
+          ) : recording ? (
+            <button
+              onClick={stopListening}
+              className="bg-[#EF4444] text-white rounded-[8px] p-2.5 animate-pulse"
+              aria-label="Stop and send"
+              title="Stop and send"
+            >
+              <Send size={16} />
             </button>
           ) : (
             <button
