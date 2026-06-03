@@ -136,7 +136,7 @@ export function AskAI() {
     : 'Ask about rankings, trends, or specific keyword positions across all brands and sites.'
 
   const inputPlaceholder = recording
-    ? 'Listening… click 🎤 to send'
+    ? 'Listening…'
     : !online ? 'Assistant offline'
     : !hasData ? 'No data loaded'
     : 'Ask a question or click 🎤 to speak'
@@ -227,13 +227,13 @@ export function AskAI() {
             className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
           />
 
-          {/* Mic button — click to start, click again to stop and send */}
+          {/* Mic button — click to start, auto-sends when you stop talking */}
           {voiceSupported && (
             <button
-              onClick={recording ? stopListening : startListening}
-              disabled={!ready || isStreaming}
-              aria-label={recording ? 'Stop and send' : 'Start recording'}
-              title={recording ? 'Click to send' : 'Click to speak'}
+              onClick={startListening}
+              disabled={!ready || isStreaming || recording}
+              aria-label={recording ? 'Listening…' : 'Click to speak'}
+              title={recording ? 'Listening…' : 'Click to speak'}
               className={`rounded-[8px] p-2.5 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
                 recording
                   ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
