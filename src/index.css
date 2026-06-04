@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-mono: 'DM Mono', monospace;
-  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Figtree', sans-serif;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+::-webkit-scrollbar-thumb { background: #D8D8D3; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ABABAA; }
 
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: var(--font-body); background: #F8FAFC; color: #0F172A; }
+body { font-family: var(--font-body); background: #F8F8F6; color: #0D0D0B; }
 
 /* Font utility classes */
 .font-display { font-family: var(--font-display); }
@@ -26,17 +26,17 @@ body { font-family: var(--font-body); background: #F8FAFC; color: #0F172A; }
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(#E2E8F0 1px, transparent 1px),
-    linear-gradient(90deg, #E2E8F0 1px, transparent 1px);
+    linear-gradient(#E8E8E3 1px, transparent 1px),
+    linear-gradient(90deg, #E8E8E3 1px, transparent 1px);
   background-size: 40px 40px;
-  opacity: 0.2;
+  opacity: 0.25;
   pointer-events: none;
   z-index: 0;
 }
 
-/* Keyframe animations (referenced by Tailwind animate-[] classes) */
+/* Keyframe animations */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -53,4 +53,9 @@ body { font-family: var(--font-body); background: #F8FAFC; color: #0F172A; }
 @keyframes progressPulse {
   0%, 100% { width: 30%; margin-left: 0; }
   50%       { width: 50%; margin-left: 20%; }
+}
+
+@keyframes barRise {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to   { transform: scaleY(1); transform-origin: bottom; }
 }
