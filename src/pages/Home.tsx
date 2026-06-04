@@ -120,8 +120,8 @@ export function Home() {
       const b = brandOfDomain(r.domain) ?? '—'
       list.push({ record: r, delta: d, brand: b })
     }
-    const climbers = list.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 6)
-    const droppers = list.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 6)
+    const climbers = list.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3)
+    const droppers = list.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3)
     return { climbers, droppers }
   }, [records])
 
