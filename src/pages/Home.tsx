@@ -4,36 +4,34 @@ import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/bran
 import { parsePosition, parseChange } from '../lib/parser'
 import type { RankingRecord, RROutletContext } from '../types'
 
-// ─── German flag palette: black → red → gold across positions ─────────────────
-
 const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR' | null) => boolean }> = [
-  { label: '1',      key: 'p1',    test: (p) => p === 1                                    },
-  { label: '2',      key: 'p2',    test: (p) => p === 2                                    },
-  { label: '3',      key: 'p3',    test: (p) => p === 3                                    },
-  { label: '4',      key: 'p4',    test: (p) => p === 4                                    },
-  { label: '5',      key: 'p5',    test: (p) => p === 5                                    },
-  { label: '6',      key: 'p6',    test: (p) => p === 6                                    },
-  { label: '7',      key: 'p7',    test: (p) => p === 7                                    },
-  { label: '8',      key: 'p8',    test: (p) => p === 8                                    },
-  { label: '9',      key: 'p9',    test: (p) => p === 9                                    },
-  { label: '10',     key: 'p10',   test: (p) => p === 10                                   },
-  { label: '11–100', key: 'page2', test: (p) => typeof p === 'number' && p >= 11           },
-  { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                 },
+  { label: '1–3',    key: 'top3',  test: (p) => typeof p === 'number' && p >= 1  && p <= 3  },
+  { label: '4–10',   key: 'top10', test: (p) => typeof p === 'number' && p >= 4  && p <= 10 },
+  { label: '11–20',  key: 'r11',   test: (p) => typeof p === 'number' && p >= 11 && p <= 20 },
+  { label: '21–30',  key: 'r21',   test: (p) => typeof p === 'number' && p >= 21 && p <= 30 },
+  { label: '31–40',  key: 'r31',   test: (p) => typeof p === 'number' && p >= 31 && p <= 40 },
+  { label: '41–50',  key: 'r41',   test: (p) => typeof p === 'number' && p >= 41 && p <= 50 },
+  { label: '51–60',  key: 'r51',   test: (p) => typeof p === 'number' && p >= 51 && p <= 60 },
+  { label: '61–70',  key: 'r61',   test: (p) => typeof p === 'number' && p >= 61 && p <= 70 },
+  { label: '71–80',  key: 'r71',   test: (p) => typeof p === 'number' && p >= 71 && p <= 80 },
+  { label: '81–90',  key: 'r81',   test: (p) => typeof p === 'number' && p >= 81 && p <= 90 },
+  { label: '91–100', key: 'r91',   test: (p) => typeof p === 'number' && p >= 91 && p <= 100},
+  { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                  },
 ]
 
-// Page 1 (1–10): dark → light green; page2: amber; NR: gray
+// 1-3: dark green, 4-10: mid green, 11-100: amber→red gradient, NR: gray
 const POSITION_COLOR: Record<string, string> = {
-  p1:    '#064E3B',
-  p2:    '#065F46',
-  p3:    '#047857',
-  p4:    '#059669',
-  p5:    '#10B981',
-  p6:    '#34D399',
-  p7:    '#52D4A0',
-  p8:    '#6EDBA8',
-  p9:    '#8BE2B2',
-  p10:   '#A8E8BD',
-  page2: '#F59E0B',
+  top3:  '#059669',
+  top10: '#34D399',
+  r11:   '#FCD34D',
+  r21:   '#FBBF24',
+  r31:   '#F59E0B',
+  r41:   '#F97316',
+  r51:   '#EF4444',
+  r61:   '#DC2626',
+  r71:   '#B91C1C',
+  r81:   '#991B1B',
+  r91:   '#7F1D1D',
   nr:    '#D0D0CA',
 }
 
@@ -239,8 +237,9 @@ export function Home() {
             </div>
             <div className="flex items-center gap-5 mt-4 pt-4 border-t border-[#F0EFEA]">
               {([
-                { color: '#10B981', label: 'Page 1 (1–10)' },
-                { color: '#FFA500', label: '11–100'        },
+                { color: '#059669', label: '1–3'           },
+                { color: '#34D399', label: '4–10'          },
+                { color: '#F59E0B', label: '11–100'        },
                 { color: '#D0D0CA', label: 'Not ranking'   },
               ] as const).map(({ color, label }) => (
                 <div key={label} className="flex items-center gap-2">
