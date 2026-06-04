@@ -21,19 +21,19 @@ const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR'
   { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                 },
 ]
 
-// Black band → through red → into gold band
+// Page 1 (1–10): dark → light green; page2: amber; NR: gray
 const POSITION_COLOR: Record<string, string> = {
-  p1:    '#0A0A0A',
-  p2:    '#330000',
-  p3:    '#660000',
-  p4:    '#990000',
-  p5:    '#CC0000',
-  p6:    '#D93333',
-  p7:    '#E86600',
-  p8:    '#F29000',
-  p9:    '#FFBB00',
-  p10:   '#FFCC00',
-  page2: '#FFA500',
+  p1:    '#064E3B',
+  p2:    '#065F46',
+  p3:    '#047857',
+  p4:    '#059669',
+  p5:    '#10B981',
+  p6:    '#34D399',
+  p7:    '#52D4A0',
+  p8:    '#6EDBA8',
+  p9:    '#8BE2B2',
+  p10:   '#A8E8BD',
+  page2: '#F59E0B',
   nr:    '#D0D0CA',
 }
 
@@ -239,7 +239,7 @@ export function Home() {
             </div>
             <div className="flex items-center gap-5 mt-4 pt-4 border-t border-[#F0EFEA]">
               {([
-                { color: '#0A0A0A', label: 'Page 1 (1–10)' },
+                { color: '#10B981', label: 'Page 1 (1–10)' },
                 { color: '#FFA500', label: '11–100'        },
                 { color: '#D0D0CA', label: 'Not ranking'   },
               ] as const).map(({ color, label }) => (
