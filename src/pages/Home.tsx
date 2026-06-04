@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { RankingRecord, RROutletContext } from '../types'
@@ -205,60 +206,60 @@ export function Home() {
           </div>
         </div>
 
-        {/* ── SERP Distribution ────────────────────────────────────────────── */}
-        <section
-          className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
-          style={{ animation: 'fadeUp 0.35s ease 0.08s both' }}
-        >
-          <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
-          <div className="px-7 py-5">
-            <div className="flex items-center justify-end gap-5 mb-4 pb-4 border-b border-[#F0EFEA]">
-              {([
-                { color: '#059669', label: '1–3'           },
-                { color: '#34D399', label: '4–10'          },
-                { color: '#F59E0B', label: '11–100'        },
-                { color: '#0A0A0A', label: 'Not ranking'   },
-              ] as const).map(({ color, label }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                  <span className="text-[11px] text-[#8A8A85]">{label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 items-end h-[90px]">
-              {buckets.map((b, i) => (
-                <div
-                  key={b.key}
-                  className="flex-1 flex flex-col items-center gap-1.5 h-full"
-                  style={{ animation: `fadeUp 0.45s ease ${0.12 + i * 0.025}s both` }}
-                >
-                  <span className="font-mono text-[10px] text-[#ABABAA] tabular-nums leading-none">
-                    {b.count || ''}
-                  </span>
-                  <div className="relative w-full flex-1 bg-[#F5F5F0] rounded-lg overflow-hidden">
-                    <div
-                      className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
-                      style={{
-                        height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
-                        background: `repeating-linear-gradient(
-                          to bottom,
-                          ${POSITION_COLOR[b.key]} 0px,
-                          ${POSITION_COLOR[b.key]} 6px,
-                          transparent 6px,
-                          transparent 10px
-                        )`,
-                      }}
-                    />
-                  </div>
-                  <span className="font-mono text-[9px] text-[#ABABAA]">{b.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ── SERP Distribution + Leaderboard + Movers ─────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr_1fr] gap-4">
 
-        {/* ── Leaderboard + Movers ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+          {/* SERP Distribution */}
+          <section
+            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            style={{ animation: 'fadeUp 0.35s ease 0.08s both' }}
+          >
+            <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
+            <div className="px-5 py-5">
+              <div className="flex items-center justify-end gap-3 mb-4 pb-4 border-b border-[#F0EFEA] flex-wrap">
+                {([
+                  { color: '#059669', label: '1–3'           },
+                  { color: '#34D399', label: '4–10'          },
+                  { color: '#F59E0B', label: '11–100'        },
+                  { color: '#0A0A0A', label: 'Not ranking'   },
+                ] as const).map(({ color, label }) => (
+                  <div key={label} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                    <span className="text-[11px] text-[#8A8A85]">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1.5 items-end h-[90px]">
+                {buckets.map((b, i) => (
+                  <div
+                    key={b.key}
+                    className="flex-1 flex flex-col items-center gap-1.5 h-full"
+                    style={{ animation: `fadeUp 0.45s ease ${0.12 + i * 0.025}s both` }}
+                  >
+                    <span className="font-mono text-[9px] text-[#ABABAA] tabular-nums leading-none">
+                      {b.count || ''}
+                    </span>
+                    <div className="relative w-full flex-1 bg-[#F5F5F0] rounded-lg overflow-hidden">
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
+                        style={{
+                          height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
+                          background: `repeating-linear-gradient(
+                            to bottom,
+                            ${POSITION_COLOR[b.key]} 0px,
+                            ${POSITION_COLOR[b.key]} 6px,
+                            transparent 6px,
+                            transparent 10px
+                          )`,
+                        }}
+                      />
+                    </div>
+                    <span className="font-mono text-[9px] text-[#ABABAA]">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Brand Leaderboard */}
           <section
@@ -363,6 +364,7 @@ export function Home() {
               />
             </div>
           </section>
+
         </div>
 
         {/* ── Country + Navigate ────────────────────────────────────────────── */}
@@ -373,25 +375,8 @@ export function Home() {
             style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-            <div className="px-5 pb-5 pt-3 space-y-3">
-              {countryBars.length === 0 && (
-                <p className="text-[12px] text-[#ABABAA]">No country data.</p>
-              )}
-              {countryBars.map((c) => (
-                <div key={c.country} className="flex items-center gap-3">
-                  <span className="font-mono text-[11px] font-semibold text-[#0A0A0A] w-9 shrink-0 tabular-nums">{c.country}</span>
-                  <div className="flex-1 h-[4px] bg-[#F0EFEA] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${c.pct * 100}%`,
-                        background: 'linear-gradient(90deg, #0A0A0A, #CC0000)',
-                      }}
-                    />
-                  </div>
-                  <span className="font-mono text-[11px] tabular-nums text-[#ABABAA] w-9 text-right">{c.count}</span>
-                </div>
-              ))}
+            <div className="relative">
+              <CountryMap data={countryBars} />
             </div>
           </section>
 
@@ -498,5 +483,89 @@ function NavCard({
       </div>
       <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
     </button>
+  )
+}
+
+// ISO alpha-2 → numeric code (world-atlas uses numeric codes)
+const ALPHA2_TO_NUMERIC: Record<string, string> = {
+  AU: '036', CA: '124', DE: '276', IT: '380', NZ: '554',
+  GB: '826', US: '840', FR: '250', ES: '724', NL: '528',
+  BE: '056', AT: '040', CH: '756', SE: '752', NO: '578',
+  DK: '208', FI: '246', PL: '616', CZ: '203', PT: '620',
+  IE: '372', BR: '076', MX: '484', AR: '032', JP: '392',
+  KR: '410', IN: '356', SG: '702', ZA: '710', NG: '566',
+}
+
+function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
+  const maxCount = Math.max(1, ...data.map((d) => d.count))
+  const byNumeric = useMemo(() => {
+    const m: Record<string, { count: number; pct: number; label: string }> = {}
+    for (const d of data) {
+      const num = ALPHA2_TO_NUMERIC[d.country.toUpperCase()]
+      if (num) m[num] = { count: d.count, pct: d.pct, label: d.country }
+    }
+    return m
+  }, [data])
+
+  function fillColor(numericId: string): string {
+    const entry = byNumeric[numericId]
+    if (!entry) return '#F0EFEA'
+    const t = entry.count / maxCount
+    // Interpolate from #FFCC00 (low) to #CC0000 (high)
+    const r = Math.round(0xFF + t * (0xCC - 0xFF))
+    const g = Math.round(0xCC + t * (0x00 - 0xCC))
+    const b = 0
+    return `rgb(${r},${g},${b})`
+  }
+
+  return (
+    <div className="w-full">
+      <div style={{ height: 200 }}>
+        <ComposableMap
+          projection="geoNaturalEarth1"
+          style={{ width: '100%', height: '100%' }}
+          projectionConfig={{ scale: 140, center: [10, 10] }}
+        >
+          <ZoomableGroup zoom={1} center={[10, 10]} minZoom={1} maxZoom={1}>
+            <Geographies geography="/countries-110m.json">
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const id = geo.id as string
+                  const entry = byNumeric[id]
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={fillColor(id)}
+                      stroke="#FFFFFF"
+                      strokeWidth={0.4}
+                      style={{
+                        default: { outline: 'none' },
+                        hover:   { outline: 'none', opacity: entry ? 0.85 : 1 },
+                        pressed: { outline: 'none' },
+                      }}
+                    />
+                  )
+                })
+              }
+            </Geographies>
+          </ZoomableGroup>
+        </ComposableMap>
+      </div>
+      {data.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap px-5 pb-4 pt-1 border-t border-[#F5F4EF]">
+          {data.map((d) => (
+            <div key={d.country} className="flex items-center gap-1.5">
+              <div
+                className="w-2.5 h-2.5 rounded-sm shrink-0"
+                style={{ background: fillColor(ALPHA2_TO_NUMERIC[d.country.toUpperCase()] ?? '') }}
+              />
+              <span className="font-mono text-[11px] font-semibold text-[#0A0A0A]">{d.country}</span>
+              <span className="font-mono text-[11px] text-[#ABABAA]">{d.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
