@@ -371,11 +371,11 @@ export function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
             style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-            <div className="relative">
+            <div className="flex-1 relative min-h-0">
               <CountryMap data={countryBars} />
             </div>
           </section>
@@ -538,8 +538,8 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
   }
 
   return (
-    <div className="w-full relative">
-      <div style={{ height: 300 }}>
+    <div className="w-full h-full flex flex-col relative">
+      <div className="flex-1 min-h-0">
         <ComposableMap
           projection="geoNaturalEarth1"
           style={{ width: '100%', height: '100%' }}
