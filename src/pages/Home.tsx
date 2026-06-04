@@ -214,7 +214,7 @@ export function Home() {
         >
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
           <div className="px-7 py-5">
-            <div className="flex gap-2 items-end h-[200px]">
+            <div className="flex gap-2 items-end h-[90px]">
               {buckets.map((b, i) => (
                 <div
                   key={b.key}
