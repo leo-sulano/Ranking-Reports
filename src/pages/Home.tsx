@@ -457,7 +457,7 @@ function MoverGroup({
           return (
             <li
               key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-[#FAF9F4] transition-colors"
+              className="flex items-center gap-2.5 px-2.5 py-0 rounded-xl hover:bg-[#FAF9F4] transition-colors"
             >
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
               <div className="min-w-0 flex-1">
