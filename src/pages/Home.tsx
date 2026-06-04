@@ -228,7 +228,7 @@ export function Home() {
                       style={{
                         height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
                         background: `repeating-linear-gradient(
-                          to right,
+                          to bottom,
                           ${POSITION_COLOR[b.key]} 0px,
                           ${POSITION_COLOR[b.key]} 6px,
                           transparent 6px,
