@@ -167,40 +167,40 @@ export function Home() {
         <div className="grid grid-cols-4 gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
           {/* Keywords — solid black (top band of flag) */}
-          <div className="relative rounded-2xl p-7 overflow-hidden bg-[#0A0A0A]">
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-4">Keywords</div>
-            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+          <div className="relative rounded-xl px-6 py-5 overflow-hidden bg-[#0A0A0A]">
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-2.5">Keywords</div>
+            <div className="font-display text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.keywords.toLocaleString()}
             </div>
           </div>
 
           {/* Records — German red (middle band) */}
-          <div className="relative rounded-2xl p-7 overflow-hidden" style={{ background: '#CC0000' }}>
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-4">Records</div>
-            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+          <div className="relative rounded-xl px-6 py-5 overflow-hidden" style={{ background: '#CC0000' }}>
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2.5">Records</div>
+            <div className="font-display text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.records.toLocaleString()}
             </div>
           </div>
 
-          {/* Brands — gold-accented light card (bottom band) */}
-          <div className="rounded-2xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="h-[4px] bg-[#FFCC00]" />
-            <div className="px-7 py-6">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-4">Brands</div>
-              <div className="font-display text-[60px] font-[800] text-[#0A0A0A] tabular-nums leading-none">
+          {/* Brands — gold-accented light card */}
+          <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <div className="h-[3px] bg-[#FFCC00]" />
+            <div className="px-6 py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2.5">Brands</div>
+              <div className="font-display text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
                 {totals.brands}
               </div>
             </div>
           </div>
 
           {/* Countries — gold-accented light card */}
-          <div className="rounded-2xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="h-[4px] bg-[#FFCC00]" />
-            <div className="px-7 py-6">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-4">Countries</div>
-              <div className="font-display text-[60px] font-[800] text-[#0A0A0A] tabular-nums leading-none">
+          <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <div className="h-[3px] bg-[#FFCC00]" />
+            <div className="px-6 py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2.5">Countries</div>
+              <div className="font-display text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
                 {totals.countries}
               </div>
             </div>
@@ -221,8 +221,8 @@ export function Home() {
                 {totals.snapshots} snapshots
               </span>
             </div>
-            <span className="font-display text-[36px] font-[800] text-[#0A0A0A] tabular-nums leading-none">
-              {page1Pct}<span className="font-display text-[16px] text-[#ABABAA] font-[400] ml-0.5">%</span>
+            <span className="font-display text-[28px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
+              {page1Pct}<span className="font-display text-[13px] text-[#ABABAA] font-[400] ml-0.5">%</span>
             </span>
           </div>
           {/* German flag gradient bar: black → red → gold */}
@@ -246,7 +246,7 @@ export function Home() {
             ] as const).map((t) => (
               <div key={t.label} className="flex items-baseline gap-2">
                 <span
-                  className="font-display text-[20px] font-[700] tabular-nums leading-none"
+                  className="font-display text-[16px] font-[600] tabular-nums leading-none"
                   style={{ color: t.color }}
                 >
                   {t.value.toLocaleString()}
