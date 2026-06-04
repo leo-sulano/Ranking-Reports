@@ -161,7 +161,7 @@ export function Home() {
   // ── Main layout ────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 overflow-auto bg-[#F8F8F6]">
-      <div className="px-6 py-6 max-w-[1400px] mx-auto space-y-4">
+      <div className="px-6 py-5 space-y-4">
 
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
@@ -169,7 +169,7 @@ export function Home() {
           style={{ animation: 'fadeUp 0.35s ease both' }}
         >
           {/* Header bar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-[#F2F2EE]">
+          <div className="flex items-center justify-between px-8 py-3 border-b border-[#F2F2EE]">
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#C0BFB9]">
               Rooster Partners
             </span>
@@ -190,9 +190,9 @@ export function Home() {
               { label: 'Countries', value: totals.countries },
               { label: 'Records',   value: totals.records   },
             ] as const).map(({ label, value }) => (
-              <div key={label} className="px-7 py-6">
+              <div key={label} className="px-8 py-7">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C0BFB9] mb-3">{label}</div>
-                <div className="font-display text-[52px] font-[800] text-[#0D0D0B] tabular-nums leading-none">
+                <div className="font-display text-[60px] font-[800] text-[#0D0D0B] tabular-nums leading-none">
                   {value.toLocaleString()}
                 </div>
               </div>
@@ -200,7 +200,7 @@ export function Home() {
           </div>
 
           {/* Page-1 occupancy bar */}
-          <div className="px-7 py-4 border-t border-[#F2F2EE] bg-[#FAFAF8]">
+          <div className="px-8 py-5 border-t border-[#F2F2EE] bg-[#FAFAF8]">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C0BFB9]">
                 Page-1 Occupancy
@@ -247,8 +247,8 @@ export function Home() {
           style={{ animation: 'fadeUp 0.35s ease 0.06s both' }}
         >
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
-          <div className="px-6 py-5">
-            <div className="flex gap-1.5 items-end h-[160px]">
+          <div className="px-7 py-5">
+            <div className="flex gap-2 items-end h-[200px]">
               {buckets.map((b, i) => (
                 <div
                   key={b.key}
@@ -288,7 +288,7 @@ export function Home() {
         </section>
 
         {/* ── Leaderboard + Movers ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
 
           {/* Brand Leaderboard */}
           <section
@@ -399,7 +399,7 @@ export function Home() {
         </div>
 
         {/* ── Country + Navigate ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           <section
             className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
