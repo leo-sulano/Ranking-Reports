@@ -9,11 +9,11 @@
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar-thumb { background: #D0D0CA; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #A8A8A3; }
 
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: var(--font-body); background: #0F0E17; color: #E8E6FF; }
+body { font-family: var(--font-body); background: #F7F7F5; color: #0A0A0A; }
 
 /* Font utility classes */
 .font-display { font-family: var(--font-display); }
@@ -26,9 +26,10 @@ body { font-family: var(--font-body); background: #0F0E17; color: #E8E6FF; }
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    linear-gradient(#E5E4DF 1px, transparent 1px),
+    linear-gradient(90deg, #E5E4DF 1px, transparent 1px);
   background-size: 40px 40px;
+  opacity: 0.3;
   pointer-events: none;
   z-index: 0;
 }

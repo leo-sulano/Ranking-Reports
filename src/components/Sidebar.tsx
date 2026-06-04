@@ -59,41 +59,25 @@ export function Sidebar({
   return (
     <div className="w-[64px] shrink-0 h-screen relative z-30">
       <aside
-        className="group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col overflow-hidden transition-[width] duration-200 ease-out"
-        style={{
-          background: '#13121F',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 0 0 0 transparent',
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '8px 0 32px rgba(0,0,0,0.4)' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 0 transparent' }}
+        className="group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col bg-white border-r border-[#E5E4DF] overflow-hidden transition-[width] duration-200 ease-out hover:shadow-[8px_0_32px_rgba(0,0,0,0.06)]"
       >
         {/* Logo */}
-        <div
-          className="px-3 pt-5 pb-4 shrink-0 flex items-center gap-3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <div
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-white font-display text-[13px] tracking-wider shrink-0"
-            style={{ background: 'linear-gradient(135deg, #FF2D8D, #7B2FE8)' }}
-          >
+        <div className="px-3 pt-5 pb-4 border-b border-[#EEEEE9] shrink-0 flex items-center gap-3">
+          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0A0A0A] text-white font-display text-[13px] tracking-wider shrink-0">
             RR
           </div>
           <div className={labelCls}>
-            <div className="font-display text-[14px] tracking-widest text-white leading-none">
+            <div className="font-display text-[14px] tracking-widest text-[#0A0A0A] leading-none">
               RANKING REPORTS
             </div>
-            <div className="text-[9px] text-white/35 uppercase tracking-[0.12em] mt-1">
+            <div className="text-[9px] text-[#ABABAA] uppercase tracking-[0.12em] mt-1">
               Rooster Partners
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav
-          className="px-2 pt-3 pb-3 space-y-0.5 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        >
+        <nav className="px-2 pt-3 pb-3 border-b border-[#EEEEE9] space-y-0.5 shrink-0">
           {PAGES.map((p) => {
             const active = isActivePath(p.path)
             return (
@@ -101,19 +85,23 @@ export function Sidebar({
                 key={p.path}
                 onClick={() => navigate(p.path)}
                 title={p.label}
-                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-all relative"
-                style={active ? {
-                  background: 'linear-gradient(90deg, rgba(255,45,141,0.15), rgba(123,47,232,0.15))',
-                  borderLeft: '2px solid #FF2D8D',
-                  paddingLeft: '10px',
-                } : {}}
-                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
-                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = '' }}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-colors relative ${
+                  active
+                    ? 'bg-[#FFF5F5]'
+                    : 'hover:bg-[#F7F7F5]'
+                }`}
+                style={active ? { borderLeft: '2px solid #CC0000', paddingLeft: '10px' } : {}}
               >
-                <span className="w-[18px] flex items-center justify-center shrink-0" style={{ color: active ? '#FF2D8D' : 'rgba(255,255,255,0.35)' }}>
+                <span
+                  className="w-[18px] flex items-center justify-center shrink-0"
+                  style={{ color: active ? '#CC0000' : '#ABABAA' }}
+                >
                   {p.icon}
                 </span>
-                <span className={`text-[12px] font-semibold ${labelCls}`} style={{ color: active ? 'white' : 'rgba(255,255,255,0.55)' }}>
+                <span
+                  className={`text-[12px] font-semibold ${labelCls}`}
+                  style={{ color: active ? '#0A0A0A' : '#6B6B65' }}
+                >
                   {p.label}
                 </span>
               </button>
@@ -125,11 +113,11 @@ export function Sidebar({
         {hasBrandList ? (
           <div className={`flex-1 flex flex-col min-h-0 ${labelCls}`}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ABABAA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 whitespace-nowrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] whitespace-nowrap">
                 {isBPSitesRoute ? 'BP Sites' : 'LP Sites'}
               </span>
             </div>
@@ -148,12 +136,11 @@ export function Sidebar({
                         ? `/bp-sites/${brandToSlug(brand.name)}`
                         : `/lp-sites/${brandToSlug(brand.name)}`)
                     }}
-                    className="flex items-center w-full px-3 py-2 rounded-lg text-left transition-all"
-                    style={isActive ? { background: 'rgba(255,255,255,0.08)' } : {}}
-                    onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
-                    onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = '' }}
+                    className={`flex items-center w-full px-3 py-2 rounded-lg text-left transition-colors ${
+                      isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
+                    }`}
                   >
-                    <div className="text-[12px] font-semibold text-white/75 truncate whitespace-nowrap">
+                    <div className="text-[12px] font-semibold text-[#0A0A0A] truncate whitespace-nowrap">
                       {brand.name}
                     </div>
                   </button>
@@ -166,12 +153,11 @@ export function Sidebar({
         )}
 
         {/* Footer */}
-        <div className="p-2 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="p-2 border-t border-[#EEEEE9] shrink-0">
           <button
             onClick={onOpenUpload}
             title="Import Data"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white text-[12px] font-bold transition-all hover:opacity-90 active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #FF2D8D 0%, #7B2FE8 100%)' }}
+            className="w-full flex items-center gap-3 px-3 py-2 bg-[#CC0000] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#AA0000] active:scale-95"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -181,7 +167,7 @@ export function Sidebar({
             <span className={labelCls}>Import Data</span>
           </button>
           {uploadDate && (
-            <p className={`text-center text-[10px] text-white/25 font-mono mt-2 ${labelCls}`}>
+            <p className={`text-center text-[10px] text-[#ABABAA] font-mono mt-2 ${labelCls}`}>
               Updated: {uploadDate}
             </p>
           )}
