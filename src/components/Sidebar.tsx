@@ -39,13 +39,6 @@ interface Props {
   onSelectBPBrand: (name: string | null) => void
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-// Outer wrapper reserves a fixed 64px slot in the flex row so the page content
-// never shifts. The inner <aside> is absolutely positioned within that slot
-// and grows from 64 → 240px on hover, overlaying the content area like
-// Supabase's rail. Labels, the brand sub-list, and the footer date fade in
-// via group-hover so the collapsed state stays icon-only.
-
 export function Sidebar({
   uploadDate,
   onOpenUpload,
@@ -61,31 +54,46 @@ export function Sidebar({
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
 
-  // Reveal labels / brand list only when the rail is expanded.
   const labelCls = 'whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150'
 
   return (
     <div className="w-[64px] shrink-0 h-screen relative z-30">
       <aside
-        className="group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col bg-white border-r border-[#E2E8F0] overflow-hidden transition-[width] duration-200 ease-out hover:shadow-[8px_0_24px_rgba(15,23,42,0.08)]"
+        className="group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col overflow-hidden transition-[width] duration-200 ease-out"
+        style={{
+          background: '#13121F',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: '0 0 0 0 transparent',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '8px 0 32px rgba(0,0,0,0.4)' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 0 transparent' }}
       >
-        {/* Logo — small monogram always; full lockup fades in when expanded */}
-        <div className="px-3 pt-5 pb-4 border-b border-[#E2E8F0] shrink-0 flex items-center gap-3">
-          <div className="w-9 h-9 flex items-center justify-center rounded-md bg-[#0F172A] text-white font-display text-[13px] tracking-wider shrink-0">
+        {/* Logo */}
+        <div
+          className="px-3 pt-5 pb-4 shrink-0 flex items-center gap-3"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-white font-display text-[13px] tracking-wider shrink-0"
+            style={{ background: 'linear-gradient(135deg, #FF2D8D, #7B2FE8)' }}
+          >
             RR
           </div>
           <div className={labelCls}>
-            <div className="font-display text-[14px] tracking-widest text-[#0F172A] leading-none">
+            <div className="font-display text-[14px] tracking-widest text-white leading-none">
               RANKING REPORTS
             </div>
-            <div className="text-[9px] text-[#64748B] uppercase tracking-[0.12em] mt-1">
+            <div className="text-[9px] text-white/35 uppercase tracking-[0.12em] mt-1">
               Rooster Partners
             </div>
           </div>
         </div>
 
-        {/* Global page nav */}
-        <nav className="px-2 pt-3 pb-3 border-b border-[#E2E8F0] space-y-0.5 shrink-0">
+        {/* Nav */}
+        <nav
+          className="px-2 pt-3 pb-3 space-y-0.5 shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
           {PAGES.map((p) => {
             const active = isActivePath(p.path)
             return (
@@ -93,18 +101,19 @@ export function Sidebar({
                 key={p.path}
                 onClick={() => navigate(p.path)}
                 title={p.label}
-                className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-left transition-colors relative ${
-                  active
-                    ? 'bg-[#F1F5F9] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-sm before:bg-[#0F172A]'
-                    : 'hover:bg-[#F8FAFC]'
-                }`}
+                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-all relative"
+                style={active ? {
+                  background: 'linear-gradient(90deg, rgba(255,45,141,0.15), rgba(123,47,232,0.15))',
+                  borderLeft: '2px solid #FF2D8D',
+                  paddingLeft: '10px',
+                } : {}}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = '' }}
               >
-                <span
-                  className={`w-[18px] flex items-center justify-center shrink-0 ${active ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}
-                >
+                <span className="w-[18px] flex items-center justify-center shrink-0" style={{ color: active ? '#FF2D8D' : 'rgba(255,255,255,0.35)' }}>
                   {p.icon}
                 </span>
-                <span className={`text-[12px] font-semibold ${labelCls} ${active ? 'text-[#0F172A]' : 'text-[#475569]'}`}>
+                <span className={`text-[12px] font-semibold ${labelCls}`} style={{ color: active ? 'white' : 'rgba(255,255,255,0.55)' }}>
                   {p.label}
                 </span>
               </button>
@@ -112,15 +121,15 @@ export function Sidebar({
           })}
         </nav>
 
-        {/* Brand sub-list — fades in when expanded on a BP/LP route. */}
+        {/* Brand sub-list */}
         {hasBrandList ? (
           <div className={`flex-1 flex flex-col min-h-0 ${labelCls}`}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B] whitespace-nowrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 whitespace-nowrap">
                 {isBPSitesRoute ? 'BP Sites' : 'LP Sites'}
               </span>
             </div>
@@ -139,11 +148,12 @@ export function Sidebar({
                         ? `/bp-sites/${brandToSlug(brand.name)}`
                         : `/lp-sites/${brandToSlug(brand.name)}`)
                     }}
-                    className={`flex items-center w-full px-3 py-2 rounded-md text-left transition-colors ${
-                      isActive ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'
-                    }`}
+                    className="flex items-center w-full px-3 py-2 rounded-lg text-left transition-all"
+                    style={isActive ? { background: 'rgba(255,255,255,0.08)' } : {}}
+                    onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
+                    onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = '' }}
                   >
-                    <div className="text-[12px] font-semibold text-[#0F172A] truncate whitespace-nowrap">
+                    <div className="text-[12px] font-semibold text-white/75 truncate whitespace-nowrap">
                       {brand.name}
                     </div>
                   </button>
@@ -156,11 +166,12 @@ export function Sidebar({
         )}
 
         {/* Footer */}
-        <div className="p-2 border-t border-[#E2E8F0] shrink-0">
+        <div className="p-2 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             onClick={onOpenUpload}
             title="Import Data"
-            className="w-full flex items-center gap-3 px-3 py-2 bg-[#0F172A] text-white rounded-md text-[12px] font-bold transition-colors hover:bg-[#1E293B] active:scale-95"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white text-[12px] font-bold transition-all hover:opacity-90 active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #FF2D8D 0%, #7B2FE8 100%)' }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -170,7 +181,7 @@ export function Sidebar({
             <span className={labelCls}>Import Data</span>
           </button>
           {uploadDate && (
-            <p className={`text-center text-[10px] text-[#64748B] font-mono mt-2 ${labelCls}`}>
+            <p className={`text-center text-[10px] text-white/25 font-mono mt-2 ${labelCls}`}>
               Updated: {uploadDate}
             </p>
           )}

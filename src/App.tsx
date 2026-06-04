@@ -324,20 +324,20 @@ function Layout() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F8F8F6] text-[#9B9B96] font-mono text-[12px] tracking-wider">
+      <div className="flex items-center justify-center h-screen bg-[#0F0E17] text-white/30 font-mono text-[12px] tracking-wider">
         Loading rankings…
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8F8F6] relative">
+    <div className="flex h-screen overflow-hidden bg-[#0F0E17] relative">
       {/* Background grid */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-40"
+        className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage:
-            'linear-gradient(#E8E8E3 1px, transparent 1px), linear-gradient(90deg, #E8E8E3 1px, transparent 1px)',
+            'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />
@@ -375,18 +375,21 @@ function Layout() {
       )}
 
       {bulkProgress && (
-        <div className="fixed inset-0 bg-[rgba(15,23,42,0.55)] backdrop-blur-md z-50 flex items-center justify-center">
-          <div className="bg-white border border-[#E2E8F0] rounded-[14px] w-[420px] max-w-[95vw] p-6 shadow-[0_40px_80px_rgba(15,23,42,0.18)]">
-            <h2 className="font-display text-[16px] tracking-wider text-[#0F172A] mb-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center">
+          <div className="bg-[#1A1929] border border-[rgba(255,255,255,0.08)] rounded-[14px] w-[420px] max-w-[95vw] p-6 shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
+            <h2 className="font-display text-[16px] tracking-wider text-white mb-4">
               Bulk import in progress
             </h2>
-            <div className="h-[6px] bg-[#F1F5F9] rounded-full overflow-hidden mb-3">
+            <div className="h-[6px] bg-white/10 rounded-full overflow-hidden mb-3">
               <div
-                className="h-full bg-[#0F172A] rounded-full transition-[width] duration-150"
-                style={{ width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%` }}
+                className="h-full rounded-full transition-[width] duration-150"
+                style={{
+                  width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%`,
+                  background: 'linear-gradient(90deg, #FF2D8D, #7B2FE8)',
+                }}
               />
             </div>
-            <p className="text-center text-[12px] text-[#64748B]">
+            <p className="text-center text-[12px] text-white/40">
               Saving snapshot {bulkProgress.done} of {bulkProgress.total}…
             </p>
           </div>

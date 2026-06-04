@@ -6,34 +6,35 @@ import type { RankingRecord, RROutletContext } from '../types'
 
 // ─── Tier definitions ─────────────────────────────────────────────────────────
 
-const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR' | null) => boolean; tier: 'p1' | 'top3' | 'top10' | 'page2' | 'nr' }> = [
-  { label: '1',      key: 'p1',    test: (p) => p === 1,                                   tier: 'p1'    },
-  { label: '2',      key: 'p2',    test: (p) => p === 2,                                   tier: 'top3'  },
-  { label: '3',      key: 'p3',    test: (p) => p === 3,                                   tier: 'top3'  },
-  { label: '4',      key: 'p4',    test: (p) => p === 4,                                   tier: 'top10' },
-  { label: '5',      key: 'p5',    test: (p) => p === 5,                                   tier: 'top10' },
-  { label: '6',      key: 'p6',    test: (p) => p === 6,                                   tier: 'top10' },
-  { label: '7',      key: 'p7',    test: (p) => p === 7,                                   tier: 'top10' },
-  { label: '8',      key: 'p8',    test: (p) => p === 8,                                   tier: 'top10' },
-  { label: '9',      key: 'p9',    test: (p) => p === 9,                                   tier: 'top10' },
-  { label: '10',     key: 'p10',   test: (p) => p === 10,                                  tier: 'top10' },
-  { label: '11–100', key: 'page2', test: (p) => typeof p === 'number' && p >= 11,          tier: 'page2' },
-  { label: 'NR',     key: 'nr',    test: (p) => p === 'NR',                                tier: 'nr'    },
+const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR' | null) => boolean }> = [
+  { label: '1',      key: 'p1',    test: (p) => p === 1                                    },
+  { label: '2',      key: 'p2',    test: (p) => p === 2                                    },
+  { label: '3',      key: 'p3',    test: (p) => p === 3                                    },
+  { label: '4',      key: 'p4',    test: (p) => p === 4                                    },
+  { label: '5',      key: 'p5',    test: (p) => p === 5                                    },
+  { label: '6',      key: 'p6',    test: (p) => p === 6                                    },
+  { label: '7',      key: 'p7',    test: (p) => p === 7                                    },
+  { label: '8',      key: 'p8',    test: (p) => p === 8                                    },
+  { label: '9',      key: 'p9',    test: (p) => p === 9                                    },
+  { label: '10',     key: 'p10',   test: (p) => p === 10                                   },
+  { label: '11–100', key: 'page2', test: (p) => typeof p === 'number' && p >= 11           },
+  { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                 },
 ]
 
+// Cyberpunk palette: cyan → violet → pink for positions, amber for page2, hot-pink for NR
 const POSITION_COLOR: Record<string, string> = {
-  p1:    '#047857',
-  p2:    '#059669',
-  p3:    '#10B981',
-  p4:    '#16A34A',
-  p5:    '#22C55E',
-  p6:    '#4ADE80',
-  p7:    '#65A30D',
-  p8:    '#84CC16',
-  p9:    '#A3E635',
-  p10:   '#BEF264',
-  page2: '#F59E0B',
-  nr:    '#EF4444',
+  p1:    '#00E5FF',
+  p2:    '#22D3EE',
+  p3:    '#38BDF8',
+  p4:    '#60A5FA',
+  p5:    '#818CF8',
+  p6:    '#A78BFA',
+  p7:    '#C084FC',
+  p8:    '#E879F9',
+  p9:    '#F472B6',
+  p10:   '#FB7185',
+  page2: '#FFB74D',
+  nr:    '#FF2D8D',
 }
 
 function brandOfDomain(domain: string): string | undefined {
@@ -138,18 +139,22 @@ export function Home() {
   // ── Empty state ───────────────────────────────────────────────────────────
   if (!latestSnapshot) {
     return (
-      <div className="flex-1 overflow-auto flex items-center justify-center bg-[#F8F8F6]">
+      <div className="flex-1 overflow-auto flex items-center justify-center bg-[#0F0E17]">
         <div className="text-center max-w-[280px]" style={{ animation: 'fadeUp 0.4s ease both' }}>
-          <div className="w-16 h-16 rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-[#E8E8E3] flex items-center justify-center mx-auto mb-5">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0BFB9" strokeWidth="1.5">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5">
               <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
             </svg>
           </div>
-          <h2 className="font-display text-[18px] font-[700] text-[#0D0D0B] mb-2">No data yet</h2>
-          <p className="text-[13px] text-[#9B9B96] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
+          <h2 className="font-display text-[18px] font-[700] text-white mb-2">No data yet</h2>
+          <p className="text-[13px] text-white/40 mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
           <button
             onClick={ctx.onOpenUpload}
-            className="px-5 py-2.5 bg-[#0D0D0B] text-white text-[13px] font-semibold rounded-xl hover:bg-[#1A1A16] transition-all active:scale-95"
+            className="px-5 py-2.5 text-white text-[13px] font-semibold rounded-xl transition-all hover:opacity-90 active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #FF2D8D, #7B2FE8)' }}
           >
             Import data
           </button>
@@ -160,91 +165,104 @@ export function Home() {
 
   // ── Main layout ────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 overflow-auto bg-[#F8F8F6]">
+    <div className="flex-1 overflow-auto bg-[#0F0E17]">
       <div className="px-6 py-5 space-y-4">
 
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <section
-          className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-          style={{ animation: 'fadeUp 0.35s ease both' }}
-        >
-          {/* Header bar */}
-          <div className="flex items-center justify-between px-8 py-3 border-b border-[#F2F2EE]">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#C0BFB9]">
-              Rooster Partners
-            </span>
-            <div className="flex items-center gap-3 font-mono text-[11px] text-[#9B9B96]">
-              <span>
-                Latest: <span className="text-[#0D0D0B] font-semibold">{latestSnapshot.displayDate}</span>
-              </span>
-              <span className="text-[#DEDED9]">·</span>
-              <span>{totals.snapshots} snapshots</span>
+        {/* ── Metric cards row ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-4 gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
+
+          {/* Keywords — pink→purple gradient */}
+          <div className="relative rounded-2xl p-7 overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF2D8D 0%, #7B2FE8 100%)' }}>
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }} />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70 mb-4">Keywords</div>
+            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+              {totals.keywords.toLocaleString()}
             </div>
           </div>
 
-          {/* Big metrics */}
-          <div className="grid grid-cols-4 divide-x divide-[#F2F2EE]">
+          {/* Records — cyan→blue gradient */}
+          <div className="relative rounded-2xl p-7 overflow-hidden" style={{ background: 'linear-gradient(135deg, #00E5FF 0%, #2B6CF8 100%)' }}>
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }} />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70 mb-4">Records</div>
+            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+              {totals.records.toLocaleString()}
+            </div>
+          </div>
+
+          {/* Brands — dark card */}
+          <div
+            className="rounded-2xl p-7"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35 mb-4">Brands</div>
+            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+              {totals.brands}
+            </div>
+          </div>
+
+          {/* Countries — dark card */}
+          <div
+            className="rounded-2xl p-7"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35 mb-4">Countries</div>
+            <div className="font-display text-[60px] font-[800] text-white tabular-nums leading-none">
+              {totals.countries}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Page-1 Occupancy ──────────────────────────────────────────────── */}
+        <section
+          className="rounded-2xl px-8 py-5"
+          style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.04s both' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Page-1 Occupancy</span>
+              <span className="ml-4 font-mono text-[11px] text-white/25">
+                Latest: <span className="text-white/50">{latestSnapshot.displayDate}</span>
+                <span className="mx-2 text-white/15">·</span>
+                {totals.snapshots} snapshots
+              </span>
+            </div>
+            <span className="font-display text-[36px] font-[800] text-white tabular-nums leading-none">
+              {page1Pct}<span className="font-display text-[16px] text-white/30 font-[400] ml-0.5">%</span>
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${page1Pct}%`,
+                background: 'linear-gradient(90deg, #FF2D8D 0%, #7B2FE8 50%, #00E5FF 100%)',
+                transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 0 12px rgba(255,45,141,0.5)',
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-7 mt-3">
             {([
-              { label: 'Keywords',  value: totals.keywords  },
-              { label: 'Brands',    value: totals.brands    },
-              { label: 'Countries', value: totals.countries },
-              { label: 'Records',   value: totals.records   },
-            ] as const).map(({ label, value }) => (
-              <div key={label} className="px-8 py-7">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C0BFB9] mb-3">{label}</div>
-                <div className="font-display text-[60px] font-[800] text-[#0D0D0B] tabular-nums leading-none">
-                  {value.toLocaleString()}
-                </div>
+              { label: 'P1',     value: tier.p1,    color: '#00E5FF' },
+              { label: 'Top-3',  value: tier.top3,  color: '#A78BFA' },
+              { label: 'Top-10', value: tier.top10, color: '#818CF8' },
+              { label: '11–100', value: tier.page2, color: '#FFB74D' },
+              { label: 'NR',     value: tier.nr,    color: '#FF2D8D' },
+            ] as const).map((t) => (
+              <div key={t.label} className="flex items-baseline gap-2">
+                <span className="font-display text-[20px] font-[700] tabular-nums leading-none" style={{ color: t.color }}>
+                  {t.value.toLocaleString()}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.12em] text-white/30">{t.label}</span>
               </div>
             ))}
-          </div>
-
-          {/* Page-1 occupancy bar */}
-          <div className="px-8 py-5 border-t border-[#F2F2EE] bg-[#FAFAF8]">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C0BFB9]">
-                Page-1 Occupancy
-              </span>
-              <span className="font-display text-[32px] font-[800] text-[#0D0D0B] tabular-nums leading-none">
-                {page1Pct}<span className="font-display text-[15px] text-[#C0BFB9] font-[400] ml-0.5">%</span>
-              </span>
-            </div>
-            <div className="h-[5px] bg-[#EDEDEA] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${page1Pct}%`,
-                  background: 'linear-gradient(90deg, #1A56DB 0%, #7C3AED 100%)',
-                  transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-6 mt-3">
-              {([
-                { label: 'P1',     value: tier.p1,    color: '#0FAA6A' },
-                { label: 'Top-3',  value: tier.top3,  color: '#E8900A' },
-                { label: 'Top-10', value: tier.top10, color: '#1A56DB' },
-                { label: '11–100', value: tier.page2, color: '#7C3AED' },
-                { label: 'NR',     value: tier.nr,    color: '#D93025' },
-              ] as const).map((t) => (
-                <div key={t.label} className="flex items-baseline gap-1.5">
-                  <span
-                    className="font-display text-[18px] font-[700] tabular-nums leading-none"
-                    style={{ color: t.color }}
-                  >
-                    {t.value.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-[#C0BFB9]">{t.label}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
         {/* ── SERP Distribution ────────────────────────────────────────────── */}
         <section
-          className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-          style={{ animation: 'fadeUp 0.35s ease 0.06s both' }}
+          className="rounded-2xl overflow-hidden"
+          style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.08s both' }}
         >
           <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
           <div className="px-7 py-5">
@@ -255,32 +273,33 @@ export function Home() {
                   className="flex-1 flex flex-col items-center gap-1.5 h-full"
                   style={{ animation: `fadeUp 0.45s ease ${0.12 + i * 0.025}s both` }}
                 >
-                  <span className="font-mono text-[10px] text-[#C0BFB9] tabular-nums leading-none">
+                  <span className="font-mono text-[10px] tabular-nums leading-none" style={{ color: 'rgba(255,255,255,0.3)' }}>
                     {b.count || ''}
                   </span>
-                  <div className="relative w-full flex-1 bg-[#F5F5F2] rounded-lg overflow-hidden">
+                  <div className="relative w-full flex-1 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                     <div
                       className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
                       style={{
                         height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
                         background: POSITION_COLOR[b.key],
-                        opacity: 0.88,
+                        opacity: 0.85,
+                        boxShadow: b.count > 0 ? `0 0 12px ${POSITION_COLOR[b.key]}50` : 'none',
                       }}
                     />
                   </div>
-                  <span className="font-mono text-[9px] text-[#C0BFB9]">{b.label}</span>
+                  <span className="font-mono text-[9px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{b.label}</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-5 mt-4 pt-4 border-t border-[#F2F2EE]">
+            <div className="flex items-center gap-5 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               {([
-                { color: '#10B981', label: 'Page 1 (1–10)' },
-                { color: '#F59E0B', label: '11–100'        },
-                { color: '#EF4444', label: 'Not ranking'   },
+                { color: '#00E5FF', label: 'Page 1 (1–10)' },
+                { color: '#FFB74D', label: '11–100'        },
+                { color: '#FF2D8D', label: 'Not ranking'   },
               ] as const).map(({ color, label }) => (
                 <div key={label} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                  <span className="text-[11px] text-[#9B9B96]">{label}</span>
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+                  <span className="text-[11px] text-white/40">{label}</span>
                 </div>
               ))}
             </div>
@@ -292,27 +311,27 @@ export function Home() {
 
           {/* Brand Leaderboard */}
           <section
-            className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-            style={{ animation: 'fadeUp 0.35s ease 0.1s both' }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.1s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#F5F5F2]">
-                    <th className="pl-5 pr-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C0BFB9] w-10">#</th>
-                    <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C0BFB9]">Brand</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C0BFB9]">P1</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E8900A]">Top-3</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1A56DB]">Top-10</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C0BFB9]">Total</th>
-                    <th className="pl-3 pr-5 py-2.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C0BFB9]">Share</th>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <th className="pl-5 pr-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] w-10" style={{ color: 'rgba(255,255,255,0.25)' }}>#</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.25)' }}>Brand</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.25)' }}>P1</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#FFB74D' }}>Top-3</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#00E5FF' }}>Top-10</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.25)' }}>Total</th>
+                    <th className="pl-3 pr-5 py-2.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.25)' }}>Share</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboard.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-[12px] text-[#C0BFB9]">
+                      <td colSpan={7} className="px-5 py-10 text-center text-[12px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
                         No brand data in current snapshot.
                       </td>
                     </tr>
@@ -325,40 +344,43 @@ export function Home() {
                       <tr
                         key={row.brand.name}
                         onClick={() => navigate(`/bp-sites/${brandToSlug(row.brand.name)}`)}
-                        className="border-b border-[#F8F8F5] hover:bg-[#FAFAF8] cursor-pointer transition-colors group"
-                        style={{ animation: `fadeUp 0.35s ease ${0.12 + i * 0.025}s both` }}
+                        className="cursor-pointer transition-colors group"
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '' }}
                       >
-                        <td className="pl-5 pr-2 py-3 font-mono text-[11px] text-[#C0BFB9] tabular-nums">
+                        <td className="pl-5 pr-2 py-3 font-mono text-[11px] tabular-nums" style={{ color: 'rgba(255,255,255,0.25)' }}>
                           {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div
-                              className="w-[3px] h-7 rounded-full shrink-0"
-                              style={{ background: row.brand.color }}
-                            />
-                            <span className="text-[13px] font-semibold text-[#0D0D0B] group-hover:text-[#1A56DB] transition-colors truncate">
+                            <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color, boxShadow: `0 0 8px ${row.brand.color}80` }} />
+                            <span className="text-[13px] font-semibold text-white/80 group-hover:text-white transition-colors truncate">
                               {row.brand.name}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums text-[#0D0D0B] font-medium">
-                          {row.p1 || <span className="text-[#DEDED9]">—</span>}
+                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-medium text-white/70">
+                          {row.p1 || <span style={{ color: 'rgba(255,255,255,0.15)' }}>—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold" style={{ color: '#E8900A' }}>
-                          {row.t3 || <span className="text-[#DEDED9]">—</span>}
+                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold" style={{ color: '#FFB74D' }}>
+                          {row.t3 || <span style={{ color: 'rgba(255,255,255,0.15)' }}>—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold" style={{ color: '#1A56DB' }}>
-                          {row.t10 || <span className="text-[#DEDED9]">—</span>}
+                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold" style={{ color: '#00E5FF' }}>
+                          {row.t10 || <span style={{ color: 'rgba(255,255,255,0.15)' }}>—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[12px] tabular-nums text-[#9B9B96]">
+                        <td className="px-3 py-3 text-right font-mono text-[12px] tabular-nums" style={{ color: 'rgba(255,255,255,0.35)' }}>
                           {row.total}
                         </td>
                         <td className="pl-3 pr-5 py-3">
-                          <div className="h-[3px] bg-[#F0F0EC] rounded-full overflow-hidden">
+                          <div className="h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
                             <div
                               className="h-full rounded-full transition-all duration-700"
-                              style={{ width: `${share * 100}%`, background: row.brand.color }}
+                              style={{
+                                width: `${share * 100}%`,
+                                background: row.brand.color,
+                                boxShadow: `0 0 6px ${row.brand.color}80`,
+                              }}
                             />
                           </div>
                         </td>
@@ -372,25 +394,25 @@ export function Home() {
 
           {/* Top Movers */}
           <section
-            className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-            style={{ animation: 'fadeUp 0.35s ease 0.13s both' }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.13s both' }}
           >
             <SectionHeader title="Top Movers" subtitle="vs. previous snapshot" />
             <div className="px-5 py-4 space-y-4">
               <MoverGroup
                 label="Climbers"
-                tint="#0FAA6A"
-                bgTint="#F0FDF7"
-                borderTint="#A7F3D0"
+                tint="#00E599"
+                bgTint="rgba(0,229,153,0.1)"
+                borderTint="rgba(0,229,153,0.25)"
                 rows={movers.climbers}
                 empty="No upward movement."
               />
-              <div className="h-px bg-[#F2F2EE]" />
+              <div className="h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
               <MoverGroup
                 label="Droppers"
-                tint="#D93025"
-                bgTint="#FEF2F2"
-                borderTint="#FECACA"
+                tint="#FF2D8D"
+                bgTint="rgba(255,45,141,0.1)"
+                borderTint="rgba(255,45,141,0.25)"
                 rows={movers.droppers}
                 empty="No downward movement."
               />
@@ -402,35 +424,36 @@ export function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           <section
-            className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-            style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.16s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
             <div className="px-5 pb-5 pt-3 space-y-3">
               {countryBars.length === 0 && (
-                <p className="text-[12px] text-[#C0BFB9]">No country data.</p>
+                <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.2)' }}>No country data.</p>
               )}
               {countryBars.map((c) => (
                 <div key={c.country} className="flex items-center gap-3">
-                  <span className="font-mono text-[11px] font-semibold text-[#0D0D0B] w-9 shrink-0 tabular-nums">{c.country}</span>
-                  <div className="flex-1 h-[4px] bg-[#F5F5F2] rounded-full overflow-hidden">
+                  <span className="font-mono text-[11px] font-semibold text-white/70 w-9 shrink-0 tabular-nums">{c.country}</span>
+                  <div className="flex-1 h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${c.pct * 100}%`,
-                        background: 'linear-gradient(90deg, #1A56DB, #7C3AED)',
+                        background: 'linear-gradient(90deg, #FF2D8D, #7B2FE8)',
+                        boxShadow: '0 0 6px rgba(255,45,141,0.4)',
                       }}
                     />
                   </div>
-                  <span className="font-mono text-[11px] tabular-nums text-[#9B9B96] w-9 text-right">{c.count}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-white/35 w-9 text-right">{c.count}</span>
                 </div>
               ))}
             </div>
           </section>
 
           <section
-            className="bg-white rounded-2xl border border-[#E8E8E3] shadow-[0_1px_6px_rgba(0,0,0,0.04)] overflow-hidden"
-            style={{ animation: 'fadeUp 0.35s ease 0.18s both' }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: '#1A1929', border: '1px solid rgba(255,255,255,0.07)', animation: 'fadeUp 0.35s ease 0.18s both' }}
           >
             <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
             <div className="grid grid-cols-2 gap-3 p-5">
@@ -450,14 +473,14 @@ export function Home() {
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F5F2]">
+    <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       <div
         className="w-[3px] h-4 rounded-full shrink-0"
-        style={{ background: 'linear-gradient(180deg, #1A56DB, #7C3AED)' }}
+        style={{ background: 'linear-gradient(180deg, #FF2D8D, #7B2FE8)' }}
       />
       <div>
-        <h2 className="text-[13px] font-[600] text-[#0D0D0B] leading-none">{title}</h2>
-        <p className="text-[10px] text-[#C0BFB9] mt-0.5">{subtitle}</p>
+        <h2 className="text-[13px] font-[600] text-white leading-none">{title}</h2>
+        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.28)' }}>{subtitle}</p>
       </div>
     </div>
   )
@@ -477,10 +500,10 @@ function MoverGroup({
     <div>
       <div className="flex items-center gap-2.5 mb-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: tint }}>{label}</span>
-        <div className="flex-1 h-px bg-[#F2F2EE]" />
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
       </div>
       {rows.length === 0 && (
-        <p className="text-[12px] text-[#C0BFB9] px-1">{empty}</p>
+        <p className="text-[12px] px-1" style={{ color: 'rgba(255,255,255,0.2)' }}>{empty}</p>
       )}
       <ul className="space-y-0.5">
         {rows.map((m, i) => {
@@ -488,15 +511,17 @@ function MoverGroup({
           return (
             <li
               key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-[#FAFAF8] transition-colors"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors"
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '' }}
             >
               <div
                 className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: brand?.color ?? '#C0BFB9' }}
+                style={{ background: brand?.color ?? 'rgba(255,255,255,0.25)', boxShadow: `0 0 4px ${brand?.color ?? 'rgba(255,255,255,0.25)'}` }}
               />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] font-medium text-[#0D0D0B] truncate leading-snug">{m.record.keyword}</div>
-                <div className="font-mono text-[10px] text-[#9B9B96] truncate mt-0.5">
+                <div className="text-[12px] font-medium text-white/80 truncate leading-snug">{m.record.keyword}</div>
+                <div className="font-mono text-[10px] truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.28)' }}>
                   {m.brand} · {m.record.country} · pos {m.record.position}
                 </div>
               </div>
@@ -520,17 +545,27 @@ function NavCard({
   return (
     <button
       onClick={onClick}
-      className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
+      className="group text-left p-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
       style={{
-        background:  highlight ? '#FFFBEB' : '#FAFAF8',
-        borderColor: highlight ? '#FDE68A' : '#EDEDEA',
+        background:  highlight ? 'linear-gradient(135deg, rgba(255,45,141,0.15), rgba(123,47,232,0.15))' : 'rgba(255,255,255,0.04)',
+        border:      highlight ? '1px solid rgba(255,45,141,0.3)' : '1px solid rgba(255,255,255,0.07)',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.boxShadow = highlight ? '0 0 20px rgba(255,45,141,0.2)' : '0 0 20px rgba(123,47,232,0.15)'
+        el.style.borderColor = highlight ? 'rgba(255,45,141,0.5)' : 'rgba(255,255,255,0.15)'
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.boxShadow = ''
+        el.style.borderColor = highlight ? 'rgba(255,45,141,0.3)' : 'rgba(255,255,255,0.07)'
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] font-semibold text-[#0D0D0B] leading-tight">{label}</span>
-        <span className="text-[#C0BFB9] text-[13px] transition-transform duration-150 group-hover:translate-x-0.5 shrink-0">→</span>
+        <span className="text-[13px] font-semibold text-white/80 leading-tight">{label}</span>
+        <span className="text-[13px] transition-transform duration-150 group-hover:translate-x-0.5 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>→</span>
       </div>
-      <div className="text-[11px] text-[#9B9B96] mt-1.5">{hint}</div>
+      <div className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{hint}</div>
     </button>
   )
 }
