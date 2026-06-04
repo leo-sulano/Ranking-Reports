@@ -227,7 +227,13 @@ export function Home() {
                       className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
                       style={{
                         height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
-                        background: POSITION_COLOR[b.key],
+                        background: `repeating-linear-gradient(
+                          to right,
+                          ${POSITION_COLOR[b.key]} 0px,
+                          ${POSITION_COLOR[b.key]} 6px,
+                          transparent 6px,
+                          transparent 10px
+                        )`,
                       }}
                     />
                   </div>
