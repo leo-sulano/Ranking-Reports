@@ -148,7 +148,7 @@ export function Home() {
           <p className="text-[13px] text-[#ABABAA] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
           <button
             onClick={ctx.onOpenUpload}
-            className="px-5 py-2.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95"
+            className="px-5 py-1.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95"
           >
             Import data
           </button>
@@ -270,13 +270,13 @@ export function Home() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-[#F5F4EF]">
-                    <th className="pl-5 pr-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-10">#</th>
-                    <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Brand</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E86600]">Top-10</th>
-                    <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Total</th>
-                    <th className="pl-3 pr-5 py-2.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Share</th>
+                    <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-10">#</th>
+                    <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Brand</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E86600]">Top-10</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Total</th>
+                    <th className="pl-3 pr-5 py-1.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Share</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -298,10 +298,10 @@ export function Home() {
                         className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] cursor-pointer transition-colors group"
                         style={{ animation: `fadeUp 0.35s ease ${0.12 + i * 0.025}s both` }}
                       >
-                        <td className="pl-5 pr-2 py-3 font-mono text-[11px] text-[#ABABAA] tabular-nums">
+                        <td className="pl-5 pr-2 py-0 font-mono text-[11px] text-[#ABABAA] tabular-nums">
                           {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
                         </td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-0">
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
                             <span className="text-[13px] font-semibold text-[#0A0A0A] group-hover:text-[#CC0000] transition-colors truncate">
@@ -309,19 +309,19 @@ export function Home() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A]">
+                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A]">
                           {row.p1 || <span className="text-[#D8D7D2]">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000]">
+                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000]">
                           {row.t3 || <span className="text-[#D8D7D2]">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600]">
+                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600]">
                           {row.t10 || <span className="text-[#D8D7D2]">—</span>}
                         </td>
-                        <td className="px-3 py-3 text-right font-mono text-[12px] tabular-nums text-[#8A8A85]">
+                        <td className="px-3 py-0 text-right font-mono text-[12px] tabular-nums text-[#8A8A85]">
                           {row.total}
                         </td>
-                        <td className="pl-3 pr-5 py-3">
+                        <td className="pl-3 pr-5 py-0">
                           <div className="h-[3px] bg-[#F0EFEA] rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-700"
