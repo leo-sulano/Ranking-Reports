@@ -496,26 +496,35 @@ const ALPHA2_TO_NUMERIC: Record<string, string> = {
   KR: '410', IN: '356', SG: '702', ZA: '710', NG: '566',
 }
 
+// Distinct color per country — assigned in order of first appearance
+const COUNTRY_PALETTE = [
+  '#CC0000', '#F59E0B', '#10B981', '#38BDF8', '#8B5CF6',
+  '#EC4899', '#F97316', '#14B8A6', '#84CC16', '#EF4444',
+]
+
 function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
-  const maxCount = Math.max(1, ...data.map((d) => d.count))
+  // Assign a stable color per country based on its order in the data
+  const colorByAlpha2 = useMemo(() => {
+    const m: Record<string, string> = {}
+    data.forEach((d, i) => {
+      m[d.country.toUpperCase()] = COUNTRY_PALETTE[i % COUNTRY_PALETTE.length]
+    })
+    return m
+  }, [data])
+
   const byNumeric = useMemo(() => {
-    const m: Record<string, { count: number; pct: number; label: string }> = {}
+    const m: Record<string, { count: number; alpha2: string }> = {}
     for (const d of data) {
       const num = ALPHA2_TO_NUMERIC[d.country.toUpperCase()]
-      if (num) m[num] = { count: d.count, pct: d.pct, label: d.country }
+      if (num) m[num] = { count: d.count, alpha2: d.country.toUpperCase() }
     }
     return m
   }, [data])
 
   function fillColor(numericId: string): string {
     const entry = byNumeric[numericId]
-    if (!entry) return '#F0EFEA'
-    const t = entry.count / maxCount
-    // Interpolate from #FFCC00 (low) to #CC0000 (high)
-    const r = Math.round(0xFF + t * (0xCC - 0xFF))
-    const g = Math.round(0xCC + t * (0x00 - 0xCC))
-    const b = 0
-    return `rgb(${r},${g},${b})`
+    if (!entry) return '#EBEBEA'
+    return colorByAlpha2[entry.alpha2] ?? '#EBEBEA'
   }
 
   return (
@@ -541,7 +550,7 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
                       strokeWidth={0.4}
                       style={{
                         default: { outline: 'none' },
-                        hover:   { outline: 'none', opacity: entry ? 0.85 : 1 },
+                        hover:   { outline: 'none', opacity: entry ? 0.8 : 1 },
                         pressed: { outline: 'none' },
                       }}
                     />
@@ -558,7 +567,7 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
             <div key={d.country} className="flex items-center gap-1.5">
               <div
                 className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: fillColor(ALPHA2_TO_NUMERIC[d.country.toUpperCase()] ?? '') }}
+                style={{ background: colorByAlpha2[d.country.toUpperCase()] }}
               />
               <span className="font-mono text-[11px] font-semibold text-[#0A0A0A]">{d.country}</span>
               <span className="font-mono text-[11px] text-[#ABABAA]">{d.count}</span>
