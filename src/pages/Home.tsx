@@ -241,7 +241,7 @@ export function Home() {
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-5 mt-4 pt-4 border-t border-[#F0EFEA]">
+            <div className="flex items-center justify-end gap-5 mt-4 pt-4 border-t border-[#F0EFEA]">
               {([
                 { color: '#059669', label: '1–3'           },
                 { color: '#34D399', label: '4–10'          },
