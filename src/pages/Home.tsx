@@ -505,11 +505,30 @@ const ALPHA2_TO_NAME: Record<string, string> = {
   KR: 'South Korea', IN: 'India', SG: 'Singapore', ZA: 'South Africa', NG: 'Nigeria',
 }
 
-// Distinct color per country — assigned in order of first appearance
-const COUNTRY_PALETTE = [
-  '#CC0000', '#F59E0B', '#10B981', '#38BDF8', '#8B5CF6',
-  '#EC4899', '#F97316', '#14B8A6', '#84CC16', '#EF4444',
-]
+// Flag-representative colors per country (fallback palette for unknown countries)
+const FLAG_COLORS: Record<string, string> = {
+  AU: '#0033A0', // Australia   — blue field
+  CA: '#D80621', // Canada      — maple leaf red
+  DE: '#FFCE00', // Germany     — gold stripe
+  IT: '#009246', // Italy       — green stripe
+  NZ: '#00247D', // New Zealand — dark blue field
+  GB: '#012169', // UK          — Union Jack blue
+  US: '#B22234', // USA         — red stripes
+  FR: '#0055A4', // France      — blue
+  ES: '#AA151B', // Spain       — red
+  NL: '#AE1C28', // Netherlands — red
+  JP: '#BC002D', // Japan       — red circle
+  BR: '#009C3B', // Brazil      — green
+  IN: '#FF9933', // India       — saffron
+  ZA: '#007A4D', // South Africa— green
+  SE: '#006AA7', // Sweden      — blue
+  NO: '#EF2B2D', // Norway      — red
+  BE: '#FAE042', // Belgium     — yellow
+  CH: '#FF0000', // Switzerland — red
+  PL: '#DC143C', // Poland      — red
+  AT: '#ED2939', // Austria     — red
+}
+const FLAG_PALETTE = ['#CC0000','#F59E0B','#10B981','#38BDF8','#8B5CF6','#EC4899','#F97316','#14B8A6']
 
 function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; count: number; color: string } | null>(null)
@@ -519,7 +538,8 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
   const colorByAlpha2 = useMemo(() => {
     const m: Record<string, string> = {}
     data.forEach((d, i) => {
-      m[d.country.toUpperCase()] = COUNTRY_PALETTE[i % COUNTRY_PALETTE.length]
+      const code = d.country.toUpperCase()
+      m[code] = FLAG_COLORS[code] ?? FLAG_PALETTE[i % FLAG_PALETTE.length]
     })
     return m
   }, [data])
