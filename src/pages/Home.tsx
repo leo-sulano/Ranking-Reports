@@ -211,12 +211,12 @@ export function Home() {
 
           {/* SERP Distribution */}
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
             style={{ animation: 'fadeUp 0.35s ease 0.08s both' }}
           >
             <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
-            <div className="px-5 pt-5 pb-4">
-              <div className="flex gap-1.5 items-end h-[160px]">
+            <div className="px-5 pt-5 pb-4 flex flex-col flex-1">
+              <div className="flex gap-1.5 items-end flex-1">
                 {buckets.map((b, i) => (
                   <div
                     key={b.key}
