@@ -539,11 +539,11 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
 
   return (
     <div className="w-full relative">
-      <div style={{ height: 200 }}>
+      <div style={{ height: 300 }}>
         <ComposableMap
           projection="geoNaturalEarth1"
           style={{ width: '100%', height: '100%' }}
-          projectionConfig={{ scale: 140, center: [10, 10] }}
+          projectionConfig={{ scale: 185, center: [10, 10] }}
         >
           <ZoomableGroup zoom={1} center={[10, 10]} minZoom={1} maxZoom={1}>
             <Geographies geography="/countries-110m.json">
