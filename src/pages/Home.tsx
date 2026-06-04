@@ -371,11 +371,11 @@ export function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
+            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
             style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-            <div className="flex-1 relative min-h-0">
+            <div className="relative">
               <CountryMap data={countryBars} />
             </div>
           </section>
@@ -513,6 +513,8 @@ const COUNTRY_PALETTE = [
 
 function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; count: number; color: string } | null>(null)
+  const [zoom, setZoom]       = useState(1)
+  const [center, setCenter]   = useState<[number, number]>([10, 10])
 
   const colorByAlpha2 = useMemo(() => {
     const m: Record<string, string> = {}
@@ -538,14 +540,31 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
   }
 
   return (
-    <div className="w-full h-full flex flex-col relative">
-      <div className="flex-1 min-h-0">
+    <div className="w-full relative">
+      {/* Zoom controls */}
+      <div className="absolute top-2 right-3 z-10 flex flex-col gap-1">
+        <button
+          onClick={() => setZoom((z) => Math.min(z * 1.6, 12))}
+          className="w-6 h-6 rounded-md bg-white border border-[#E5E4DF] text-[#0A0A0A] text-[13px] font-semibold flex items-center justify-center shadow-sm hover:bg-[#F5F4EF] transition-colors leading-none"
+        >+</button>
+        <button
+          onClick={() => { setZoom((z) => Math.max(z / 1.6, 1)); if (zoom / 1.6 <= 1) setCenter([10, 10]) }}
+          className="w-6 h-6 rounded-md bg-white border border-[#E5E4DF] text-[#0A0A0A] text-[13px] font-semibold flex items-center justify-center shadow-sm hover:bg-[#F5F4EF] transition-colors leading-none"
+        >−</button>
+      </div>
+      <div style={{ height: 220 }}>
         <ComposableMap
           projection="geoNaturalEarth1"
           style={{ width: '100%', height: '100%' }}
-          projectionConfig={{ scale: 185, center: [10, 10] }}
+          projectionConfig={{ scale: 140, center: [10, 10] }}
         >
-          <ZoomableGroup zoom={1} center={[10, 10]} minZoom={1} maxZoom={1}>
+          <ZoomableGroup
+            zoom={zoom}
+            center={center}
+            minZoom={1}
+            maxZoom={12}
+            onMoveEnd={({ zoom: z, coordinates }) => { setZoom(z); setCenter(coordinates as [number, number]) }}
+          >
             <Geographies geography="/countries-110m.json">
               {({ geographies }) =>
                 geographies.map((geo) => {
