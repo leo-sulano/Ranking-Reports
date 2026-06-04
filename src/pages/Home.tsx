@@ -207,56 +207,6 @@ export function Home() {
           </div>
         </div>
 
-        {/* ── Page-1 Occupancy ──────────────────────────────────────────────── */}
-        <section
-          className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] px-8 py-5"
-          style={{ animation: 'fadeUp 0.35s ease 0.04s both' }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA]">Page-1 Occupancy</span>
-              <span className="font-mono text-[11px] text-[#D0D0CA]">
-                Latest: <span className="text-[#6B6B65]">{latestSnapshot.displayDate}</span>
-                <span className="mx-2 text-[#E0DFDA]">·</span>
-                {totals.snapshots} snapshots
-              </span>
-            </div>
-            <span className="font-display text-[28px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
-              {page1Pct}<span className="font-display text-[13px] text-[#ABABAA] font-[400] ml-0.5">%</span>
-            </span>
-          </div>
-          {/* German flag gradient bar: black → red → gold */}
-          <div className="h-2 bg-[#F0EFEA] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${page1Pct}%`,
-                background: 'linear-gradient(90deg, #0A0A0A 0%, #CC0000 50%, #FFCC00 100%)',
-                transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-7 mt-3">
-            {([
-              { label: 'P1',     value: tier.p1,    color: '#0A0A0A' },
-              { label: 'Top-3',  value: tier.top3,  color: '#CC0000' },
-              { label: 'Top-10', value: tier.top10, color: '#E86600' },
-              { label: '11–100', value: tier.page2, color: '#FFCC00', dark: true },
-              { label: 'NR',     value: tier.nr,    color: '#C8C8C3' },
-            ] as const).map((t) => (
-              <div key={t.label} className="flex items-baseline gap-2">
-                <span
-                  className="font-display text-[16px] font-[600] tabular-nums leading-none"
-                  style={{ color: t.color }}
-                >
-                  {t.value.toLocaleString()}
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.12em] text-[#ABABAA]">{t.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* ── SERP Distribution ────────────────────────────────────────────── */}
         <section
           className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
