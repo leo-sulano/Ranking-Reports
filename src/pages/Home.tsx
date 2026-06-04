@@ -371,11 +371,11 @@ export function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
+            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden relative"
             style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
           >
             <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-            <div className="flex-1 relative min-h-0">
+            <div className="absolute inset-0 top-[57px]">
               <CountryMap data={countryBars} />
             </div>
           </section>
@@ -560,7 +560,7 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
   }
 
   return (
-    <div className="w-full h-full flex flex-col relative">
+    <div className="absolute inset-0 flex flex-col">
       {/* Zoom controls */}
       <div className="absolute top-2 right-3 z-10 flex flex-col gap-1">
         <button
