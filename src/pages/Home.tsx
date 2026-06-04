@@ -215,21 +215,8 @@ export function Home() {
             style={{ animation: 'fadeUp 0.35s ease 0.08s both' }}
           >
             <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
-            <div className="px-5 py-5">
-              <div className="flex items-center justify-end gap-3 mb-4 pb-4 border-b border-[#F0EFEA] flex-wrap">
-                {([
-                  { color: '#059669', label: '1–3'           },
-                  { color: '#34D399', label: '4–10'          },
-                  { color: '#F59E0B', label: '11–100'        },
-                  { color: '#0A0A0A', label: 'Not ranking'   },
-                ] as const).map(({ color, label }) => (
-                  <div key={label} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                    <span className="text-[11px] text-[#8A8A85]">{label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-1.5 items-end h-[90px]">
+            <div className="px-5 pt-5 pb-4">
+              <div className="flex gap-1.5 items-end h-[160px]">
                 {buckets.map((b, i) => (
                   <div
                     key={b.key}
@@ -255,6 +242,19 @@ export function Home() {
                       />
                     </div>
                     <span className="font-mono text-[9px] text-[#ABABAA]">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-[#F0EFEA] flex-wrap">
+                {([
+                  { color: '#059669', label: '1–3'         },
+                  { color: '#34D399', label: '4–10'        },
+                  { color: '#F59E0B', label: '11–100'      },
+                  { color: '#0A0A0A', label: 'Not ranking' },
+                ] as const).map(({ color, label }) => (
+                  <div key={label} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                    <span className="text-[11px] text-[#8A8A85]">{label}</span>
                   </div>
                 ))}
               </div>
