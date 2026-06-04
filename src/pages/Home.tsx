@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
@@ -496,6 +496,15 @@ const ALPHA2_TO_NUMERIC: Record<string, string> = {
   KR: '410', IN: '356', SG: '702', ZA: '710', NG: '566',
 }
 
+const ALPHA2_TO_NAME: Record<string, string> = {
+  AU: 'Australia', CA: 'Canada', DE: 'Germany', IT: 'Italy', NZ: 'New Zealand',
+  GB: 'United Kingdom', US: 'United States', FR: 'France', ES: 'Spain', NL: 'Netherlands',
+  BE: 'Belgium', AT: 'Austria', CH: 'Switzerland', SE: 'Sweden', NO: 'Norway',
+  DK: 'Denmark', FI: 'Finland', PL: 'Poland', CZ: 'Czech Republic', PT: 'Portugal',
+  IE: 'Ireland', BR: 'Brazil', MX: 'Mexico', AR: 'Argentina', JP: 'Japan',
+  KR: 'South Korea', IN: 'India', SG: 'Singapore', ZA: 'South Africa', NG: 'Nigeria',
+}
+
 // Distinct color per country — assigned in order of first appearance
 const COUNTRY_PALETTE = [
   '#CC0000', '#F59E0B', '#10B981', '#38BDF8', '#8B5CF6',
@@ -503,7 +512,8 @@ const COUNTRY_PALETTE = [
 ]
 
 function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
-  // Assign a stable color per country based on its order in the data
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; count: number; color: string } | null>(null)
+
   const colorByAlpha2 = useMemo(() => {
     const m: Record<string, string> = {}
     data.forEach((d, i) => {
@@ -528,7 +538,7 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <div style={{ height: 200 }}>
         <ComposableMap
           projection="geoNaturalEarth1"
@@ -549,10 +559,28 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
                       stroke="#FFFFFF"
                       strokeWidth={0.4}
                       style={{
-                        default: { outline: 'none' },
-                        hover:   { outline: 'none', opacity: entry ? 0.8 : 1 },
+                        default: { outline: 'none', cursor: entry ? 'pointer' : 'default' },
+                        hover:   { outline: 'none', opacity: entry ? 0.75 : 1, cursor: entry ? 'pointer' : 'default' },
                         pressed: { outline: 'none' },
                       }}
+                      onMouseEnter={(e) => {
+                        if (!entry) return
+                        const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect()
+                        const svgEl = (e.target as SVGElement).closest('.w-full')!.getBoundingClientRect()
+                        setTooltip({
+                          x: e.clientX - svgEl.left,
+                          y: e.clientY - svgEl.top,
+                          name: ALPHA2_TO_NAME[entry.alpha2] ?? entry.alpha2,
+                          count: entry.count,
+                          color: colorByAlpha2[entry.alpha2],
+                        })
+                      }}
+                      onMouseMove={(e) => {
+                        if (!entry) return
+                        const svgEl = (e.target as SVGElement).closest('.w-full')!.getBoundingClientRect()
+                        setTooltip((prev) => prev ? { ...prev, x: e.clientX - svgEl.left, y: e.clientY - svgEl.top } : null)
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
                     />
                   )
                 })
@@ -561,6 +589,19 @@ function CountryMap({ data }: { data: { country: string; count: number; pct: num
           </ZoomableGroup>
         </ComposableMap>
       </div>
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white shadow-lg whitespace-nowrap"
+          style={{
+            left: tooltip.x + 10,
+            top:  tooltip.y - 36,
+            background: tooltip.color,
+          }}
+        >
+          {tooltip.name}
+          <span className="ml-1.5 font-normal opacity-80">{tooltip.count.toLocaleString()} records</span>
+        </div>
+      )}
       {data.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap px-5 pb-4 pt-1 border-t border-[#F5F4EF]">
           {data.map((d) => (
