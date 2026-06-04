@@ -45,7 +45,7 @@ export function Home() {
   const ctx = useOutletContext<RROutletContext>()
   const navigate = useNavigate()
 
-  const latestSnapshot = ctx.snapshots[0]
+  const latestSnapshot = ctx.snapshots.find((s) => s.category === 'bp-sites') ?? ctx.snapshots[0]
   const records: RankingRecord[] = latestSnapshot?.records ?? []
 
   const totals = useMemo(() => {
