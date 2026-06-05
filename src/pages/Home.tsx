@@ -278,7 +278,7 @@ export function Home() {
                         <td className="px-3 py-0">
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
-                            <span className="text-[13px] font-semibold text-[#0A0A0A] group-hover:text-[#CC0000] transition-colors truncate">
+                            <span className="text-[13px] font-semibold truncate" style={{ color: row.brand.color }}>
                               {row.brand.name}
                             </span>
                           </div>
