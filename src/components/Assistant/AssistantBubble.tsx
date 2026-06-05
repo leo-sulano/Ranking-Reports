@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, X } from 'lucide-react'
+import { Bot, X } from 'lucide-react'
 import type { Snapshot } from '../../types'
 import type { CategoryId } from '../../lib/categories'
 import { useAssistant } from '../../hooks/useAssistant'
@@ -47,7 +47,7 @@ export function AssistantBubble({ snapshots, category }: Props) {
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-[0_12px_28px_rgba(15,23,42,0.35)] hover:bg-[#1E293B] transition-colors"
         aria-label={open ? 'Close assistant' : 'Open assistant'}
       >
-        {open ? <X size={22} /> : <Sparkles size={22} />}
+        {open ? <X size={22} /> : <Bot size={22} />}
       </button>
     </>
   )

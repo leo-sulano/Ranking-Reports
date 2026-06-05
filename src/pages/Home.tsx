@@ -459,9 +459,9 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
             )}
             <circle
               cx={p.x} cy={p.y} r={4} fill={p.color}
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={() => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label })}
-              onMouseLeave={() => setTooltip(null)}
+              style={{ cursor: p.count > 0 ? 'pointer' : 'default' }}
+              onMouseEnter={p.count > 0 ? () => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label }) : undefined}
+              onMouseLeave={p.count > 0 ? () => setTooltip(null) : undefined}
             />
             <text
               x={p.x} y={height - 4}
@@ -481,7 +481,7 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
           style={{
             left: tooltip.x,
             top: tooltip.y - 40,
-            transform: 'translateX(-50%)',
+            transform: tooltip.x > width / 2 ? 'translateX(-100%) translateX(-6px)' : 'translateX(6px)',
             background: '#0A0A0A',
           }}
         >
