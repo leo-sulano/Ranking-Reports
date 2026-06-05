@@ -87,9 +87,17 @@ export function Home() {
   const page1Pct = totals.records ? Math.round((tier.top10 / totals.records) * 100) : 0
 
   const leaderboard = useMemo(() => {
+    const sorted = [...ctx.snapshots].sort(
+      (a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
+    )
     return BRANDS.map((brand) => {
       const set = new Set(brand.domains.map((d) => d.toLowerCase()))
-      const own = records.filter((r) => set.has(r.domain.toLowerCase()))
+      // Use the most recent snapshot that contains records for this brand
+      let own: RankingRecord[] = []
+      for (const snap of sorted) {
+        const found = snap.records.filter((r) => set.has(r.domain.toLowerCase()))
+        if (found.length > 0) { own = found; break }
+      }
       let p1 = 0, t3 = 0, t10 = 0
       for (const r of own) {
         const p = parsePosition(r.position)
@@ -101,7 +109,7 @@ export function Home() {
     })
       .filter((row) => row.total > 0)
       .sort((a, b) => b.t10 - a.t10 || b.total - a.total)
-  }, [records])
+  }, [ctx.snapshots])
 
   const movers = useMemo(() => {
     type Mover = { record: RankingRecord; delta: number; brand: string }
