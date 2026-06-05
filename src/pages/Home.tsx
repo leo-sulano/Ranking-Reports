@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
@@ -20,21 +20,14 @@ const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR'
   { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                  },
 ]
 
-// 1-3: dark green, 4-10: mid green, 11-100: amber→red gradient, NR: gray
-const POSITION_COLOR: Record<string, string> = {
+const DOT_COLOR: Record<string, string> = {
   top3:  '#059669',
   top10: '#34D399',
-  r11:   '#FCD34D',
-  r21:   '#FBBF24',
-  r31:   '#F59E0B',
-  r41:   '#F97316',
-  r51:   '#EF4444',
-  r61:   '#DC2626',
-  r71:   '#B91C1C',
-  r81:   '#991B1B',
-  r91:   '#7F1D1D',
-  nr:    '#0A0A0A',
+  r11:   '#F59E0B', r21: '#F59E0B', r31: '#F59E0B', r41: '#F59E0B',
+  r51:   '#F59E0B', r61: '#F59E0B', r71: '#F59E0B', r81: '#F59E0B', r91: '#F59E0B',
+  nr:    '#1A1A1A',
 }
+
 
 function brandOfDomain(domain: string): string | undefined {
   return DOMAIN_TO_BRAND[domain.toLowerCase()]
@@ -216,35 +209,7 @@ export function Home() {
           >
             <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
             <div className="px-5 pt-5 pb-4 flex flex-col flex-1">
-              <div className="flex gap-1.5 items-end flex-1">
-                {buckets.map((b, i) => (
-                  <div
-                    key={b.key}
-                    className="flex-1 flex flex-col items-center gap-1.5 h-full"
-                    style={{ animation: `fadeUp 0.45s ease ${0.12 + i * 0.025}s both` }}
-                  >
-                    <span className="font-mono text-[9px] text-[#ABABAA] tabular-nums leading-none">
-                      {b.count || ''}
-                    </span>
-                    <div className="relative w-full flex-1 bg-[#F5F5F0] rounded-lg overflow-hidden">
-                      <div
-                        className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
-                        style={{
-                          height: `${Math.max(b.pct * 100, b.count > 0 ? 5 : 0)}%`,
-                          background: `repeating-linear-gradient(
-                            to bottom,
-                            ${POSITION_COLOR[b.key]} 0px,
-                            ${POSITION_COLOR[b.key]} 6px,
-                            transparent 6px,
-                            transparent 10px
-                          )`,
-                        }}
-                      />
-                    </div>
-                    <span className="font-mono text-[9px] text-[#ABABAA]">{b.label}</span>
-                  </div>
-                ))}
-              </div>
+              <SerpLineChart buckets={buckets} />
               <div className="flex items-center gap-3 mt-4 pt-3 border-t border-[#F0EFEA] flex-wrap">
                 {([
                   { color: '#059669', label: '1–3'         },
@@ -399,6 +364,105 @@ export function Home() {
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
+
+function SerpLineChart({ buckets }: { buckets: { key: string; label: string; count: number; pct: number }[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [dims, setDims] = useState({ width: 300, height: 160 })
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect
+      setDims({ width, height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const { width, height } = dims
+  const N = buckets.length
+  const PAD_TOP = 24
+  const PAD_BOTTOM = 20
+  const chartH = height - PAD_TOP - PAD_BOTTOM
+  const colW = width / N
+
+  const points = buckets.map((b, i) => ({
+    x: colW * i + colW / 2,
+    y: PAD_TOP + (1 - b.pct) * chartH,
+    color: DOT_COLOR[b.key] ?? '#F59E0B',
+    count: b.count,
+    label: b.label,
+  }))
+
+  return (
+    <div ref={containerRef} className="flex-1 min-h-[120px]">
+      <svg width="100%" height="100%">
+        <defs>
+          {points.slice(0, -1).map((p, i) => (
+            <linearGradient
+              key={i}
+              id={`seg-${i}`}
+              x1={p.x} y1={p.y}
+              x2={points[i + 1].x} y2={points[i + 1].y}
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor={p.color} />
+              <stop offset="100%" stopColor={points[i + 1].color} />
+            </linearGradient>
+          ))}
+        </defs>
+
+        {/* Gray background columns */}
+        {points.map((p, i) => (
+          <rect
+            key={i}
+            x={colW * i + 2} y={PAD_TOP}
+            width={colW - 4} height={chartH}
+            rx={6} fill="#F0F0EE"
+          />
+        ))}
+
+        {/* Gradient line segments */}
+        {points.slice(0, -1).map((p, i) => (
+          <line
+            key={i}
+            x1={p.x} y1={p.y}
+            x2={points[i + 1].x} y2={points[i + 1].y}
+            stroke={`url(#seg-${i})`}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+        ))}
+
+        {/* Dots + count labels + x-axis labels */}
+        {points.map((p, i) => (
+          <g key={i}>
+            {p.count > 0 && (
+              <text
+                x={p.x} y={p.y - 8}
+                textAnchor="middle"
+                fontSize={9} fill="#9CA3AF"
+                fontFamily="ui-monospace,monospace"
+              >
+                {p.count}
+              </text>
+            )}
+            <circle cx={p.x} cy={p.y} r={4} fill={p.color} />
+            <text
+              x={p.x} y={height - 4}
+              textAnchor="middle"
+              fontSize={8} fill="#ABABAA"
+              fontFamily="ui-sans-serif,sans-serif"
+            >
+              {p.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
