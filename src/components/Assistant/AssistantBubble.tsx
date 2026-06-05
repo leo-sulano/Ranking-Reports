@@ -42,13 +42,20 @@ export function AssistantBubble({ snapshots, category }: Props) {
           onClose={() => setOpen(false)}
         />
       )}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-[0_12px_28px_rgba(15,23,42,0.35)] hover:bg-[#1E293B] transition-colors"
-        aria-label={open ? 'Close assistant' : 'Open assistant'}
-      >
-        {open ? <X size={22} /> : <Bot size={22} />}
-      </button>
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1 group">
+        {!open && (
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-sm font-medium text-[#0F172A] pointer-events-none select-none pr-1">
+            Ask AI
+          </span>
+        )}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="w-14 h-14 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-[0_12px_28px_rgba(15,23,42,0.35)] hover:bg-[#1E293B] transition-colors"
+          aria-label={open ? 'Close assistant' : 'Open assistant'}
+        >
+          {open ? <X size={22} /> : <Bot size={22} />}
+        </button>
+      </div>
     </>
   )
 }

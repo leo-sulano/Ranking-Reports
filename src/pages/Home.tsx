@@ -447,21 +447,19 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
         {/* Dots + count labels + x-axis labels */}
         {points.map((p, i) => (
           <g key={i}>
-            {p.count > 0 && (
-              <text
-                x={p.x} y={p.y - 8}
-                textAnchor="middle"
-                fontSize={9} fill="#9CA3AF"
-                fontFamily="ui-monospace,monospace"
-              >
-                {p.count}
-              </text>
-            )}
+            <text
+              x={p.x} y={p.y - 8}
+              textAnchor="middle"
+              fontSize={9} fill="#9CA3AF"
+              fontFamily="ui-monospace,monospace"
+            >
+              {p.count}
+            </text>
             <circle
               cx={p.x} cy={p.y} r={4} fill={p.color}
-              style={{ cursor: p.count > 0 ? 'pointer' : 'default' }}
-              onMouseEnter={p.count > 0 ? () => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label }) : undefined}
-              onMouseLeave={p.count > 0 ? () => setTooltip(null) : undefined}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label })}
+              onMouseLeave={() => setTooltip(null)}
             />
             <text
               x={p.x} y={height - 4}
@@ -475,7 +473,7 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
         ))}
       </svg>
 
-      {tooltip && tooltip.count > 0 && (
+      {tooltip && (
         <div
           className="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white shadow-lg whitespace-nowrap"
           style={{
