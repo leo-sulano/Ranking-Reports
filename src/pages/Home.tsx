@@ -368,6 +368,7 @@ export function Home() {
 function SerpLineChart({ buckets }: { buckets: { key: string; label: string; count: number; pct: number }[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dims, setDims] = useState({ width: 300, height: 160 })
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; count: number; label: string } | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -396,7 +397,7 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
   }))
 
   return (
-    <div ref={containerRef} className="flex-1 min-h-[120px]">
+    <div ref={containerRef} className="relative flex-1 min-h-[120px]">
       <svg width="100%" height="100%">
         <defs>
           {points.slice(0, -1).map((p, i) => (
@@ -448,7 +449,12 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
                 {p.count}
               </text>
             )}
-            <circle cx={p.x} cy={p.y} r={4} fill={p.color} />
+            <circle
+              cx={p.x} cy={p.y} r={4} fill={p.color}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label })}
+              onMouseLeave={() => setTooltip(null)}
+            />
             <text
               x={p.x} y={height - 4}
               textAnchor="middle"
@@ -460,6 +466,20 @@ function SerpLineChart({ buckets }: { buckets: { key: string; label: string; cou
           </g>
         ))}
       </svg>
+
+      {tooltip && tooltip.count > 0 && (
+        <div
+          className="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white shadow-lg whitespace-nowrap"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y - 40,
+            transform: 'translateX(-50%)',
+            background: '#0A0A0A',
+          }}
+        >
+          {tooltip.count} keywords on {tooltip.label === 'NR' ? 'Not Ranking' : `Page ${tooltip.label}`}
+        </div>
+      )}
     </div>
   )
 }
