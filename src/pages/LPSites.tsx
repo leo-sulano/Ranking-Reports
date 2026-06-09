@@ -84,8 +84,8 @@ function BrandGrid({
   onSelect: (b: Brand) => void
 }) {
   return (
-    <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
-      <div className="grid grid-cols-3 gap-3.5">
+    <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {BRANDS.map((brand, idx) => {
           const domainSet = new Set(brand.lpDomains.map((d) => d.toLowerCase()))
           const hasData = snapshots.some((s) =>
@@ -340,7 +340,7 @@ function BrandView({
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
+          <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
               ? brandSnapshots
               : brandSnapshots.filter((s) => s.id === statsFilter)
