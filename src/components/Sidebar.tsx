@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
+import { AiIcon } from './Assistant/AiIcon'
 import { BRANDS, brandToSlug } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
@@ -29,7 +29,7 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
     </svg>
   )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
-    <Sparkles size={18} />
+    <AiIcon size={22} />
   )},
 ]
 
