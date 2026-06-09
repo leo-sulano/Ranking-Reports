@@ -29,7 +29,7 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
     </svg>
   )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
-    <AiIcon size={22} />
+    <AiIcon size={18} />
   )},
 ]
 
