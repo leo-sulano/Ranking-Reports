@@ -278,21 +278,23 @@ function BrandView({
   return (
     <>
       {/* Back + brand header */}
-      <div className="flex flex-wrap items-center gap-2 px-3 sm:px-7 pt-4 sm:pt-5 pb-3 shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          All brands
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2 px-3 sm:px-7 pt-4 sm:pt-5 pb-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            All brands
+          </button>
 
-        <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
+          <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
+        </div>
 
         {brandSnapshots.length > 0 && (
-          <div className="w-full sm:w-auto sm:ml-auto">
+          <div className="sm:ml-auto">
             <StatsDateFilter
               value={statsFilter}
               snapshots={brandSnapshots}
