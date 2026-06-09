@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
@@ -37,6 +38,8 @@ interface Props {
   onOpenUpload: () => void
   activeBPBrand: string | null
   onSelectBPBrand: (name: string | null) => void
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 export function Sidebar({
@@ -44,6 +47,8 @@ export function Sidebar({
   onOpenUpload,
   activeBPBrand,
   onSelectBPBrand,
+  mobileOpen = false,
+  onMobileClose,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -54,12 +59,27 @@ export function Sidebar({
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
 
-  const labelCls = 'whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150'
+  // Close drawer on route change
+  useEffect(() => { onMobileClose?.() }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div className="w-[64px] shrink-0 h-screen relative z-30">
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  function SidebarInner({ isMobile }: { isMobile: boolean }) {
+    const labelCls = isMobile
+      ? 'whitespace-nowrap'
+      : 'whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150'
+
+    return (
       <aside
-        className="group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col bg-white border-r border-[#E5E4DF] overflow-hidden transition-[width] duration-200 ease-out hover:shadow-[8px_0_32px_rgba(0,0,0,0.06)]"
+        className={
+          isMobile
+            ? 'flex flex-col bg-white h-full w-[240px] border-r border-[#E5E4DF] overflow-hidden'
+            : 'group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col bg-white border-r border-[#E5E4DF] overflow-hidden transition-[width] duration-200 ease-out hover:shadow-[8px_0_32px_rgba(0,0,0,0.06)]'
+        }
       >
         {/* Logo */}
         <div className="px-3 pt-5 pb-4 border-b border-[#EEEEE9] shrink-0 flex items-center gap-3">
@@ -86,9 +106,7 @@ export function Sidebar({
                 onClick={() => navigate(p.path)}
                 title={p.label}
                 className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-colors relative ${
-                  active
-                    ? 'bg-[#FFF5F5]'
-                    : 'hover:bg-[#F7F7F5]'
+                  active ? 'bg-[#FFF5F5]' : 'hover:bg-[#F7F7F5]'
                 }`}
                 style={active ? { borderLeft: '2px solid #CC0000', paddingLeft: '10px' } : {}}
               >
@@ -173,6 +191,30 @@ export function Sidebar({
           )}
         </div>
       </aside>
-    </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Desktop — fixed-width placeholder keeps layout stable */}
+      <div className="hidden sm:block w-[64px] shrink-0 h-screen relative z-30">
+        <SidebarInner isMobile={false} />
+      </div>
+
+      {/* Mobile drawer + backdrop */}
+      <div
+        className={`sm:hidden fixed inset-0 bg-black/40 z-[39] transition-opacity duration-200 ${
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onMobileClose}
+      />
+      <div
+        className={`sm:hidden fixed top-0 left-0 bottom-0 z-40 shadow-[8px_0_32px_rgba(0,0,0,0.18)] transition-transform duration-200 ease-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <SidebarInner isMobile={true} />
+      </div>
+    </>
   )
 }

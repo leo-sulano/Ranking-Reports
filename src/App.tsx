@@ -43,6 +43,7 @@ function Layout() {
   const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -347,12 +348,15 @@ function Layout() {
         onOpenUpload={() => setShowUpload(true)}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
         <Topbar
           brandName={topbarTitle}
           domain={topbarDomain}
+          onMenuToggle={() => setMobileNavOpen((v) => !v)}
         />
 
         <Outlet context={rrContext} />

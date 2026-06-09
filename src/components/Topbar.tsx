@@ -4,9 +4,10 @@ import { REQUIRE_AUTH, signOut } from '../lib/auth'
 interface Props {
   brandName: string
   domain: string
+  onMenuToggle?: () => void
 }
 
-export function Topbar({ brandName, domain }: Props) {
+export function Topbar({ brandName, domain, onMenuToggle }: Props) {
   return (
     <header className="h-16 min-h-[64px] shrink-0 flex flex-col bg-white border-b border-[#E5E4DF]">
       {/* German flag accent strip — black / red / gold */}
@@ -16,6 +17,17 @@ export function Topbar({ brandName, domain }: Props) {
         <div className="flex-1 bg-[#FFCC00]" />
       </div>
       <div className="flex-1 flex items-center gap-2 sm:gap-4 px-3 sm:px-7">
+        {/* Hamburger — mobile only */}
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="sm:hidden shrink-0 flex flex-col items-center justify-center gap-[5px] w-8 h-8 rounded-md hover:bg-[#F7F7F5] transition-colors"
+          aria-label="Open navigation"
+        >
+          <span className="block w-[18px] h-[2px] bg-[#0A0A0A] rounded-full" />
+          <span className="block w-[18px] h-[2px] bg-[#0A0A0A] rounded-full" />
+          <span className="block w-[18px] h-[2px] bg-[#0A0A0A] rounded-full" />
+        </button>
         <div className="flex items-baseline gap-3 flex-1 min-w-0">
           <span className="font-display text-[18px] sm:text-[26px] tracking-wider text-[#0A0A0A] whitespace-nowrap">
             {brandName}
