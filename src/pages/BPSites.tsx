@@ -292,7 +292,7 @@ function BrandView({
         <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
 
         {brandSnapshots.length > 0 && (
-          <div className="ml-auto">
+          <div className="w-full sm:w-auto sm:ml-auto">
             <StatsDateFilter
               value={statsFilter}
               snapshots={brandSnapshots}
