@@ -161,25 +161,25 @@ export function Home() {
 
   return (
     <div className="flex-1 overflow-auto bg-[#F7F7F5]">
-      <div className="px-6 py-5 space-y-4">
+      <div className="px-3 sm:px-6 py-4 sm:py-5 space-y-4">
 
         {/* ── Hero metric cards ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
           {/* Keywords — solid black (top band of flag) */}
-          <div className="relative rounded-xl px-6 py-5 overflow-hidden bg-[#0A0A0A]">
+          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#0A0A0A]">
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-2.5">Keywords</div>
-            <div className="font-display text-[38px] font-[600] text-white tabular-nums leading-none">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-2">Keywords</div>
+            <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.keywords.toLocaleString()}
             </div>
           </div>
 
           {/* Records — German red (middle band) */}
-          <div className="relative rounded-xl px-6 py-5 overflow-hidden" style={{ background: '#CC0000' }}>
+          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden" style={{ background: '#CC0000' }}>
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2.5">Records</div>
-            <div className="font-display text-[38px] font-[600] text-white tabular-nums leading-none">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2">Records</div>
+            <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.records.toLocaleString()}
             </div>
           </div>
@@ -187,9 +187,9 @@ export function Home() {
           {/* Brands — gold-accented light card */}
           <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="h-[3px] bg-[#FFCC00]" />
-            <div className="px-6 py-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2.5">Brands</div>
-              <div className="font-display text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
+            <div className="px-4 sm:px-6 py-4 sm:py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2">Brands</div>
+              <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
                 {totals.brands}
               </div>
             </div>
@@ -198,9 +198,9 @@ export function Home() {
           {/* Countries — gold-accented light card */}
           <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="h-[3px] bg-[#FFCC00]" />
-            <div className="px-6 py-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2.5">Countries</div>
-              <div className="font-display text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
+            <div className="px-4 sm:px-6 py-4 sm:py-5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2">Countries</div>
+              <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
                 {totals.countries}
               </div>
             </div>
