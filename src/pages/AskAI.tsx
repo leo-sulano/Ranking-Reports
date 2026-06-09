@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Sparkles, Send, Square, RotateCcw, Mic } from 'lucide-react'
+import { Send, Square, RotateCcw, Mic } from 'lucide-react'
+import { AiIcon } from '../components/Assistant/AiIcon'
 import type { RROutletContext } from '../types'
 import { useAssistant } from '../hooks/useAssistant'
 import { checkAssistantHealth } from '../lib/assistantClient'
@@ -66,7 +67,7 @@ export function AskAI() {
 
       {/* Header */}
       <div className="flex items-center gap-2 px-6 h-14 shrink-0 border-b border-[#E2E8F0]">
-        <Sparkles size={16} className="text-[#0F172A]" />
+        <AiIcon size={22} />
         <span className="font-display text-[15px] tracking-wider text-[#0F172A] flex-1">
           Ask AI
         </span>
