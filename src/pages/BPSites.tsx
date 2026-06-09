@@ -92,8 +92,8 @@ function BrandGrid({
   onSelect: (b: Brand) => void
 }) {
   return (
-    <div className="flex-1 overflow-auto px-7 pb-7 pt-5">
-      <div className="grid grid-cols-3 gap-3.5">
+    <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {BRANDS.map((brand, idx) => {
           const domainSet = new Set(brand.domains.map((d) => d.toLowerCase()))
           const hasData = snapshots.some((s) =>
@@ -278,7 +278,7 @@ function BrandView({
   return (
     <>
       {/* Back + brand header */}
-      <div className="flex items-center gap-3 px-7 pt-5 pb-3 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 px-3 sm:px-7 pt-4 sm:pt-5 pb-3 shrink-0">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
@@ -320,7 +320,7 @@ function BrandView({
           />
 
           {/* Sites filter — dropdown; selection navigates to new URL slug */}
-          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0">
+          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-2 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Sites
             </span>
@@ -335,7 +335,7 @@ function BrandView({
           </div>
 
           {/* Inline filter bar — countries + keyword search */}
-          <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
+          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-3.5 shrink-0 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Countries
             </span>
@@ -373,11 +373,11 @@ function BrandView({
                 value={kwFilter}
                 onChange={(e) => setKwFilter(e.target.value)}
                 placeholder="Search keywords…"
-                className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
+                className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />
             </div>
 
-            <div className="ml-auto text-[11px] font-mono text-[#64748B]">
+            <div className="hidden sm:block ml-auto text-[11px] font-mono text-[#64748B]">
               {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
               {' (1 main + ' + bpDomains.length + ' BP)'}
             </div>
@@ -386,7 +386,7 @@ function BrandView({
           {/* Stacked matrices — one table per uploaded date, newest first.
               When the Stats date filter picks a specific date, narrow the
               tables to that one date too. */}
-          <div className="flex-1 overflow-auto px-7 pb-7 flex flex-col gap-6">
+          <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
               ? brandSnapshots
               : monthKey

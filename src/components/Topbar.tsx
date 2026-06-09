@@ -15,9 +15,9 @@ export function Topbar({ brandName, domain }: Props) {
         <div className="flex-1 bg-[#CC0000]" />
         <div className="flex-1 bg-[#FFCC00]" />
       </div>
-      <div className="flex-1 flex items-center gap-4 px-7">
+      <div className="flex-1 flex items-center gap-2 sm:gap-4 px-3 sm:px-7">
         <div className="flex items-baseline gap-3 flex-1 min-w-0">
-          <span className="font-display text-[26px] tracking-wider text-[#0A0A0A] whitespace-nowrap">
+          <span className="font-display text-[18px] sm:text-[26px] tracking-wider text-[#0A0A0A] whitespace-nowrap">
             {brandName}
           </span>
           {domain && (
