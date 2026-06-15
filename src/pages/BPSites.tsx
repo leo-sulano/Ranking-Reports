@@ -254,9 +254,13 @@ function BrandView({
   const stats = useMemo(() => {
     const all = statsSnap?.records ?? []
     const bpSet = new Set(visibleBpDomains.map((d) => d.toLowerCase()))
-    const recs = all.filter((r) => bpSet.has(r.domain.toLowerCase()))
+    const recs = all.filter((r) => {
+      if (!bpSet.has(r.domain.toLowerCase())) return false
+      const countryCode = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      return activeCountries.includes(countryCode)
+    })
     return computeStats(recs)
-  }, [statsSnap, visibleBpDomains])
+  }, [statsSnap, visibleBpDomains, activeCountries])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
