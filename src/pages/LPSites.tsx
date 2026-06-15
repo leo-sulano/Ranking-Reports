@@ -278,8 +278,8 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* Sites filter — dropdown; selection navigates to new URL slug */}
-          <div className="flex items-center gap-1.5 px-7 pb-2 shrink-0">
+          {/* Filter bar — sites + countries + keyword search */}
+          <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Landing pages
             </span>
@@ -291,9 +291,9 @@ function BrandView({
                 navigate(val ? `${base}/${val}` : base)
               }}
             />
-          </div>
 
-          <div className="flex items-center gap-1.5 px-7 pb-3.5 shrink-0 flex-wrap">
+            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Countries
             </span>

@@ -249,15 +249,14 @@ function BrandView({
     })
   }
 
-  // Stats for the selected stats-date snapshot. Restricted to BP-site rows
-  // (MAIN excluded). Classification lives in computeStats — keeps counters
-  // in lockstep with the PosBadge cell coloring.
+  // Stats for the selected stats-date snapshot. Restricted to visible BP-site
+  // rows — when a specific BP domain is selected, counts reflect that domain only.
   const stats = useMemo(() => {
     const all = statsSnap?.records ?? []
-    const bpSet = new Set(bpDomains.map((d) => d.toLowerCase()))
+    const bpSet = new Set(visibleBpDomains.map((d) => d.toLowerCase()))
     const recs = all.filter((r) => bpSet.has(r.domain.toLowerCase()))
     return computeStats(recs)
-  }, [statsSnap, bpDomains])
+  }, [statsSnap, visibleBpDomains])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
@@ -321,8 +320,8 @@ function BrandView({
             unchanged={stats.unchanged}
           />
 
-          {/* Sites filter — dropdown; selection navigates to new URL slug */}
-          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-2 shrink-0">
+          {/* Filter bar — sites + countries + keyword search */}
+          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-3.5 shrink-0 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Sites
             </span>
@@ -334,10 +333,9 @@ function BrandView({
                 navigate(val ? `${base}/${val}` : base)
               }}
             />
-          </div>
 
-          {/* Inline filter bar — countries + keyword search */}
-          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-3.5 shrink-0 flex-wrap">
+            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Countries
             </span>
