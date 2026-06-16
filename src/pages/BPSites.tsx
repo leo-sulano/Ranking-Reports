@@ -390,7 +390,7 @@ function BrandView({
           {/* Stacked matrices — one table per uploaded date, newest first.
               When the Stats date filter picks a specific date, narrow the
               tables to that one date too. */}
-          <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
               ? brandSnapshots
               : monthKey
