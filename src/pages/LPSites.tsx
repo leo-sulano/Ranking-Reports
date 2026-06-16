@@ -618,6 +618,19 @@ function SnapshotMatrix({
   kwFilter: string
   isLatest: boolean
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return
+      e.preventDefault()
+      el.scrollLeft -= e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const colsPerBlock = visibleCountries.length
 
@@ -668,7 +681,7 @@ function SnapshotMatrix({
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      <div ref={scrollRef} className="overflow-x-auto">
         <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — LP domain block label */}
