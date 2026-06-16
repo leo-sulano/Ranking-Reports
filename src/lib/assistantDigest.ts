@@ -111,7 +111,7 @@ function computeMovers(
     if (typeof pNow !== 'number' || typeof pPrev !== 'number') continue
     const delta = pNow - pPrev
     if (delta === 0) continue
-    movers.push({ brand, keyword: r.keyword, country: r.country, from: before.position, to: r.position, delta })
+    movers.push({ brand, domain: r.domain.toLowerCase(), keyword: r.keyword, country: r.country, from: before.position, to: r.position, delta })
   }
   movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
   return movers.slice(0, cap)
@@ -135,9 +135,9 @@ function computeTransitions(
     const pPrev = parsePosition(before.position)
 
     if (pPrev === 'NR' && typeof pNow === 'number') {
-      gained.push({ brand, keyword: r.keyword, country: r.country, to: r.position })
+      gained.push({ brand, domain: r.domain.toLowerCase(), keyword: r.keyword, country: r.country, to: r.position })
     } else if (typeof pPrev === 'number' && pNow === 'NR') {
-      lost.push({ brand, keyword: r.keyword, country: r.country, from: before.position })
+      lost.push({ brand, domain: r.domain.toLowerCase(), keyword: r.keyword, country: r.country, from: before.position })
     }
   }
 

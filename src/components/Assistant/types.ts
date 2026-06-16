@@ -33,6 +33,7 @@ export interface BrandSnapshotStat {
 // A single keyword's position change between two snapshots.
 export interface Mover {
   brand: string
+  domain: string
   keyword: string
   country: string
   from: string
@@ -43,6 +44,7 @@ export interface Mover {
 // NR transition entry. `to` present on gained; `from` present on lost.
 export interface Transition {
   brand: string
+  domain: string
   keyword: string
   country: string
   to?: string
