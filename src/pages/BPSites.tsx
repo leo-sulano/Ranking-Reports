@@ -325,7 +325,7 @@ function BrandView({
           />
 
           {/* Filter bar — sites + countries + keyword search */}
-          <div className="flex items-center gap-1.5 px-3 sm:px-7 pb-3.5 shrink-0 flex-wrap">
+          <div className="flex items-center gap-1.5 px-3 sm:px-7 pt-[10px] pb-[5px] shrink-0 flex-wrap">
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
               Sites
             </span>
