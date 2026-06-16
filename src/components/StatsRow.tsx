@@ -36,7 +36,7 @@ interface Props {
 
 export function StatsRow({ top3, improved, dropped, notRanking, unchanged }: Props) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 px-3 sm:px-7 py-4 shrink-0">
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 px-3 sm:px-7 shrink-0">
       <StatCard label="Top 3"       value={top3}       accent="#0F172A" sub="positions" />
       <StatCard label="Improved"    value={improved}   accent="#10B981" sub="moved up" />
       <StatCard label="Dropped"     value={dropped}    accent="#F43F5E" sub="moved down" />
