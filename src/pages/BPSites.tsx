@@ -760,6 +760,19 @@ function SnapshotMatrix({
   onEditCell: EditCellFn
   isLatest: boolean
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return
+      e.preventDefault()
+      el.scrollLeft -= e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
   const bpColCount   = visibleCountries.length
@@ -841,7 +854,7 @@ function SnapshotMatrix({
       </div>
 
       {/* Horizontal matrix */}
-      <div className="overflow-x-auto">
+      <div ref={scrollRef} className="overflow-x-auto">
         <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
