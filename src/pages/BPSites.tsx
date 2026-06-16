@@ -766,6 +766,9 @@ function SnapshotMatrix({
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY === 0) return
+      const atLeft  = el.scrollLeft <= 0
+      const atRight = el.scrollLeft >= el.scrollWidth - el.clientWidth
+      if ((e.deltaY < 0 && atLeft) || (e.deltaY > 0 && atRight)) return
       e.preventDefault()
       el.scrollLeft += e.deltaY
     }
