@@ -265,37 +265,62 @@ export function Home() {
                     const maxT10 = leaderboard[0].t10 || 1
                     const share  = row.t10 / maxT10
                     const MEDALS = ['🥇', '🥈', '🥉']
+                    const brandUrl = `/bp-sites/${brandToSlug(row.brand.name)}`
                     return (
                       <tr
                         key={row.brand.name}
-                        onClick={() => navigate(`/bp-sites/${brandToSlug(row.brand.name)}`)}
-                        className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] cursor-pointer transition-colors group"
+                        className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors group"
                         style={{ animation: `fadeUp 0.35s ease ${0.12 + i * 0.025}s both` }}
                       >
-                        <td className="pl-5 pr-2 py-0 font-mono text-[11px] text-[#ABABAA] tabular-nums">
+                        <td
+                          className="pl-5 pr-2 py-0 font-mono text-[11px] text-[#ABABAA] tabular-nums cursor-pointer"
+                          onClick={() => navigate(brandUrl)}
+                        >
                           {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
                         </td>
-                        <td className="px-3 py-0">
+                        <td
+                          className="px-3 py-0 cursor-pointer"
+                          onClick={() => navigate(brandUrl)}
+                        >
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
-                            <span className="text-[13px] font-semibold truncate" style={{ color: row.brand.color }}>
+                            <span className="text-[13px] font-semibold truncate group-hover:underline" style={{ color: row.brand.color }}>
                               {row.brand.name}
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A]">
-                          {row.p1 || <span className="text-[#D8D7D2]">—</span>}
+                        <td
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A] cursor-pointer hover:text-[#1E40AF] hover:underline"
+                          onClick={() => row.p1 > 0 && navigate(`${brandUrl}?pos=p1`)}
+                          title={row.p1 > 0 ? 'View P1 keywords' : undefined}
+                        >
+                          {row.p1 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
-                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000]">
-                          {row.t3 || <span className="text-[#D8D7D2]">—</span>}
+                        <td
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
+                          onClick={() => row.t3 > 0 && navigate(`${brandUrl}?pos=top3`)}
+                          title={row.t3 > 0 ? 'View Top-3 keywords' : undefined}
+                        >
+                          {row.t3 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
-                        <td className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600]">
-                          {row.t10 || <span className="text-[#D8D7D2]">—</span>}
+                        <td
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600] cursor-pointer hover:text-[#9a3412] hover:underline"
+                          onClick={() => row.t10 > 0 && navigate(`${brandUrl}?pos=top10`)}
+                          title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
+                        >
+                          {row.t10 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
-                        <td className="px-3 py-0 text-right font-mono text-[12px] tabular-nums text-[#8A8A85]">
+                        <td
+                          className="px-3 py-0 text-right font-mono text-[12px] tabular-nums text-[#8A8A85] cursor-pointer hover:text-[#0A0A0A] hover:underline"
+                          onClick={() => navigate(brandUrl)}
+                          title="View all keywords"
+                        >
                           {row.total}
                         </td>
-                        <td className="pl-3 pr-5 py-0">
+                        <td
+                          className="pl-3 pr-5 py-0 cursor-pointer"
+                          onClick={() => navigate(brandUrl)}
+                        >
                           <div className="h-[3px] bg-[#F0EFEA] rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-700"
@@ -517,6 +542,7 @@ function MoverGroup({
   rows: { record: RankingRecord; delta: number; brand: string }[]
   empty: string
 }) {
+  const navigate = useNavigate()
   return (
     <div>
       <div className="flex items-center gap-2.5 mb-2.5">
@@ -529,14 +555,16 @@ function MoverGroup({
       <ul className="space-y-0.5">
         {rows.map((m, i) => {
           const brand = BRAND_BY_NAME[m.brand]
+          const url = `/bp-sites/${brandToSlug(m.brand)}?kw=${encodeURIComponent(m.record.keyword)}`
           return (
             <li
               key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              className="flex items-center gap-2.5 px-2.5 py-0 rounded-xl hover:bg-[#FAF9F4] transition-colors"
+              onClick={() => navigate(url)}
+              className="flex items-center gap-2.5 px-2.5 py-0 rounded-xl hover:bg-[#FAF9F4] transition-colors cursor-pointer"
             >
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] font-medium text-[#0A0A0A] truncate leading-snug">{m.record.keyword}</div>
+                <div className="text-[12px] font-medium text-[#0A0A0A] truncate leading-snug hover:underline">{m.record.keyword}</div>
                 <div className="font-mono text-[10px] text-[#ABABAA] truncate mt-0.5">
                   {m.brand} · {m.record.country} · pos {m.record.position}
                 </div>

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
+import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
@@ -197,6 +197,14 @@ function BrandView({
   )
 
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // Position filter from URL (?pos=p1 | top3 | top10)
+  const [posFilter, setPosFilter] = useState<'p1' | 'top3' | 'top10' | 'all'>(() => {
+    const p = searchParams.get('pos')
+    if (p === 'p1' || p === 'top3' || p === 'top10') return p
+    return 'all'
+  })
 
   // Resolve domainFilter — only 'bp' and known BP domains are valid; everything else → All
   const resolvedFilter = useMemo(() => {
@@ -230,7 +238,7 @@ function BrandView({
 
   // Local filters — independent from Rankings page
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
-  const [kwFilter, setKwFilter] = useState('')
+  const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id.
@@ -381,6 +389,22 @@ function BrandView({
               />
             </div>
 
+            {posFilter !== 'all' && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold"
+                style={{ background: '#EEF2FF', borderColor: '#C7D2FE', color: '#4338CA' }}>
+                <span>
+                  {posFilter === 'p1' ? 'P1 only' : posFilter === 'top3' ? 'Top-3 only' : 'Top-10 only'}
+                </span>
+                <button
+                  onClick={() => setPosFilter('all')}
+                  className="ml-0.5 hover:text-[#312E81] leading-none"
+                  title="Clear position filter"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             <div className="hidden sm:block ml-auto text-[11px] font-mono text-[#64748B]">
               {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
               {' (1 main + ' + bpDomains.length + ' BP)'}
@@ -410,6 +434,7 @@ function BrandView({
                 showMain={showMain}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
+                posFilter={posFilter}
                 onEditCell={onEditCell}
                 isLatest={snap.id === latestSnap?.id}
               />
@@ -746,6 +771,7 @@ function SnapshotMatrix({
   showMain,
   visibleCountries,
   kwFilter,
+  posFilter,
   onEditCell,
   isLatest,
 }: {
@@ -757,6 +783,7 @@ function SnapshotMatrix({
   showMain: boolean
   visibleCountries: string[]
   kwFilter: string
+  posFilter: 'p1' | 'top3' | 'top10' | 'all'
   onEditCell: EditCellFn
   isLatest: boolean
 }) {
@@ -796,7 +823,7 @@ function SnapshotMatrix({
     return map
   }, [prevSnapshot])
 
-  // Sorted keyword list for this snapshot, with kw search applied
+  // Sorted keyword list for this snapshot, with kw search + position filter applied
   const keywords = useMemo(() => {
     const seen = new Set<string>()
     const labels: Record<string, string> = {}
@@ -805,11 +832,31 @@ function SnapshotMatrix({
       if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
     }
     const filter = kwFilter.trim().toLowerCase()
-    return Object.keys(labels)
+    let keys = Object.keys(labels)
       .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
-      .sort()
-      .map((kl) => ({ key: kl, label: labels[kl] }))
-  }, [snapshot, kwFilter])
+
+    if (posFilter !== 'all') {
+      const kwRecords = new Map<string, typeof snapshot.records>()
+      for (const r of snapshot.records) {
+        const kl = r.keyword.toLowerCase()
+        const list = kwRecords.get(kl) ?? []
+        list.push(r)
+        kwRecords.set(kl, list)
+      }
+      keys = keys.filter((kl) => {
+        const recs = kwRecords.get(kl) ?? []
+        return recs.some((r) => {
+          const p = parsePosition(r.position)
+          if (posFilter === 'p1')    return p === 1
+          if (posFilter === 'top3')  return typeof p === 'number' && p <= 3
+          if (posFilter === 'top10') return typeof p === 'number' && p <= 10
+          return true
+        })
+      })
+    }
+
+    return keys.sort().map((kl) => ({ key: kl, label: labels[kl] }))
+  }, [snapshot, kwFilter, posFilter])
 
   // keyword → domain → country → record
   const lookup = useMemo(() => {
