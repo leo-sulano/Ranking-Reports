@@ -416,6 +416,11 @@ function NavCard({
 const TIER_LIMIT: Record<ModalTier, number> = { p1: 1, top3: 3, top10: 10 }
 const TIER_LABEL: Record<ModalTier, string>  = { p1: 'P1', top3: 'Top-3', top10: 'Top-10' }
 const TIER_RANGE: Record<ModalTier, string>  = { p1: 'Position 1', top3: 'Positions 1–3', top10: 'Positions 1–10' }
+const TIER_DESC:  Record<ModalTier, string>  = {
+  p1:    'Keywords holding the #1 spot — maximum visibility and click-through potential.',
+  top3:  'High-intent keywords ranking in the top 3 positions — prime real estate on the SERP.',
+  top10: 'Page-1 keywords with strong search presence across tracked markets.',
+}
 
 function KeywordModal({
   brand, tier, records, onClose,
@@ -431,11 +436,25 @@ function KeywordModal({
       const p = parsePosition(r.position)
       return typeof p === 'number' && p >= 1 && p <= limit
     })
-    .sort((a, b) => {
-      const pa = parsePosition(a.position) as number
-      const pb = parsePosition(b.position) as number
-      return pa - pb || a.keyword.localeCompare(b.keyword)
-    })
+
+  // Group by domain + country
+  const groups = filtered.reduce<Map<string, { domain: string; country: string; rows: typeof filtered }>>((acc, r) => {
+    const key = `${r.domain}||${r.country}`
+    if (!acc.has(key)) acc.set(key, { domain: r.domain, country: r.country, rows: [] })
+    acc.get(key)!.rows.push(r)
+    return acc
+  }, new Map())
+
+  const sortedGroups = [...groups.values()]
+    .sort((a, b) => a.domain.localeCompare(b.domain) || a.country.localeCompare(b.country))
+    .map((g) => ({
+      ...g,
+      rows: [...g.rows].sort((a, b) => {
+        const pa = parsePosition(a.position) as number
+        const pb = parsePosition(b.position) as number
+        return pa - pb || a.keyword.localeCompare(b.keyword)
+      }),
+    }))
 
   function posBadgeStyle(pos: number) {
     if (pos === 1)  return { bg: '#FFF3CD', color: '#92400E' }
@@ -473,6 +492,7 @@ function KeywordModal({
               <span className="text-[11px] text-[#ABABAA]">{filtered.length} keywords</span>
             </div>
             <p className="text-[11px] text-[#ABABAA] mt-0.5">{TIER_RANGE[tier]}</p>
+            <p className="text-[11px] text-[#8A8A85] mt-1 leading-snug">{TIER_DESC[tier]}</p>
           </div>
           <button
             onClick={onClose}
@@ -482,45 +502,47 @@ function KeywordModal({
           </button>
         </div>
 
-        {/* Table */}
+        {/* Grouped content */}
         <div className="overflow-y-auto flex-1">
-          {filtered.length === 0 ? (
+          {sortedGroups.length === 0 ? (
             <p className="text-[12px] text-[#ABABAA] text-center py-10">No keywords found.</p>
           ) : (
-            <table className="w-full text-left">
-              <thead className="sticky top-0 bg-white border-b border-[#F5F4EF]">
-                <tr>
-                  <th className="pl-5 pr-2 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-14">Pos</th>
-                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Keyword</th>
-                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-16">Country</th>
-                  <th className="pl-3 pr-5 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Domain</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r, i) => {
-                  const pos = parsePosition(r.position) as number
-                  const { bg, color } = posBadgeStyle(pos)
-                  return (
-                    <tr
-                      key={`${r.domain}-${r.keyword}-${r.country}-${i}`}
-                      className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors"
-                    >
-                      <td className="pl-5 pr-2 py-2.5">
-                        <span
-                          className="inline-flex items-center justify-center font-mono text-[11px] font-bold w-7 h-6 rounded-lg"
-                          style={{ background: bg, color }}
+            sortedGroups.map((group) => (
+              <div key={`${group.domain}||${group.country}`} className="border-b border-[#F5F4EF] last:border-b-0">
+                {/* Group header */}
+                <div className="flex items-center gap-2 px-5 py-2 bg-[#FAF9F5] sticky top-0 z-10">
+                  <span className="font-mono text-[11px] font-semibold text-[#0A0A0A]">{group.domain}</span>
+                  <span className="text-[#D8D7D2]">·</span>
+                  <span className="font-mono text-[11px] font-semibold text-[#CC0000]">{group.country}</span>
+                  <span className="ml-auto text-[10px] text-[#ABABAA]">{group.rows.length} kw</span>
+                </div>
+                {/* Keywords */}
+                <table className="w-full text-left">
+                  <tbody>
+                    {group.rows.map((r, i) => {
+                      const pos = parsePosition(r.position) as number
+                      const { bg, color } = posBadgeStyle(pos)
+                      return (
+                        <tr
+                          key={`${r.keyword}-${i}`}
+                          className="border-t border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors"
                         >
-                          {pos}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-[12px] font-medium text-[#0A0A0A]">{r.keyword}</td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] text-[#8A8A85]">{r.country}</td>
-                      <td className="pl-3 pr-5 py-2.5 font-mono text-[10px] text-[#ABABAA] max-w-[160px] truncate">{r.domain}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                          <td className="pl-5 pr-2 py-2">
+                            <span
+                              className="inline-flex items-center justify-center font-mono text-[11px] font-bold w-7 h-6 rounded-lg"
+                              style={{ background: bg, color }}
+                            >
+                              {pos}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-[12px] font-medium text-[#0A0A0A]">{r.keyword}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))
           )}
         </div>
       </div>
