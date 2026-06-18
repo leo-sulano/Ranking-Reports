@@ -140,17 +140,47 @@ export function Home() {
   }, [ctx.snapshots])
 
   const movers = useMemo(() => {
-    type Mover = { record: RankingRecord; delta: number; brand: string }
-    const list: Mover[] = []
+    type KwMover = { record: RankingRecord; delta: number; newEntry?: boolean }
+    type SiteMover = { domain: string; brand: string; count: number; keywords: KwMover[] }
+
+    const siteMap = new Map<string, { climbers: KwMover[]; droppers: KwMover[]; brand: string }>()
     for (const r of records) {
-      const d = parseChange(r.change)
-      if (d === null || d === 0) continue
-      const b = brandOfDomain(r.domain) ?? '—'
-      list.push({ record: r, delta: d, brand: b })
+      const prevPos = parsePosition(r.previous)
+      const curPos  = parsePosition(r.position)
+      let delta: number | null = null
+      let newEntry = false
+      if (prevPos === 'NR' && typeof curPos === 'number') {
+        delta = 100 - curPos
+        newEntry = true
+      } else {
+        delta = parseChange(r.change)
+      }
+      if (delta === null || delta === 0) continue
+      const key = r.domain.toLowerCase()
+      if (!siteMap.has(key)) siteMap.set(key, { climbers: [], droppers: [], brand: brandOfDomain(r.domain) ?? '—' })
+      const entry = siteMap.get(key)!
+      if (delta > 0) entry.climbers.push({ record: r, delta, newEntry })
+      else           entry.droppers.push({ record: r, delta })
     }
-    const climbers = list.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3)
-    const droppers = list.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3)
-    return { climbers, droppers }
+
+    const toSite = (domain: string, kws: KwMover[], brand: string): SiteMover => ({
+      domain,
+      brand,
+      count: kws.length,
+      keywords: kws.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)),
+    })
+
+    const climbers: SiteMover[] = []
+    const droppers: SiteMover[] = []
+    for (const [domain, { climbers: c, droppers: d, brand }] of siteMap) {
+      if (c.length > 0) climbers.push(toSite(domain, c, brand))
+      if (d.length > 0) droppers.push(toSite(domain, d, brand))
+    }
+
+    return {
+      climbers: climbers.sort((a, b) => b.count - a.count).slice(0, 3),
+      droppers: droppers.sort((a, b) => b.count - a.count).slice(0, 3),
+    }
   }, [records])
 
   // ── Empty state ───────────────────────────────────────────────────────────
@@ -428,10 +458,11 @@ function MoverGroup({
   tint: string
   bgTint: string
   borderTint: string
-  rows: { record: RankingRecord; delta: number; brand: string }[]
+  rows: { domain: string; brand: string; count: number; keywords: { record: RankingRecord; delta: number; newEntry?: boolean }[] }[]
   empty: string
 }) {
   const navigate = useNavigate()
+  const [expanded, setExpanded] = useState<string | null>(null)
   return (
     <div>
       <div className="flex items-center gap-2.5 mb-2.5">
@@ -444,26 +475,49 @@ function MoverGroup({
       <ul className="space-y-0.5">
         {rows.map((m, i) => {
           const brand = BRAND_BY_NAME[m.brand]
-          const url = `/bp-sites/${brandToSlug(m.brand)}?kw=${encodeURIComponent(m.record.keyword)}`
+          const isOpen = expanded === m.domain
           return (
-            <li
-              key={`${m.brand}-${m.record.keyword}-${m.record.country}-${i}`}
-              onClick={() => navigate(url)}
-              className="flex items-center gap-2.5 px-2.5 py-0 rounded-xl hover:bg-[#FAF9F4] transition-colors cursor-pointer"
-            >
-              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
-              <div className="min-w-0 flex-1">
-                <div className="text-[12px] font-medium text-[#0A0A0A] truncate leading-snug hover:underline">{m.record.keyword}</div>
-                <div className="font-mono text-[10px] text-[#ABABAA] truncate mt-0.5">
-                  {m.brand} · {m.record.country} · pos {m.record.position}
-                </div>
-              </div>
-              <span
-                className="font-mono text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-lg shrink-0"
-                style={{ color: tint, background: bgTint, border: `1px solid ${borderTint}` }}
+            <li key={`${m.domain}-${i}`}>
+              <div
+                onClick={() => setExpanded(isOpen ? null : m.domain)}
+                className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-[#FAF9F4] transition-colors cursor-pointer"
               >
-                {m.delta > 0 ? `+${m.delta}` : m.delta}
-              </span>
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-medium text-[#0A0A0A] truncate leading-snug">{m.domain}</div>
+                  <div className="font-mono text-[10px] text-[#ABABAA] truncate mt-0.5">
+                    {m.brand} · {m.count} kw
+                  </div>
+                </div>
+                <span
+                  className="font-mono text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-lg shrink-0"
+                  style={{ color: tint, background: bgTint, border: `1px solid ${borderTint}` }}
+                >
+                  {m.count}
+                </span>
+              </div>
+              {isOpen && (
+                <ul className="ml-5 mt-0.5 mb-1.5 space-y-0">
+                  {m.keywords.map((kw, j) => (
+                    <li
+                      key={`${kw.record.keyword}-${kw.record.country}-${j}`}
+                      onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}?kw=${encodeURIComponent(kw.record.keyword)}`)}
+                      className="flex items-center gap-2 px-2 py-0.5 rounded-lg hover:bg-[#FAF9F4] transition-colors cursor-pointer"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] text-[#3A3A3A] truncate">{kw.record.keyword}</div>
+                        <div className="font-mono text-[10px] text-[#ABABAA]">{kw.record.country} · pos {kw.record.position}</div>
+                      </div>
+                      <span
+                        className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
+                        style={{ color: tint, background: bgTint }}
+                      >
+                        {kw.newEntry ? 'NR→' : kw.delta > 0 ? `+${kw.delta}` : kw.delta}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           )
         })}
