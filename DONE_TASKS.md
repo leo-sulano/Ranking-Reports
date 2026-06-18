@@ -219,3 +219,24 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** UI
 
 ---
+
+**Task Title:** Filter-Aware Stats Counts (BP & LP Sites)
+**Task Description:** Made the Top 3, Improved, Dropped, NR, and Unchanged counts in the `StatsRow` header respond dynamically to active filters. Previously counts were computed over all records for the brand regardless of what was visible. Now the stats `useMemo` filters by `visibleBpDomains` (so selecting a specific site narrows the counts to that site only) and also by `activeCountries` (so selecting a country filter narrows counts to matching rows). The Sites and Countries filter bars in `BPSites.tsx` and `LPSites.tsx` were also merged into a single unified filter row with a divider between them.
+**Date Completed:** June 15, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Ranking Tables — Horizontal Scroll & Side-by-Side Layout
+**Task Description:** Refactored the BP Sites and LP Sites ranking tables to support horizontal scrolling so all columns remain visible side by side without wrapping. Mouse/trackpad horizontal swipe is supported on the table container. Also adjusted `StatsRow` card layout spacing to align with the new table structure.
+**Date Completed:** June 16, 2026
+**Label:** UI
+
+---
+
+**Task Title:** AI Assistant — Exact Domain in Keyword Movement Responses
+**Task Description:** Updated the AI assistant to always include the specific site domain alongside the brand name when reporting keyword movers, gainers, and losers. Added a `domain` field to the `Mover` and `Transition` types in `src/components/Assistant/types.ts`, propagated it through `computeMovers` and `computeTransitions` in `src/lib/assistantDigest.ts`, and updated the Edge Function system prompt in `supabase/functions/assistant/index.ts` to instruct the AI to cite the exact domain (e.g. `rocketspin.com`) next to the brand name in every mover/gained/lost entry.
+**Date Completed:** June 16, 2026
+**Label:** Feature
+
+---

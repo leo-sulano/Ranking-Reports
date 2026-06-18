@@ -352,3 +352,36 @@ Redesigned the brand summary cards on the home page for a cleaner layout. Fixed 
 **Label:** UI
 
 Updated AI assistant icons across the dashboard: distinctive icon added to the Ask AI page, AI sidebar nav icon updated, tab AI icon updated. Minor layout spacing improvements to BPSites table.
+
+---
+
+## Task 32: Filter-Aware Stats Counts (BP & LP Sites)
+
+**Date:** 2026-06-15
+**PMS Task ID:** cmqgm2s5o000004jv6hil9578
+**Column:** Done
+**Label:** Feature
+
+Made the Top 3, Improved, Dropped, NR, and Unchanged counts in the StatsRow header respond dynamically to active filters. Stats useMemo now filters by `visibleBpDomains` (selecting a specific site narrows counts to that site only) and `activeCountries` (selecting a country narrows counts to matching rows). The Sites and Countries filter bars in BPSites.tsx and LPSites.tsx were merged into a single unified filter row with a divider between them.
+
+---
+
+## Task 33: Ranking Tables — Horizontal Scroll & Side-by-Side Layout
+
+**Date:** 2026-06-16
+**PMS Task ID:** cmqgm2xuf000204jvqclkff4h
+**Column:** Done
+**Label:** UI
+
+Refactored the BP Sites and LP Sites ranking tables to support horizontal scrolling so all columns remain visible side by side without wrapping. Mouse/trackpad horizontal swipe is supported on the table container. Adjusted StatsRow card layout spacing to align with the new table structure.
+
+---
+
+## Task 34: AI Assistant — Exact Domain in Keyword Movement Responses
+
+**Date:** 2026-06-16
+**PMS Task ID:** cmqgm35rw000404jvbc83zcwk
+**Column:** Done
+**Label:** Feature
+
+Updated the AI assistant to always include the specific site domain alongside the brand name when reporting keyword movers, gainers, and losers. Added a `domain` field to the `Mover` and `Transition` types in `src/components/Assistant/types.ts`, propagated it through `computeMovers` and `computeTransitions` in `src/lib/assistantDigest.ts`, and updated the Edge Function system prompt in `supabase/functions/assistant/index.ts` to instruct the AI to cite the exact domain (e.g. `rocketspin.com`) next to the brand name in every mover/gained/lost entry.

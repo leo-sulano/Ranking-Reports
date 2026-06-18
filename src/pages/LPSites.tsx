@@ -3,8 +3,8 @@ import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
-import { StatsRow } from '../components/StatsRow'
-import { computeStats } from '../lib/parser'
+import { StatsRow, CardFilterKey } from '../components/StatsRow'
+import { computeStats, parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
@@ -199,6 +199,7 @@ function BrandView({
 
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
   const [kwFilter, setKwFilter] = useState('')
+  const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
 
   const [statsFilter, setStatsFilter] = useState<string>('all')
   const statsSnap = useMemo(() => {
@@ -276,6 +277,8 @@ function BrandView({
             dropped={stats.dropped}
             notRanking={stats.notRanking}
             unchanged={stats.unchanged}
+            activeCard={cardFilter}
+            onCardClick={setCardFilter}
           />
 
           {/* Filter bar — sites + countries + keyword search */}
@@ -351,6 +354,7 @@ function BrandView({
                 lpDomains={visibleLpDomains}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
+                cardFilter={cardFilter}
                 isLatest={snap.id === latestSnap?.id}
               />
             ))}
@@ -610,12 +614,14 @@ function SnapshotMatrix({
   lpDomains,
   visibleCountries,
   kwFilter,
+  cardFilter,
   isLatest,
 }: {
   snapshot: Snapshot
   lpDomains: string[]
   visibleCountries: string[]
   kwFilter: string
+  cardFilter: CardFilterKey | null
   isLatest: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -645,11 +651,34 @@ function SnapshotMatrix({
       if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
     }
     const filter = kwFilter.trim().toLowerCase()
-    return Object.keys(labels)
+    let keys = Object.keys(labels)
       .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
-      .sort()
-      .map((kl) => ({ key: kl, label: labels[kl] }))
-  }, [snapshot, kwFilter])
+
+    if (cardFilter) {
+      const kwRecords = new Map<string, typeof snapshot.records>()
+      for (const r of snapshot.records) {
+        const kl = r.keyword.toLowerCase()
+        const list = kwRecords.get(kl) ?? []
+        list.push(r)
+        kwRecords.set(kl, list)
+      }
+      keys = keys.filter((kl) => {
+        const recs = kwRecords.get(kl) ?? []
+        return recs.some((r) => {
+          const p = parsePosition(r.position)
+          const d = parseChange(r.change ?? '') ?? 0
+          if (cardFilter === 'top3')       return typeof p === 'number' && p <= 3
+          if (cardFilter === 'improved')   return d > 0
+          if (cardFilter === 'dropped')    return d < 0
+          if (cardFilter === 'unchanged')  return p !== 'NR' && d === 0
+          if (cardFilter === 'notRanking') return p === 'NR'
+          return true
+        })
+      })
+    }
+
+    return keys.sort().map((kl) => ({ key: kl, label: labels[kl] }))
+  }, [snapshot, kwFilter, cardFilter])
 
   const lookup = useMemo(() => {
     const map: Lookup = {}

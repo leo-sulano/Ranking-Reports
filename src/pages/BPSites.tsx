@@ -3,9 +3,9 @@ import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
-import { StatsRow } from '../components/StatsRow'
+import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { EditableCell } from '../components/EditableCell'
-import { computeStats, parsePosition } from '../lib/parser'
+import { computeStats, parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -240,6 +240,9 @@ function BrandView({
   const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
 
+  const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
+  const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
+
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id.
   const [statsFilter, setStatsFilter] = useState<string>('all')
@@ -257,18 +260,51 @@ function BrandView({
     })
   }
 
-  // Stats for the selected stats-date snapshot. Restricted to visible BP-site
-  // rows — when a specific BP domain is selected, counts reflect that domain only.
-  const stats = useMemo(() => {
+  // Filtered records for the stats snapshot — reused by both computeStats and the modal.
+  const statsRecords = useMemo(() => {
     const all = statsSnap?.records ?? []
     const bpSet = new Set(visibleBpDomains.map((d) => d.toLowerCase()))
-    const recs = all.filter((r) => {
+    return all.filter((r) => {
       if (!bpSet.has(r.domain.toLowerCase())) return false
       const countryCode = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
       return activeCountries.includes(countryCode)
     })
-    return computeStats(recs)
   }, [statsSnap, visibleBpDomains, activeCountries])
+
+  // Stats for the selected stats-date snapshot. Restricted to visible BP-site
+  // rows — when a specific BP domain is selected, counts reflect that domain only.
+  // Uses cross-snapshot comparison (same logic as PosBadge) so the IMPROVED /
+  // DROPPED counts match exactly the green / red arrows shown in the table.
+  const stats = useMemo(() => {
+    const recs = statsRecords
+
+    const snapIdx = statsSnap ? brandSnapshots.findIndex((s) => s.id === statsSnap.id) : -1
+    const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
+    if (!prevSnap) return computeStats(recs)
+
+    const prevPosMap = new Map<string, number | 'NR'>()
+    for (const r of prevSnap.records) {
+      const pos = parsePosition(r.position)
+      if (pos !== null) {
+        const k = `${r.keyword.toLowerCase()}|${r.domain.toLowerCase()}|${COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()}`
+        prevPosMap.set(k, pos)
+      }
+    }
+
+    let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
+    for (const r of recs) {
+      const p = parsePosition(r.position)
+      const cc = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      if (p === 'NR' || p === null) { notRanking++; continue }
+      if (p <= 3) top3++
+      const prevPos = prevPosMap.get(`${r.keyword.toLowerCase()}|${r.domain.toLowerCase()}|${cc}`) ?? null
+      if (prevPos === null)                                        unchanged++
+      else if (prevPos === 'NR' || (typeof prevPos === 'number' && prevPos > p)) improved++
+      else if (typeof prevPos === 'number' && prevPos < p)         dropped++
+      else                                                         unchanged++
+    }
+    return { total: recs.length, top3, improved, dropped, notRanking, unchanged }
+  }, [statsRecords, statsSnap, brandSnapshots])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
@@ -330,6 +366,8 @@ function BrandView({
             dropped={stats.dropped}
             notRanking={stats.notRanking}
             unchanged={stats.unchanged}
+            activeCard={cardFilter}
+            onCardClick={(key) => { setCardFilter(key); if (key !== null) setModalCard(key) }}
           />
 
           {/* Filter bar — sites + countries + keyword search */}
@@ -435,6 +473,7 @@ function BrandView({
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 posFilter={posFilter}
+                cardFilter={cardFilter}
                 onEditCell={onEditCell}
                 isLatest={snap.id === latestSnap?.id}
               />
@@ -442,6 +481,14 @@ function BrandView({
             })}
           </div>
         </>
+      )}
+
+      {modalCard !== null && (
+        <StatsCardModal
+          card={modalCard}
+          records={statsRecords}
+          onClose={() => setModalCard(null)}
+        />
       )}
     </>
   )
@@ -772,6 +819,7 @@ function SnapshotMatrix({
   visibleCountries,
   kwFilter,
   posFilter,
+  cardFilter,
   onEditCell,
   isLatest,
 }: {
@@ -784,6 +832,7 @@ function SnapshotMatrix({
   visibleCountries: string[]
   kwFilter: string
   posFilter: 'p1' | 'top3' | 'top10' | 'all'
+  cardFilter: CardFilterKey | null
   onEditCell: EditCellFn
   isLatest: boolean
 }) {
@@ -835,7 +884,7 @@ function SnapshotMatrix({
     let keys = Object.keys(labels)
       .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
 
-    if (posFilter !== 'all') {
+    if (posFilter !== 'all' || cardFilter) {
       const kwRecords = new Map<string, typeof snapshot.records>()
       for (const r of snapshot.records) {
         const kl = r.keyword.toLowerCase()
@@ -843,20 +892,53 @@ function SnapshotMatrix({
         list.push(r)
         kwRecords.set(kl, list)
       }
-      keys = keys.filter((kl) => {
-        const recs = kwRecords.get(kl) ?? []
-        return recs.some((r) => {
-          const p = parsePosition(r.position)
-          if (posFilter === 'p1')    return p === 1
-          if (posFilter === 'top3')  return typeof p === 'number' && p <= 3
-          if (posFilter === 'top10') return typeof p === 'number' && p <= 10
-          return true
+
+      if (posFilter !== 'all') {
+        keys = keys.filter((kl) => {
+          const recs = kwRecords.get(kl) ?? []
+          return recs.some((r) => {
+            const p = parsePosition(r.position)
+            if (posFilter === 'p1')    return p === 1
+            if (posFilter === 'top3')  return typeof p === 'number' && p <= 3
+            if (posFilter === 'top10') return typeof p === 'number' && p <= 10
+            return true
+          })
         })
-      })
+      }
+
+      if (cardFilter) {
+        keys = keys.filter((kl) => {
+          const recs = kwRecords.get(kl) ?? []
+          return recs.some((r) => {
+            const p = parsePosition(r.position)
+            if (cardFilter === 'top3')       return typeof p === 'number' && p <= 3
+            if (cardFilter === 'notRanking') return p === 'NR'
+
+            if (prevLookup !== null) {
+              // Cross-snapshot path — mirrors PosBadge so filter matches visual arrows
+              const dk = r.domain.toLowerCase()
+              const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+              const prevRec = prevLookup[kl]?.[dk]?.[ck]
+              const prevPos = parsePosition(prevRec?.position ?? '')
+              if (prevPos === null) return cardFilter === 'unchanged' && typeof p === 'number'
+              if (cardFilter === 'improved')  return prevPos === 'NR' || (typeof prevPos === 'number' && typeof p === 'number' && prevPos > p)
+              if (cardFilter === 'dropped')   return typeof prevPos === 'number' && typeof p === 'number' && prevPos < p
+              if (cardFilter === 'unchanged') return typeof p === 'number' && typeof prevPos === 'number' && prevPos === p
+            }
+
+            // Fallback: no prev snapshot, use within-file change
+            const d = parseChange(r.change ?? '') ?? 0
+            if (cardFilter === 'improved')   return d > 0
+            if (cardFilter === 'dropped')    return d < 0
+            if (cardFilter === 'unchanged')  return p !== 'NR' && d === 0
+            return true
+          })
+        })
+      }
     }
 
     return keys.sort().map((kl) => ({ key: kl, label: labels[kl] }))
-  }, [snapshot, kwFilter, posFilter])
+  }, [snapshot, kwFilter, posFilter, cardFilter, prevLookup])
 
   // keyword → domain → country → record
   const lookup = useMemo(() => {
@@ -1167,6 +1249,171 @@ function SnapshotMatrix({
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── StatsCardModal — keyword detail grouped by site ─────────────────────────
+
+const CARD_MODAL_LABELS: Record<CardFilterKey, string> = {
+  top3: 'Top 3 Positions',
+  improved: 'Improved Keywords',
+  dropped: 'Dropped Keywords',
+  unchanged: 'Unchanged Keywords',
+  notRanking: 'Not Ranking',
+}
+
+const CARD_MODAL_ACCENTS: Record<CardFilterKey, string> = {
+  top3: '#0F172A',
+  improved: '#10B981',
+  dropped: '#F43F5E',
+  unchanged: '#94A3B8',
+  notRanking: '#64748B',
+}
+
+type ModalEntry = { keyword: string; country: string; position: string; change: string }
+
+function StatsCardModal({
+  card,
+  records,
+  onClose,
+}: {
+  card: CardFilterKey
+  records: RankingRecord[]
+  onClose: () => void
+}) {
+  const filtered = useMemo(() => {
+    return records.filter((r) => {
+      const p = parsePosition(r.position)
+      const d = parseChange(r.change ?? '') ?? 0
+      if (card === 'top3')       return typeof p === 'number' && p <= 3
+      if (card === 'improved')   return d > 0
+      if (card === 'dropped')    return d < 0
+      if (card === 'unchanged')  return p !== 'NR' && d === 0
+      if (card === 'notRanking') return p === 'NR'
+      return false
+    })
+  }, [records, card])
+
+  // Group: domain → keyword_lower → ModalEntry[]
+  const grouped = useMemo(() => {
+    const map = new Map<string, Map<string, ModalEntry[]>>()
+    for (const r of filtered) {
+      if (!map.has(r.domain)) map.set(r.domain, new Map())
+      const kwMap = map.get(r.domain)!
+      const kl = r.keyword.toLowerCase()
+      if (!kwMap.has(kl)) kwMap.set(kl, [])
+      kwMap.get(kl)!.push({
+        keyword: r.keyword,
+        country: COUNTRY_LABELS[r.country] ?? r.country.toUpperCase(),
+        position: r.position,
+        change: r.change ?? '',
+      })
+    }
+    return map
+  }, [filtered])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const accent = CARD_MODAL_ACCENTS[card]
+  const label = CARD_MODAL_LABELS[card]
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,23,42,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-[12px] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
+        style={{ borderTop: `3px solid ${accent}` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-[#E2E8F0]">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.12em] font-semibold mb-0.5" style={{ color: accent }}>
+              {label}
+            </div>
+            <div className="text-[13px] text-[#64748B]">
+              {filtered.length} record{filtered.length !== 1 ? 's' : ''} · {grouped.size} site{grouped.size !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] transition-colors ml-4 shrink-0"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+          {grouped.size === 0 ? (
+            <p className="text-[13px] text-[#94A3B8] text-center py-8">No records match this filter.</p>
+          ) : (
+            Array.from(grouped.entries()).map(([domain, kwMap]) => (
+              <div key={domain}>
+                {/* Site header */}
+                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#F1F5F9]">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
+                  <span className="text-[12px] font-bold text-[#0F172A] uppercase tracking-[0.05em] truncate flex-1">
+                    {domain}
+                  </span>
+                  <span className="text-[10px] text-[#94A3B8] shrink-0">
+                    {kwMap.size} kw
+                  </span>
+                </div>
+
+                {/* Keyword rows */}
+                <div className="flex flex-col gap-1">
+                  {Array.from(kwMap.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([kwL, entries]) => {
+                      const kwLabel = entries[0].keyword
+                      const sorted = [...entries].sort((a, b) => {
+                        const pa = parsePosition(a.position)
+                        const pb = parsePosition(b.position)
+                        const na = typeof pa === 'number' ? pa : 999
+                        const nb = typeof pb === 'number' ? pb : 999
+                        return na - nb
+                      })
+                      return (
+                        <div key={kwL} className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors">
+                          <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate">
+                            {kwLabel}
+                          </span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
+                            {sorted.map((entry, i) => {
+                              const p = parsePosition(entry.position)
+                              const posDisplay = typeof p === 'number' ? `#${p}` : 'NR'
+                              return (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
+                                  style={{ background: accent + '18', color: accent }}
+                                >
+                                  <span className="font-normal" style={{ color: '#94A3B8' }}>{entry.country}</span>
+                                  <span>{posDisplay}</span>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )

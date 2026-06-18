@@ -1,33 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { RankingRecord, RROutletContext } from '../types'
-
-const TRACK_BUCKETS: Array<{ label: string; key: string; test: (p: number | 'NR' | null) => boolean }> = [
-  { label: '1–3',    key: 'top3',  test: (p) => typeof p === 'number' && p >= 1  && p <= 3  },
-  { label: '4–10',   key: 'top10', test: (p) => typeof p === 'number' && p >= 4  && p <= 10 },
-  { label: '11–20',  key: 'r11',   test: (p) => typeof p === 'number' && p >= 11 && p <= 20 },
-  { label: '21–30',  key: 'r21',   test: (p) => typeof p === 'number' && p >= 21 && p <= 30 },
-  { label: '31–40',  key: 'r31',   test: (p) => typeof p === 'number' && p >= 31 && p <= 40 },
-  { label: '41–50',  key: 'r41',   test: (p) => typeof p === 'number' && p >= 41 && p <= 50 },
-  { label: '51–60',  key: 'r51',   test: (p) => typeof p === 'number' && p >= 51 && p <= 60 },
-  { label: '61–70',  key: 'r61',   test: (p) => typeof p === 'number' && p >= 61 && p <= 70 },
-  { label: '71–80',  key: 'r71',   test: (p) => typeof p === 'number' && p >= 71 && p <= 80 },
-  { label: '81–90',  key: 'r81',   test: (p) => typeof p === 'number' && p >= 81 && p <= 90 },
-  { label: '91–100', key: 'r91',   test: (p) => typeof p === 'number' && p >= 91 && p <= 100},
-  { label: 'NR',     key: 'nr',    test: (p) => p === 'NR'                                  },
-]
-
-const DOT_COLOR: Record<string, string> = {
-  top3:  '#059669',
-  top10: '#34D399',
-  r11:   '#F59E0B', r21: '#F59E0B', r31: '#F59E0B', r41: '#F59E0B',
-  r51:   '#F59E0B', r61: '#F59E0B', r71: '#F59E0B', r81: '#F59E0B', r91: '#F59E0B',
-  nr:    '#1A1A1A',
-}
-
 
 function brandOfDomain(domain: string): string | undefined {
   return DOMAIN_TO_BRAND[domain.toLowerCase()]
@@ -58,18 +33,6 @@ export function Home() {
       snapshots: ctx.snapshots.length,
     }
   }, [records, ctx.snapshots])
-
-  const buckets = useMemo(() => {
-    const counts = TRACK_BUCKETS.map((b) => ({ ...b, count: 0 }))
-    for (const r of records) {
-      const p = parsePosition(r.position)
-      for (const b of counts) {
-        if (b.test(p)) { b.count += 1; break }
-      }
-    }
-    const max = Math.max(1, ...counts.map((b) => b.count))
-    return counts.map((b) => ({ ...b, pct: b.count / max }))
-  }, [records])
 
   const tier = useMemo(() => {
     let p1 = 0, top3 = 0, top10 = 0, page2 = 0, nr = 0
@@ -123,17 +86,6 @@ export function Home() {
     const climbers = list.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3)
     const droppers = list.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3)
     return { climbers, droppers }
-  }, [records])
-
-  const countryBars = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const r of records) {
-      const c = r.country.toUpperCase()
-      counts[c] = (counts[c] ?? 0) + 1
-    }
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
-    const max = Math.max(1, ...entries.map(([, n]) => n))
-    return entries.map(([c, n]) => ({ country: c, count: n, pct: n / max }))
   }, [records])
 
   // ── Empty state ───────────────────────────────────────────────────────────
@@ -207,32 +159,8 @@ export function Home() {
           </div>
         </div>
 
-        {/* ── SERP Distribution + Leaderboard + Movers ─────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr_1fr] gap-4">
-
-          {/* SERP Distribution */}
-          <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
-            style={{ animation: 'fadeUp 0.35s ease 0.08s both' }}
-          >
-            <SectionHeader title="SERP Distribution" subtitle="Position frequency · current snapshot" />
-            <div className="px-5 pt-5 pb-4 flex flex-col flex-1">
-              <SerpLineChart buckets={buckets} />
-              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-[#F0EFEA] flex-wrap">
-                {([
-                  { color: '#059669', label: '1–3'         },
-                  { color: '#34D399', label: '4–10'        },
-                  { color: '#F59E0B', label: '11–100'      },
-                  { color: '#0A0A0A', label: 'Not ranking' },
-                ] as const).map(({ color, label }) => (
-                  <div key={label} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                    <span className="text-[11px] text-[#8A8A85]">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+        {/* ── Leaderboard + Movers ──────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
 
           {/* Brand Leaderboard */}
           <section
@@ -365,31 +293,18 @@ export function Home() {
 
         </div>
 
-        {/* ── Country + Navigate ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-x-hidden relative min-h-[260px] sm:min-h-[340px]"
-            style={{ animation: 'fadeUp 0.35s ease 0.16s both' }}
-          >
-            <SectionHeader title="Country Coverage" subtitle="Record volume by territory" />
-            <div className="absolute inset-0 top-[57px]">
-              <CountryMap data={countryBars} />
-            </div>
-          </section>
-
-          <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
-            style={{ animation: 'fadeUp 0.35s ease 0.18s both' }}
-          >
-            <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
-            <div className="grid grid-cols-2 gap-3 p-5">
-              <NavCard label="BP Sites"    hint="Brand × keyword matrix"  onClick={() => navigate('/bp-sites')} />
-              <NavCard label="FTDs"        hint="First-time depositors"   onClick={() => navigate('/ftds')} />
-              <NavCard label="Import Data" hint="Upload an XLSX snapshot" onClick={ctx.onOpenUpload} highlight />
-            </div>
-          </section>
-        </div>
+        {/* ── Navigate ─────────────────────────────────────────────────────── */}
+        <section
+          className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+          style={{ animation: 'fadeUp 0.35s ease 0.18s both' }}
+        >
+          <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
+          <div className="grid grid-cols-2 gap-3 p-5">
+            <NavCard label="BP Sites"    hint="Brand × keyword matrix"  onClick={() => navigate('/bp-sites')} />
+            <NavCard label="FTDs"        hint="First-time depositors"   onClick={() => navigate('/ftds')} />
+            <NavCard label="Import Data" hint="Upload an XLSX snapshot" onClick={ctx.onOpenUpload} highlight />
+          </div>
+        </section>
 
       </div>
     </div>
@@ -397,123 +312,6 @@ export function Home() {
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
-
-function SerpLineChart({ buckets }: { buckets: { key: string; label: string; count: number; pct: number }[] }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [dims, setDims] = useState({ width: 300, height: 160 })
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; count: number; label: string } | null>(null)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect
-      setDims({ width, height })
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  const { width, height } = dims
-  const N = buckets.length
-  const PAD_TOP = 24
-  const PAD_BOTTOM = 20
-  const chartH = height - PAD_TOP - PAD_BOTTOM
-  const colW = width / N
-
-  const points = buckets.map((b, i) => ({
-    x: colW * i + colW / 2,
-    y: PAD_TOP + (1 - b.pct) * chartH,
-    color: DOT_COLOR[b.key] ?? '#F59E0B',
-    count: b.count,
-    label: b.label,
-  }))
-
-  return (
-    <div ref={containerRef} className="relative flex-1 min-h-[120px]">
-      <svg width="100%" height="100%">
-        <defs>
-          {points.slice(0, -1).map((p, i) => (
-            <linearGradient
-              key={i}
-              id={`seg-${i}`}
-              x1={p.x} y1={p.y}
-              x2={points[i + 1].x} y2={points[i + 1].y}
-              gradientUnits="userSpaceOnUse"
-            >
-              <stop offset="0%" stopColor={p.color} />
-              <stop offset="100%" stopColor={points[i + 1].color} />
-            </linearGradient>
-          ))}
-        </defs>
-
-        {/* Gray background columns */}
-        {points.map((p, i) => (
-          <rect
-            key={i}
-            x={colW * i + 2} y={PAD_TOP}
-            width={colW - 4} height={chartH}
-            rx={6} fill="#F0F0EE"
-          />
-        ))}
-
-        {/* Gradient line segments */}
-        {points.slice(0, -1).map((p, i) => (
-          <line
-            key={i}
-            x1={p.x} y1={p.y}
-            x2={points[i + 1].x} y2={points[i + 1].y}
-            stroke={`url(#seg-${i})`}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-        ))}
-
-        {/* Dots + count labels + x-axis labels */}
-        {points.map((p, i) => (
-          <g key={i}>
-            <text
-              x={p.x} y={p.y - 8}
-              textAnchor="middle"
-              fontSize={9} fill="#9CA3AF"
-              fontFamily="ui-monospace,monospace"
-            >
-              {p.count}
-            </text>
-            <circle
-              cx={p.x} cy={p.y} r={4} fill={p.color}
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={() => setTooltip({ x: p.x, y: p.y, count: p.count, label: p.label })}
-              onMouseLeave={() => setTooltip(null)}
-            />
-            <text
-              x={p.x} y={height - 4}
-              textAnchor="middle"
-              fontSize={8} fill="#ABABAA"
-              fontFamily="ui-sans-serif,sans-serif"
-            >
-              {p.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-
-      {tooltip && (
-        <div
-          className="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white shadow-lg whitespace-nowrap"
-          style={{
-            left: tooltip.x,
-            top: tooltip.y - 40,
-            transform: tooltip.x > width / 2 ? 'translateX(-100%) translateX(-6px)' : 'translateX(6px)',
-            background: '#0A0A0A',
-          }}
-        >
-          {tooltip.count} keywords on {tooltip.label === 'NR' ? 'Not Ranking' : `Page ${tooltip.label}`}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -604,175 +402,3 @@ function NavCard({
   )
 }
 
-// ISO alpha-2 → numeric code (world-atlas uses numeric codes)
-const ALPHA2_TO_NUMERIC: Record<string, string> = {
-  AU: '036', CA: '124', DE: '276', IT: '380', NZ: '554',
-  GB: '826', US: '840', FR: '250', ES: '724', NL: '528',
-  BE: '056', AT: '040', CH: '756', SE: '752', NO: '578',
-  DK: '208', FI: '246', PL: '616', CZ: '203', PT: '620',
-  IE: '372', BR: '076', MX: '484', AR: '032', JP: '392',
-  KR: '410', IN: '356', SG: '702', ZA: '710', NG: '566',
-}
-
-const ALPHA2_TO_NAME: Record<string, string> = {
-  AU: 'Australia', CA: 'Canada', DE: 'Germany', IT: 'Italy', NZ: 'New Zealand',
-  GB: 'United Kingdom', US: 'United States', FR: 'France', ES: 'Spain', NL: 'Netherlands',
-  BE: 'Belgium', AT: 'Austria', CH: 'Switzerland', SE: 'Sweden', NO: 'Norway',
-  DK: 'Denmark', FI: 'Finland', PL: 'Poland', CZ: 'Czech Republic', PT: 'Portugal',
-  IE: 'Ireland', BR: 'Brazil', MX: 'Mexico', AR: 'Argentina', JP: 'Japan',
-  KR: 'South Korea', IN: 'India', SG: 'Singapore', ZA: 'South Africa', NG: 'Nigeria',
-}
-
-// Flag-representative colors per country (fallback palette for unknown countries)
-const FLAG_COLORS: Record<string, string> = {
-  AU: '#0033A0', // Australia   — blue field
-  CA: '#D80621', // Canada      — maple leaf red
-  DE: '#FFCE00', // Germany     — gold stripe
-  IT: '#009246', // Italy       — green stripe
-  NZ: '#00247D', // New Zealand — dark blue field
-  GB: '#012169', // UK          — Union Jack blue
-  US: '#B22234', // USA         — red stripes
-  FR: '#0055A4', // France      — blue
-  ES: '#AA151B', // Spain       — red
-  NL: '#AE1C28', // Netherlands — red
-  JP: '#BC002D', // Japan       — red circle
-  BR: '#009C3B', // Brazil      — green
-  IN: '#FF9933', // India       — saffron
-  ZA: '#007A4D', // South Africa— green
-  SE: '#006AA7', // Sweden      — blue
-  NO: '#EF2B2D', // Norway      — red
-  BE: '#FAE042', // Belgium     — yellow
-  CH: '#FF0000', // Switzerland — red
-  PL: '#DC143C', // Poland      — red
-  AT: '#ED2939', // Austria     — red
-}
-const FLAG_PALETTE = ['#CC0000','#F59E0B','#10B981','#38BDF8','#8B5CF6','#EC4899','#F97316','#14B8A6']
-
-function CountryMap({ data }: { data: { country: string; count: number; pct: number }[] }) {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; count: number; color: string } | null>(null)
-  const [zoom, setZoom]       = useState(1)
-  const [center, setCenter]   = useState<[number, number]>([10, 10])
-
-  const colorByAlpha2 = useMemo(() => {
-    const m: Record<string, string> = {}
-    data.forEach((d, i) => {
-      const code = d.country.toUpperCase()
-      m[code] = FLAG_COLORS[code] ?? FLAG_PALETTE[i % FLAG_PALETTE.length]
-    })
-    return m
-  }, [data])
-
-  const byNumeric = useMemo(() => {
-    const m: Record<string, { count: number; alpha2: string }> = {}
-    for (const d of data) {
-      const num = ALPHA2_TO_NUMERIC[d.country.toUpperCase()]
-      if (num) m[num] = { count: d.count, alpha2: d.country.toUpperCase() }
-    }
-    return m
-  }, [data])
-
-  function fillColor(numericId: string): string {
-    const entry = byNumeric[numericId]
-    if (!entry) return '#EBEBEA'
-    return colorByAlpha2[entry.alpha2] ?? '#EBEBEA'
-  }
-
-  return (
-    <div className="absolute inset-0 flex flex-col">
-      {/* Zoom controls */}
-      <div className="absolute top-2 right-3 z-10 flex flex-col gap-1">
-        <button
-          onClick={() => setZoom((z) => Math.min(z * 1.6, 12))}
-          className="w-6 h-6 rounded-md bg-white border border-[#E5E4DF] text-[#0A0A0A] text-[13px] font-semibold flex items-center justify-center shadow-sm hover:bg-[#F5F4EF] transition-colors leading-none"
-        >+</button>
-        <button
-          onClick={() => { setZoom((z) => Math.max(z / 1.6, 1)); if (zoom / 1.6 <= 1) setCenter([10, 10]) }}
-          className="w-6 h-6 rounded-md bg-white border border-[#E5E4DF] text-[#0A0A0A] text-[13px] font-semibold flex items-center justify-center shadow-sm hover:bg-[#F5F4EF] transition-colors leading-none"
-        >−</button>
-      </div>
-      <div className="flex-1 min-h-0">
-        <ComposableMap
-          projection="geoNaturalEarth1"
-          style={{ width: '100%', height: '100%' }}
-          projectionConfig={{ scale: 140, center: [10, 10] }}
-        >
-          <ZoomableGroup
-            zoom={zoom}
-            center={center}
-            minZoom={1}
-            maxZoom={12}
-            onMoveEnd={({ zoom: z, coordinates }) => { setZoom(z); setCenter(coordinates as [number, number]) }}
-          >
-            <Geographies geography="/countries-110m.json">
-              {({ geographies }) =>
-                geographies.map((geo) => {
-                  const id = geo.id as string
-                  const entry = byNumeric[id]
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={fillColor(id)}
-                      stroke="#FFFFFF"
-                      strokeWidth={0.4}
-                      style={{
-                        default: { outline: 'none', cursor: entry ? 'pointer' : 'default' },
-                        hover:   { outline: 'none', opacity: entry ? 0.75 : 1, cursor: entry ? 'pointer' : 'default' },
-                        pressed: { outline: 'none' },
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!entry) return
-                        const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect()
-                        const svgEl = (e.target as SVGElement).closest('.w-full')!.getBoundingClientRect()
-                        setTooltip({
-                          x: e.clientX - svgEl.left,
-                          y: e.clientY - svgEl.top,
-                          name: ALPHA2_TO_NAME[entry.alpha2] ?? entry.alpha2,
-                          count: entry.count,
-                          color: colorByAlpha2[entry.alpha2],
-                        })
-                      }}
-                      onMouseMove={(e) => {
-                        if (!entry) return
-                        const svgEl = (e.target as SVGElement).closest('.w-full')!.getBoundingClientRect()
-                        setTooltip((prev) => prev ? { ...prev, x: e.clientX - svgEl.left, y: e.clientY - svgEl.top } : null)
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                    />
-                  )
-                })
-              }
-            </Geographies>
-          </ZoomableGroup>
-        </ComposableMap>
-      </div>
-      {tooltip && (
-        <div
-          className="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white shadow-lg whitespace-nowrap"
-          style={{
-            left: tooltip.x + 10,
-            top:  tooltip.y - 36,
-            background: tooltip.color,
-          }}
-        >
-          {tooltip.name}
-          <span className="ml-1.5 font-normal opacity-80">{tooltip.count.toLocaleString()} records</span>
-        </div>
-      )}
-      {data.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap px-5 pb-4 pt-1 border-t border-[#F5F4EF]">
-          {data.map((d) => (
-            <div key={d.country} className="flex items-center gap-1.5">
-              <div
-                className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: colorByAlpha2[d.country.toUpperCase()] }}
-              />
-              <span className="font-mono text-[11px] font-semibold text-[#0A0A0A]">{d.country}</span>
-              <span className="font-mono text-[11px] text-[#ABABAA]">{d.count}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
