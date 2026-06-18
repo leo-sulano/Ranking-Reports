@@ -193,7 +193,6 @@ export function Home() {
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.keywords.toLocaleString()}
             </div>
-            <div className="absolute bottom-3 right-4 text-white/20 text-[11px] font-medium">View list →</div>
           </div>
 
           {/* Brands — red card */}
@@ -207,7 +206,6 @@ export function Home() {
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.brands}
             </div>
-            <div className="absolute bottom-3 right-4 text-white/30 text-[11px] font-medium">View list →</div>
           </div>
 
           {/* Countries — #ffcc00 card */}
@@ -221,7 +219,6 @@ export function Home() {
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
               {totals.countries}
             </div>
-            <div className="absolute bottom-3 right-4 text-black/20 text-[11px] font-medium">View list →</div>
           </div>
         </div>
 
