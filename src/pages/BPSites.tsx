@@ -232,7 +232,6 @@ function BrandView({
     [brand, mainDomain],
   )
 
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   // Position filter from URL (?pos=p1 | top3 | top10)
@@ -242,20 +241,26 @@ function BrandView({
     return 'all'
   })
 
-  // Resolve domainFilter — only 'bp' and known BP domains are valid; everything else → All
-  const resolvedFilter = useMemo(() => {
-    if (!domainFilter) return undefined
-    if (domainFilter === 'bp') return domainFilter
-    if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return domainFilter
-    return undefined
-  }, [domainFilter, bpDomains])
+  // Site filter — local state supporting multi-select for individual BP domains
+  const [siteMode, setSiteMode] = useState<'all' | 'bp' | 'custom'>(() => {
+    if (!domainFilter) return 'all'
+    if (domainFilter === 'bp') return 'bp'
+    if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return 'custom'
+    return 'all'
+  })
+  const [customDomains, setCustomDomains] = useState<string[]>(() => {
+    if (!domainFilter || domainFilter === 'bp') return []
+    const match = bpDomains.find((d) => d.toLowerCase() === domainFilter.toLowerCase())
+    return match ? [match] : []
+  })
 
-  const showMain = !resolvedFilter
+  const showMain = siteMode === 'all'
   const visibleBpDomains = useMemo(() => {
-    if (!resolvedFilter || resolvedFilter === 'bp') return bpDomains
-    const match = bpDomains.find((d) => d.toLowerCase() === resolvedFilter.toLowerCase())
-    return match ? [match] : bpDomains
-  }, [resolvedFilter, bpDomains])
+    if (siteMode === 'all' || siteMode === 'bp') return bpDomains
+    return bpDomains.filter((d) =>
+      customDomains.some((cd) => cd.toLowerCase() === d.toLowerCase()),
+    )
+  }, [siteMode, customDomains, bpDomains])
 
   // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
@@ -294,6 +299,19 @@ function BrandView({
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
       return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+    })
+  }
+
+  const handleSiteAll = () => { setSiteMode('all'); setCustomDomains([]) }
+  const handleSiteBP  = () => { setSiteMode('bp');  setCustomDomains([]) }
+  const handleToggleDomain = (domain: string) => {
+    setCustomDomains((prev) => {
+      const already = prev.some((d) => d.toLowerCase() === domain.toLowerCase())
+      const next = already
+        ? prev.filter((d) => d.toLowerCase() !== domain.toLowerCase())
+        : [...prev, domain]
+      setSiteMode(next.length === 0 ? 'all' : 'custom')
+      return next
     })
   }
 
@@ -419,12 +437,12 @@ function BrandView({
               Sites
             </span>
             <SiteFilter
-              resolvedFilter={resolvedFilter}
+              siteMode={siteMode}
+              customDomains={customDomains}
               bpDomains={bpDomains}
-              onSelect={(val) => {
-                const base = `/bp-sites/${brandToSlug(brand.name)}`
-                navigate(val ? `${base}/${val}` : base)
-              }}
+              onSelectAll={handleSiteAll}
+              onSelectBP={handleSiteBP}
+              onToggleDomain={handleToggleDomain}
             />
 
             <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
@@ -757,16 +775,22 @@ function DateOption({
   )
 }
 
-// ─── SiteFilter — custom dropdown matching StatsDateFilter style ──────────────
+// ─── SiteFilter — custom dropdown with multi-select for individual BP domains ──
 
 function SiteFilter({
-  resolvedFilter,
+  siteMode,
+  customDomains,
   bpDomains,
-  onSelect,
+  onSelectAll,
+  onSelectBP,
+  onToggleDomain,
 }: {
-  resolvedFilter: string | undefined
+  siteMode: 'all' | 'bp' | 'custom'
+  customDomains: string[]
   bpDomains: string[]
-  onSelect: (val: string) => void
+  onSelectAll: () => void
+  onSelectBP: () => void
+  onToggleDomain: (domain: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -785,11 +809,14 @@ function SiteFilter({
     }
   }, [open])
 
-  const label = !resolvedFilter
-    ? `All · ${bpDomains.length + 1} sites`
-    : resolvedFilter === 'bp'
-      ? `BP Sites · ${bpDomains.length}`
-      : resolvedFilter
+  const label =
+    siteMode === 'all'
+      ? `All · ${bpDomains.length + 1} sites`
+      : siteMode === 'bp'
+        ? `BP Sites · ${bpDomains.length}`
+        : customDomains.length === 1
+          ? customDomains[0]
+          : `${customDomains.length} sites`
 
   return (
     <div ref={ref} className="relative">
@@ -808,33 +835,37 @@ function SiteFilter({
       </div>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]">
+        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[210px] animate-[modalIn_0.12s_ease]">
           {/* All */}
           <SiteOption
             label="All"
-            selected={!resolvedFilter}
-            onClick={() => { onSelect(''); setOpen(false) }}
+            selected={siteMode === 'all'}
+            onClick={() => { onSelectAll(); setOpen(false) }}
           />
           <div className="border-t border-[#E2E8F0]" />
           {/* BP Sites */}
           <SiteOption
             label="BP Sites"
-            selected={resolvedFilter === 'bp'}
-            onClick={() => { onSelect('bp'); setOpen(false) }}
+            selected={siteMode === 'bp'}
+            onClick={() => { onSelectBP(); setOpen(false) }}
           />
-          {/* Individual */}
+          {/* Individual BP domains — checkbox multi-select, stays open */}
           {bpDomains.length > 0 && (
             <>
               <div className="border-t border-[#E2E8F0]" />
-              {bpDomains.map((d) => (
-                <SiteOption
-                  key={d}
-                  label={d}
-                  selected={resolvedFilter === d}
-                  onClick={() => { onSelect(d); setOpen(false) }}
-                  indent
-                />
-              ))}
+              {bpDomains.map((d) => {
+                const checked = customDomains.some((cd) => cd.toLowerCase() === d.toLowerCase())
+                return (
+                  <SiteOption
+                    key={d}
+                    label={d}
+                    selected={checked}
+                    multiSelect
+                    onClick={() => onToggleDomain(d)}
+                    indent
+                  />
+                )
+              })}
             </>
           )}
         </div>
@@ -848,11 +879,13 @@ function SiteOption({
   selected,
   onClick,
   indent = false,
+  multiSelect = false,
 }: {
   label: string
   selected: boolean
   onClick: () => void
   indent?: boolean
+  multiSelect?: boolean
 }) {
   return (
     <button
@@ -860,10 +893,28 @@ function SiteOption({
       onClick={onClick}
       className={`w-full flex items-center justify-between text-[12px] text-left transition-colors ${
         indent ? 'px-5' : 'px-3'
-      } py-2 ${selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'}`}
+      } py-2 ${
+        multiSelect
+          ? selected
+            ? 'bg-[#F0F9FF] text-[#0F172A]'
+            : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+          : selected
+            ? 'bg-[#0F172A] text-white'
+            : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+      }`}
     >
-      <span className="font-medium truncate">{label}</span>
-      {selected && <Check size={13} strokeWidth={2.5} className="shrink-0 ml-2" />}
+      <span className="font-medium truncate mr-2">{label}</span>
+      {multiSelect ? (
+        <div
+          className={`w-[13px] h-[13px] shrink-0 rounded-[3px] border flex items-center justify-center ${
+            selected ? 'bg-[#0F172A] border-[#0F172A]' : 'border-[#CBD5E1] bg-white'
+          }`}
+        >
+          {selected && <Check size={9} strokeWidth={3} className="text-white" />}
+        </div>
+      ) : (
+        selected && <Check size={13} strokeWidth={2.5} className="shrink-0" />
+      )}
     </button>
   )
 }
@@ -1051,6 +1102,11 @@ function SnapshotMatrix({
     return map
   }, [snapshot])
 
+  // Guarantee horizontal scroll on any screen width.
+  // Table is always 1.2× the usable viewport width so the scroll container
+  // always overflows, keeping the keyword sticky column functional.
+  const tableMinWidth = Math.round((window.innerWidth - 56) * 1.2)
+
   return (
     <div
       className="bg-white rounded-[6px] text-black shrink-0"
@@ -1099,7 +1155,7 @@ function SnapshotMatrix({
 
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full">
+        <table className="border-collapse text-[11px] w-max" style={{ minWidth: tableMinWidth }}>
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
