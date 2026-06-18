@@ -996,6 +996,12 @@ function SnapshotMatrix({
       ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
       : null
     if (!lastTh) return
+    const tableEl = scrollEl.querySelector('table') as HTMLElement | null
+    if (!tableEl) return
+    if (tableEl.offsetWidth <= scrollEl.clientWidth) {
+      setScrollRightPad(0)
+      return
+    }
     const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
     setScrollRightPad(Math.max(0, pad))
   })
@@ -1171,7 +1177,7 @@ function SnapshotMatrix({
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto"
            style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
-        <table className="border-collapse text-[11px] w-max">
+        <table className="border-collapse text-[11px] min-w-full">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>

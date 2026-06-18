@@ -506,7 +506,9 @@ function MoverGroup({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-[11px] text-[#3A3A3A] truncate">{kw.record.keyword}</div>
-                        <div className="font-mono text-[10px] text-[#ABABAA]">{kw.record.country} · pos {kw.record.position}</div>
+                        <div className="font-mono text-[10px] text-[#ABABAA]">
+                          {kw.record.country} · {(() => { const p = parsePosition(kw.record.previous); return p === null ? '' : `${p === 'NR' ? 'NR' : p} → ` })()}{kw.record.position}
+                        </div>
                       </div>
                       <span
                         className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
