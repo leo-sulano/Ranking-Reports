@@ -898,7 +898,17 @@ function SnapshotMatrix({
   isLatest: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const keywordColRef = useRef<HTMLTableCellElement>(null)
+  const domainRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const [scrolled, setScrolled] = useState(false)
+
+  const scrollToDomain = (key: string) => {
+    const el = domainRefs.current[key]
+    const scrollEl = scrollRef.current
+    if (!el || !scrollEl) return
+    const kwWidth = keywordColRef.current?.offsetWidth ?? 0
+    scrollEl.scrollTo({ left: el.offsetLeft - kwWidth, behavior: 'smooth' })
+  }
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -1060,6 +1070,31 @@ function SnapshotMatrix({
             Latest
           </span>
         )}
+        <div className="ml-auto flex items-center gap-1">
+          {showMain && (
+            <button
+              onClick={() => scrollToDomain(mainDomain)}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-[3px] whitespace-nowrap transition-colors"
+              style={{ background: 'rgba(255,255,255,0.22)', color: DATE_BAND_FG }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.42)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+            >
+              MAIN
+            </button>
+          )}
+          {bpDomains.map((bp, i) => (
+            <button
+              key={bp}
+              onClick={() => scrollToDomain(bp)}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-[3px] whitespace-nowrap transition-colors"
+              style={{ background: 'rgba(255,255,255,0.22)', color: DATE_BAND_FG }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.42)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+            >
+              BP{i + 1}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Horizontal matrix */}
@@ -1070,6 +1105,7 @@ function SnapshotMatrix({
           <thead>
             <tr>
               <th
+                ref={keywordColRef}
                 rowSpan={2}
                 className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
                 style={{
@@ -1084,6 +1120,7 @@ function SnapshotMatrix({
               </th>
               {showMain && (
                 <th
+                  ref={(el) => { domainRefs.current[mainDomain] = el }}
                   colSpan={mainColCount}
                   className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
                   style={{
@@ -1103,6 +1140,7 @@ function SnapshotMatrix({
                 return (
                   <th
                     key={`bp-h-${bp}`}
+                    ref={(el) => { domainRefs.current[bp] = el }}
                     colSpan={bpCols.length}
                     className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
                     style={{
