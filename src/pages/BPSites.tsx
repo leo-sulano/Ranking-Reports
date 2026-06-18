@@ -1102,10 +1102,17 @@ function SnapshotMatrix({
     return map
   }, [snapshot])
 
-  // Guarantee horizontal scroll on any screen width.
-  // Table is always 1.2× the usable viewport width so the scroll container
-  // always overflows, keeping the keyword sticky column functional.
-  const tableMinWidth = Math.round((window.innerWidth - 56) * 1.2)
+  // Size the table so that at maximum scroll the last data column lands
+  // right beside the sticky keyword column (frozen-column spreadsheet feel).
+  // Derivation: at maxScroll = TW - C, the first visible data position is
+  // (TW - C + K). Setting that equal to the last column's left edge gives:
+  //   TW = estNaturalWidth + C - keyColPx - oneColPx
+  const totalDataCols =
+    (showMain ? mainDomainCols.length : 0) +
+    bpDomains.reduce((sum, bp) => sum + (domainCountries.get(bp.toLowerCase())?.length ?? 0), 0)
+  const clientPx      = window.innerWidth - 56   // subtract sidebar
+  const estNaturalPx  = totalDataCols * 100 + 130 // ~100 px/col + 130 px keyword
+  const tableMinWidth = Math.max(estNaturalPx + clientPx - 230, clientPx)
 
   return (
     <div
