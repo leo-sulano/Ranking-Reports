@@ -240,3 +240,31 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** Feature
 
 ---
+
+**Task Title:** BP Sites — Horizontal Scroll Refinements & Interactivity
+**Task Description:** Comprehensive polish pass on the BP Sites horizontal scroll table. Forced the table to always overflow for consistent horizontal scroll behaviour. Added domain scroll-jump buttons in the snapshot date band for fast column navigation. Fixed the sticky keyword column by switching `overflow: hidden` to `overflow: clip` so it no longer breaks scroll. Added a scroll shadow to the sticky keyword column as a visual cue. Tuned `minWidth` using real DOM measurements so the last domain column lands exactly beside the keyword column at max scroll. Made the table fill full viewport width when fewer sites are selected, and skipped the scroll-pad when no overflow exists. Always renders all domain columns regardless of whether data is present so the grid never shifts. Made individual BP Sites domain rows clickable with hover effects for quicker navigation.
+**Date Completed:** June 18, 2026
+**Label:** UI
+
+---
+
+**Task Title:** Top Movers — Group by Site with Expandable Keyword List
+**Task Description:** Redesigned the Top Movers widget to group movers by site (domain) rather than showing a flat list. Each site row is expandable to reveal its individual keyword movements. This makes the widget scannable at a glance while still surfacing keyword-level detail on demand.
+**Date Completed:** June 18, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Hero Metric Cards — Clickable with Detail Modal
+**Task Description:** Made the Keywords, Brands, and Countries hero metric cards on the home dashboard clickable. Each card opens a detail modal listing the underlying items (e.g. all tracked keywords, all brands, all countries). Removed the 'View list →' text hint from the cards since the click target is now the entire card.
+**Date Completed:** June 18, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Brand Leaderboard — Rank-Change Indicator, CVG%, and Clickable Values
+**Task Description:** Added a rank-change indicator column to the Brand Leaderboard showing position movement vs the previous snapshot. Added a CVG% (coverage percentage) column. Color-aligned the summary cards for visual consistency. Made leaderboard row values and Top Movers entries clickable so users can drill into brand details directly from the home page.
+**Date Completed:** June 18, 2026
+**Label:** Feature
+
+---

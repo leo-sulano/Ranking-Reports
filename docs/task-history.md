@@ -385,3 +385,51 @@ Refactored the BP Sites and LP Sites ranking tables to support horizontal scroll
 **Label:** Feature
 
 Updated the AI assistant to always include the specific site domain alongside the brand name when reporting keyword movers, gainers, and losers. Added a `domain` field to the `Mover` and `Transition` types in `src/components/Assistant/types.ts`, propagated it through `computeMovers` and `computeTransitions` in `src/lib/assistantDigest.ts`, and updated the Edge Function system prompt in `supabase/functions/assistant/index.ts` to instruct the AI to cite the exact domain (e.g. `rocketspin.com`) next to the brand name in every mover/gained/lost entry.
+
+---
+
+## Task 35: BP Sites — Horizontal Scroll Refinements & Interactivity
+
+**Date:** 2026-06-18
+**PMS Task ID:** cmqjoixe7000204jru8a1i65x
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Comprehensive polish pass on the BP Sites horizontal scroll table. Forced the table to always overflow for consistent horizontal scroll behaviour. Added domain scroll-jump buttons in the snapshot date band for fast column navigation. Fixed the sticky keyword column by switching `overflow: hidden` to `overflow: clip` so it no longer breaks scroll. Added a scroll shadow to the sticky keyword column as a visual cue. Tuned `minWidth` using real DOM measurements so the last domain column lands exactly beside the keyword column at max scroll. Made the table fill full viewport width when fewer sites are selected, and skipped the scroll-pad when no overflow exists. Always renders all domain columns regardless of whether data is present so the grid never shifts. Made individual BP Sites domain rows clickable with hover effects for quicker navigation.
+
+---
+
+## Task 36: Top Movers — Group by Site with Expandable Keyword List
+
+**Date:** 2026-06-18
+**PMS Task ID:** cmqjoj3i000010bjglzqrmfkw
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Redesigned the Top Movers widget to group movers by site (domain) rather than showing a flat list. Each site row is expandable to reveal its individual keyword movements. This makes the widget scannable at a glance while still surfacing keyword-level detail on demand.
+
+---
+
+## Task 37: Hero Metric Cards — Clickable with Detail Modal
+
+**Date:** 2026-06-18
+**PMS Task ID:** cmqjoja1h00030bjgi6vm6jzz
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Made the Keywords, Brands, and Countries hero metric cards on the home dashboard clickable. Each card opens a detail modal listing the underlying items (e.g. all tracked keywords, all brands, all countries). Removed the 'View list →' text hint from the cards since the click target is now the entire card.
+
+---
+
+## Task 38: Brand Leaderboard — Rank-Change Indicator, CVG%, and Clickable Values
+
+**Date:** 2026-06-18
+**PMS Task ID:** cmqjojh4900050bjgv8sbxxub
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Added a rank-change indicator column to the Brand Leaderboard showing position movement vs the previous snapshot. Added a CVG% (coverage percentage) column. Color-aligned the summary cards for visual consistency. Made leaderboard row values and Top Movers entries clickable so users can drill into brand details directly from the home page.
