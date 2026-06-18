@@ -22,12 +22,16 @@ export function Home() {
     records: RankingRecord[]
   } | null>(null)
 
+  const [metricModal, setMetricModal] = useState<'keywords' | 'brands' | 'countries' | null>(null)
+
   useEffect(() => {
-    if (!kwModal) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setKwModal(null) }
+    if (!kwModal && !metricModal) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setKwModal(null); setMetricModal(null) }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [kwModal])
+  }, [kwModal, metricModal])
 
   const latestSnapshot = ctx.snapshots.find((s) => s.category === 'bp-sites') ?? ctx.snapshots[0]
   const records: RankingRecord[] = latestSnapshot?.records ?? []
@@ -63,6 +67,27 @@ export function Home() {
   }, [records])
 
   const page1Pct = totals.records ? Math.round((tier.top10 / totals.records) * 100) : 0
+
+  const metricDetails = useMemo(() => {
+    const kwMap    = new Map<string, number>()
+    const ctyMap   = new Map<string, number>()
+    const brandMap = new Map<string, { brand: Brand; count: number }>()
+    for (const r of records) {
+      const kw = r.keyword
+      kwMap.set(kw, (kwMap.get(kw) ?? 0) + 1)
+      ctyMap.set(r.country, (ctyMap.get(r.country) ?? 0) + 1)
+      const bName = brandOfDomain(r.domain)
+      if (bName) {
+        const brand = BRAND_BY_NAME[bName]
+        if (brand) brandMap.set(bName, { brand, count: (brandMap.get(bName)?.count ?? 0) + 1 })
+      }
+    }
+    return {
+      keywords:  [...kwMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([kw, count]) => ({ kw, count })),
+      countries: [...ctyMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([country, count]) => ({ country, count })),
+      brands:    [...brandMap.values()].sort((a, b) => b.count - a.count),
+    }
+  }, [records])
 
   const leaderboard = useMemo(() => {
     // Only use bp-sites snapshots (mirrors what BP Sites page shows) sorted newest-first
@@ -159,30 +184,44 @@ export function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
           {/* Keywords — solid black (top band of flag) */}
-          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#0A0A0A]">
+          <div
+            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#0A0A0A] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
+            onClick={() => setMetricModal('keywords')}
+          >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-2">Keywords</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.keywords.toLocaleString()}
             </div>
+            <div className="absolute bottom-3 right-4 text-white/20 text-[11px] font-medium">View list →</div>
           </div>
 
           {/* Brands — red card */}
-          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden" style={{ background: '#CC0000' }}>
+          <div
+            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
+            style={{ background: '#CC0000' }}
+            onClick={() => setMetricModal('brands')}
+          >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2">Brands</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.brands}
             </div>
+            <div className="absolute bottom-3 right-4 text-white/30 text-[11px] font-medium">View list →</div>
           </div>
 
           {/* Countries — #ffcc00 card */}
-          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden" style={{ background: '#ffcc00' }}>
+          <div
+            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
+            style={{ background: '#ffcc00' }}
+            onClick={() => setMetricModal('countries')}
+          >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-black" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/50 mb-2">Countries</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
               {totals.countries}
             </div>
+            <div className="absolute bottom-3 right-4 text-black/20 text-[11px] font-medium">View list →</div>
           </div>
         </div>
 
@@ -352,6 +391,14 @@ export function Home() {
           tier={kwModal.tier}
           records={kwModal.records}
           onClose={() => setKwModal(null)}
+        />
+      )}
+
+      {metricModal && (
+        <MetricModal
+          type={metricModal}
+          details={metricDetails}
+          onClose={() => setMetricModal(null)}
         />
       )}
     </div>
@@ -584,6 +631,92 @@ function KeywordModal({
                 </div>
               </div>
             ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+type MetricDetails = {
+  keywords:  { kw: string; count: number }[]
+  countries: { country: string; count: number }[]
+  brands:    { brand: Brand; count: number }[]
+}
+
+const METRIC_META = {
+  keywords:  { title: 'Keywords',  subtitle: 'All tracked keywords', color: '#0A0A0A', light: false },
+  brands:    { title: 'Brands',    subtitle: 'Active brands in snapshot', color: '#CC0000', light: false },
+  countries: { title: 'Countries', subtitle: 'Markets in snapshot', color: '#FFCC00', light: true },
+}
+
+function MetricModal({
+  type, details, onClose,
+}: {
+  type: 'keywords' | 'brands' | 'countries'
+  details: MetricDetails
+  onClose: () => void
+}) {
+  const meta = METRIC_META[type]
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(10,10,10,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-[460px] flex flex-col overflow-hidden"
+        style={{ maxHeight: '80vh', animation: 'fadeUp 0.2s ease both' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF] shrink-0">
+          <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: meta.color }} />
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-bold text-[#0A0A0A]">{meta.title}</div>
+            <div className="text-[11px] text-[#ABABAA] mt-0.5">{meta.subtitle}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[#ABABAA] hover:bg-[#F5F4EF] hover:text-[#0A0A0A] transition-colors shrink-0"
+          >×</button>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto flex-1 px-5 py-3">
+          {type === 'keywords' && (
+            <div className="divide-y divide-[#F3F2EE]">
+              {details.keywords.map(({ kw, count }) => (
+                <div key={kw} className="flex items-center justify-between gap-4 py-2">
+                  <span className="text-[13px] text-[#1A1A1A]">{kw}</span>
+                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} record{count !== 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {type === 'brands' && (
+            <div className="divide-y divide-[#F3F2EE]">
+              {details.brands.map(({ brand, count }) => (
+                <div key={brand.name} className="flex items-center gap-3 py-2.5">
+                  <div className="w-[3px] h-6 rounded-full shrink-0" style={{ background: brand.color }} />
+                  <span className="text-[13px] font-medium text-[#0A0A0A] flex-1">{brand.name}</span>
+                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {type === 'countries' && (
+            <div className="divide-y divide-[#F3F2EE]">
+              {details.countries.map(({ country, count }) => (
+                <div key={country} className="flex items-center justify-between gap-4 py-2">
+                  <span className="text-[13px] font-medium text-[#0A0A0A]">{country}</span>
+                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
