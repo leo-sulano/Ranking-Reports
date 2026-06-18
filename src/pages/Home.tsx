@@ -65,15 +65,21 @@ export function Home() {
   const page1Pct = totals.records ? Math.round((tier.top10 / totals.records) * 100) : 0
 
   const leaderboard = useMemo(() => {
-    const sorted = [...ctx.snapshots].sort(
-      (a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
-    )
+    // Only use bp-sites snapshots (mirrors what BP Sites page shows) sorted newest-first
+    const sorted = ctx.snapshots
+      .filter((s) => s.category === 'bp-sites')
+      .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
+
     return BRANDS.map((brand) => {
-      const set = new Set(brand.domains.map((d) => d.toLowerCase()))
-      // Use the most recent snapshot that contains records for this brand
+      const main = brand.mainDomain.toLowerCase()
+      // Exclude main domain — BP Sites stats only count BP partner domains
+      const bpSet = new Set(
+        brand.domains.filter((d) => d.toLowerCase() !== main).map((d) => d.toLowerCase())
+      )
+      // Use the most recent bp-sites snapshot that has records for this brand
       let own: RankingRecord[] = []
       for (const snap of sorted) {
-        const found = snap.records.filter((r) => set.has(r.domain.toLowerCase()))
+        const found = snap.records.filter((r) => bpSet.has(r.domain.toLowerCase()))
         if (found.length > 0) { own = found; break }
       }
       let p1 = 0, t3 = 0, t10 = 0
@@ -131,7 +137,7 @@ export function Home() {
       <div className="px-3 sm:px-6 py-4 sm:py-5 space-y-4">
 
         {/* ── Hero metric cards ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
           {/* Keywords — solid black (top band of flag) */}
           <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#0A0A0A]">
@@ -214,7 +220,7 @@ export function Home() {
                         >
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
-                            <span className="text-[13px] font-semibold truncate group-hover:underline" style={{ color: row.brand.color }}>
+                            <span className="text-[13px] font-medium truncate group-hover:underline text-[#0A0A0A]">
                               {row.brand.name}
                             </span>
                           </div>
@@ -227,14 +233,14 @@ export function Home() {
                           {row.p1 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
                           onClick={() => row.t3 > 0 && setKwModal({ brand: row.brand, tier: 'top3', records: row.records })}
                           title={row.t3 > 0 ? 'View Top-3 keywords' : undefined}
                         >
                           {row.t3 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600] cursor-pointer hover:text-[#9a3412] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#E86600] cursor-pointer hover:text-[#9a3412] hover:underline"
                           onClick={() => row.t10 > 0 && setKwModal({ brand: row.brand, tier: 'top10', records: row.records })}
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
@@ -431,38 +437,45 @@ function KeywordModal({
   onClose: () => void
 }) {
   const limit = TIER_LIMIT[tier]
-  const filtered = records
-    .filter((r) => {
-      const p = parsePosition(r.position)
-      return typeof p === 'number' && p >= 1 && p <= limit
-    })
+  const filtered = records.filter((r) => {
+    const p = parsePosition(r.position)
+    return typeof p === 'number' && p >= 1 && p <= limit
+  })
 
-  // Group by domain + country
-  const groups = filtered.reduce<Map<string, { domain: string; country: string; rows: typeof filtered }>>((acc, r) => {
-    const key = `${r.domain}||${r.country}`
-    if (!acc.has(key)) acc.set(key, { domain: r.domain, country: r.country, rows: [] })
-    acc.get(key)!.rows.push(r)
-    return acc
-  }, new Map())
-
-  const sortedGroups = [...groups.values()]
-    .sort((a, b) => a.domain.localeCompare(b.domain) || a.country.localeCompare(b.country))
-    .map((g) => ({
-      ...g,
-      rows: [...g.rows].sort((a, b) => {
-        const pa = parsePosition(a.position) as number
-        const pb = parsePosition(b.position) as number
-        return pa - pb || a.keyword.localeCompare(b.keyword)
-      }),
-    }))
-
-  function posBadgeStyle(pos: number) {
-    if (pos === 1)  return { bg: '#FFF3CD', color: '#92400E' }
-    if (pos <= 3)   return { bg: '#FFF0F0', color: '#CC0000' }
-    return              { bg: '#FFF4EC', color: '#E86600' }
+  // Group by domain → keyword → [{country, pos}]
+  type KwEntry = { country: string; pos: number }
+  const domainMap = new Map<string, Map<string, KwEntry[]>>()
+  for (const r of filtered) {
+    const pos = parsePosition(r.position) as number
+    if (!domainMap.has(r.domain)) domainMap.set(r.domain, new Map())
+    const kwMap = domainMap.get(r.domain)!
+    if (!kwMap.has(r.keyword)) kwMap.set(r.keyword, [])
+    kwMap.get(r.keyword)!.push({ country: r.country, pos })
   }
 
-  const tierBadgeStyle = posBadgeStyle(limit === 1 ? 1 : limit <= 3 ? 2 : 5)
+  const domainGroups = [...domainMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([domain, kwMap]) => {
+      const keywords = [...kwMap.entries()]
+        .map(([keyword, entries]) => ({
+          keyword,
+          entries: [...entries].sort((a, b) => a.pos - b.pos || a.country.localeCompare(b.country)),
+        }))
+        .sort((a, b) => {
+          const bestA = Math.min(...a.entries.map((e) => e.pos))
+          const bestB = Math.min(...b.entries.map((e) => e.pos))
+          return bestA - bestB || a.keyword.localeCompare(b.keyword)
+        })
+      const totalKw = keywords.length
+      return { domain, keywords, totalKw }
+    })
+
+  function tierBadgeStyle() {
+    if (limit === 1)  return { bg: '#FFF3CD', color: '#92400E' }
+    if (limit <= 3)   return { bg: '#FFF0F0', color: '#CC0000' }
+    return                   { bg: '#FFF4EC', color: '#E86600' }
+  }
+  const headerBadge = tierBadgeStyle()
 
   return (
     <div
@@ -485,7 +498,7 @@ function KeywordModal({
               </span>
               <span
                 className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: tierBadgeStyle.bg, color: tierBadgeStyle.color }}
+                style={{ background: headerBadge.bg, color: headerBadge.color }}
               >
                 {TIER_LABEL[tier]}
               </span>
@@ -503,44 +516,42 @@ function KeywordModal({
         </div>
 
         {/* Grouped content */}
-        <div className="overflow-y-auto flex-1">
-          {sortedGroups.length === 0 ? (
+        <div className="overflow-y-auto flex-1 px-5 py-3 space-y-5">
+          {domainGroups.length === 0 ? (
             <p className="text-[12px] text-[#ABABAA] text-center py-10">No keywords found.</p>
           ) : (
-            sortedGroups.map((group) => (
-              <div key={`${group.domain}||${group.country}`} className="border-b border-[#F5F4EF] last:border-b-0">
-                {/* Group header */}
-                <div className="flex items-center gap-2 px-5 py-2 bg-[#FAF9F5] sticky top-0 z-10">
-                  <span className="font-mono text-[11px] font-semibold text-[#0A0A0A]">{group.domain}</span>
-                  <span className="text-[#D8D7D2]">·</span>
-                  <span className="font-mono text-[11px] font-semibold text-[#CC0000]">{group.country}</span>
-                  <span className="ml-auto text-[10px] text-[#ABABAA]">{group.rows.length} kw</span>
+            domainGroups.map((group) => (
+              <div key={group.domain}>
+                {/* Domain header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: brand.color }} />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#0A0A0A]">
+                    {group.domain}
+                  </span>
+                  <span className="ml-auto text-[10px] text-[#ABABAA]">{group.totalKw} kw</span>
                 </div>
-                {/* Keywords */}
-                <table className="w-full text-left">
-                  <tbody>
-                    {group.rows.map((r, i) => {
-                      const pos = parsePosition(r.position) as number
-                      const { bg, color } = posBadgeStyle(pos)
-                      return (
-                        <tr
-                          key={`${r.keyword}-${i}`}
-                          className="border-t border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors"
-                        >
-                          <td className="pl-5 pr-2 py-2">
-                            <span
-                              className="inline-flex items-center justify-center font-mono text-[11px] font-bold w-7 h-6 rounded-lg"
-                              style={{ background: bg, color }}
-                            >
-                              {pos}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-[12px] font-medium text-[#0A0A0A]">{r.keyword}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                {/* Keyword rows */}
+                <div className="divide-y divide-[#F3F2EE]">
+                  {group.keywords.map(({ keyword, entries }) => (
+                    <div
+                      key={keyword}
+                      className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors"
+                    >
+                      <span className="text-[12px] text-[#1A1A1A]">{keyword}</span>
+                      <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
+                        {entries.map(({ country, pos }) => (
+                          <span
+                            key={`${country}-${pos}`}
+                            className="inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                            style={{ background: '#D6EFE7', color: '#0D5C42' }}
+                          >
+                            {country} <span className="opacity-70">#</span>{pos}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))
           )}

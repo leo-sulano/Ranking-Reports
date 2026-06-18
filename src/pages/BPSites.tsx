@@ -4,7 +4,6 @@ import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletCont
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
-import { EditableCell } from '../components/EditableCell'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
@@ -19,7 +18,6 @@ const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
 const MAIN_HEADER_BG = '#B4A7D6'   // light purple 2 (softer)
 const MAIN_CELL_BG   = '#D9D2E9'   // light purple 3 — country position cells
-const MAIN_AUX_BG    = '#CFE2F3'   // light cornflower-blue 3 — GSV / SV / AFF
 
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
   { headerBg: '#CCCCCC', cellBg: '#D9D9D9' }, // BP #1 — light grey 2 / 3
@@ -878,8 +876,28 @@ function SnapshotMatrix({
   }, [])
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
-  const mainColCount = 1 /* GSV */ + visibleCountries.length * 3 /* country + SV + AFF */
-  const bpColCount   = visibleCountries.length
+
+  // Per-domain: only the countries (from visibleCountries) that have at least one
+  // record in this snapshot — avoids rendering blank columns and caps scroll width.
+  const domainCountries = useMemo(() => {
+    const has = new Map<string, Set<string>>()
+    for (const r of snapshot.records) {
+      const dk = r.domain.toLowerCase()
+      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      if (!has.has(dk)) has.set(dk, new Set())
+      has.get(dk)!.add(ck)
+    }
+    const result = new Map<string, string[]>()
+    result.set(mainDomain, visibleCountries.filter(c => has.get(mainDomain)?.has(c)))
+    for (const bp of bpDomains) {
+      const dk = bp.toLowerCase()
+      result.set(dk, visibleCountries.filter(c => has.get(dk)?.has(c)))
+    }
+    return result
+  }, [snapshot, mainDomain, bpDomains, visibleCountries])
+
+  const mainDomainCols = domainCountries.get(mainDomain) ?? []
+  const mainColCount = mainDomainCols.length
 
   // keyword → domain → country → record for the immediately prior snapshot.
   // null when there is no older snapshot to compare against.
@@ -979,16 +997,6 @@ function SnapshotMatrix({
     return map
   }, [snapshot])
 
-  // keyword → GSV (denormalized on every record; just pick the first non-empty).
-  const gsvByKw = useMemo(() => {
-    const m: Record<string, string> = {}
-    for (const r of snapshot.records) {
-      const kl = r.keyword.toLowerCase()
-      if (!m[kl] && r.globalSearchVolume) m[kl] = r.globalSearchVolume
-    }
-    return m
-  }, [snapshot])
-
   return (
     <div
       className="bg-white rounded-[6px] overflow-hidden text-black shrink-0"
@@ -1044,11 +1052,13 @@ function SnapshotMatrix({
                 </th>
               )}
               {bpDomains.map((bp, bpIdx) => {
+                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
+                if (bpCols.length === 0) return null
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
                   <th
                     key={`bp-h-${bp}`}
-                    colSpan={bpColCount}
+                    colSpan={bpCols.length}
                     className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
                     style={{
                       background: palette.headerBg,
@@ -1067,68 +1077,38 @@ function SnapshotMatrix({
             <tr>
               {showMain && (
                 <Fragment>
-                  <th
-                    className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                    style={{
-                      background: MAIN_HEADER_BG,
-                      color: HEADER_FG,
-                      borderRight: borderStyle,
-                      borderBottom: borderStyle,
-                    }}
-                  >
-                    GSV
-                  </th>
-                  {visibleCountries.map((c, ci) => (
-                    <Fragment key={`main-sub-${c}`}>
-                      <th
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: MAIN_HEADER_BG,
-                          color: HEADER_FG,
-                          borderLeft: ci === 0 ? undefined : borderStyle,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        {c}
-                      </th>
-                      <th
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: MAIN_HEADER_BG,
-                          color: HEADER_FG,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        SV
-                      </th>
-                      <th
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: MAIN_HEADER_BG,
-                          color: HEADER_FG,
-                          borderRight: borderStyle,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        AFF
-                      </th>
-                    </Fragment>
+                  {mainDomainCols.map((c, ci) => (
+                    <th
+                      key={`main-sub-${c}`}
+                      className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                      style={{
+                        background: MAIN_HEADER_BG,
+                        color: HEADER_FG,
+                        borderLeft: ci === 0 ? undefined : borderStyle,
+                        borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
+                        borderBottom: borderStyle,
+                      }}
+                    >
+                      {c}
+                    </th>
                   ))}
                 </Fragment>
               )}
               {bpDomains.map((bp, bpIdx) => {
+                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
+                if (bpCols.length === 0) return null
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
                   <Fragment key={`bp-sub-${bp}`}>
-                    {visibleCountries.map((c, ci) => (
+                    {bpCols.map((c, ci) => (
                       <th
                         key={`bp-sub-${bp}-${c}`}
                         className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
                         style={{
                           background: palette.headerBg,
                           color: HEADER_FG,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
-                          borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
+                          borderLeft: borderStyle,
+                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
                         }}
                       >
@@ -1160,85 +1140,25 @@ function SnapshotMatrix({
 
                 {showMain && (
                   <Fragment>
-                    {/* MAIN — GSV (editable, applies to every record with this keyword) */}
-                    <td
-                      className="px-1 py-1 text-center align-middle text-[11px] w-[60px]"
-                      style={{
-                        background: MAIN_AUX_BG,
-                        color: '#0F172A',
-                        borderRight: borderStyle,
-                        borderBottom: borderStyle,
-                      }}
-                    >
-                      <EditableCell
-                        value={gsvByKw[kw] ?? ''}
-                        onSave={(next) => onEditCell(
-                          snapshot.id,
-                          { keyword: label },
-                          { globalSearchVolume: next },
-                        )}
-                      />
-                    </td>
-
-                    {/* MAIN — per-country triplets (country / SV / AFF) */}
-                    {visibleCountries.map((c, ci) => {
+                    {mainDomainCols.map((c, ci) => {
                       const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                      const sv  = rec?.searchVolume ?? ''
-                      const aff = rec?.affiliateUrl ?? ''
                       const prevRec = prevLookup?.[kw]?.[mainDomain]?.[c]
                       const crossSnapPrevPos = prevLookup !== null
                         ? parsePosition(prevRec?.position ?? '')
                         : undefined
                       return (
-                        <Fragment key={`main-cell-${kw}-${c}`}>
-                          <td
-                            className="px-2 py-1.5 text-center align-middle"
-                            style={{
-                              background: MAIN_CELL_BG,
-                              borderLeft: ci === 0 ? undefined : borderStyle,
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                          </td>
-                          <td
-                            className="px-1 py-1 text-center text-[11px] w-[60px]"
-                            style={{
-                              background: MAIN_AUX_BG,
-                              color: '#0F172A',
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            <EditableCell
-                              value={sv}
-                              onSave={(next) => onEditCell(
-                                snapshot.id,
-                                { keyword: label, domain: mainDomain, country: c },
-                                { searchVolume: next },
-                              )}
-                            />
-                          </td>
-                          <td
-                            className="px-1 py-1 text-center text-[11px] w-[60px] max-w-[60px]"
-                            style={{
-                              background: MAIN_AUX_BG,
-                              color: '#0F172A',
-                              borderRight: borderStyle,
-                              borderBottom: borderStyle,
-                            }}
-                          >
-                            <EditableCell
-                              value={aff}
-                              inputClassName="text-left"
-                              renderDisplay={(v) => <AffDisplay value={v} />}
-                              onSave={(next) => onEditCell(
-                                snapshot.id,
-                                { keyword: label, domain: mainDomain, country: c },
-                                { affiliateUrl: next },
-                              )}
-                            />
-                          </td>
-                        </Fragment>
+                        <td
+                          key={`main-cell-${kw}-${c}`}
+                          className="px-2 py-1.5 text-center align-middle"
+                          style={{
+                            background: MAIN_CELL_BG,
+                            borderLeft: ci === 0 ? undefined : borderStyle,
+                            borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
+                            borderBottom: borderStyle,
+                          }}
+                        >
+                          {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        </td>
                       )
                     })}
                   </Fragment>
@@ -1247,8 +1167,10 @@ function SnapshotMatrix({
                 {/* BP blocks */}
                 {bpDomains.map((bp, bpIdx) => {
                   const dk = bp.toLowerCase()
+                  const bpCols = domainCountries.get(dk) ?? []
+                  if (bpCols.length === 0) return null
                   const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
-                  return visibleCountries.map((c, ci) => {
+                  return bpCols.map((c, ci) => {
                     const rec = lookup?.[kw]?.[dk]?.[c]
                     const prevRec = prevLookup?.[kw]?.[dk]?.[c]
                     const crossSnapPrevPos = prevLookup !== null
@@ -1260,8 +1182,8 @@ function SnapshotMatrix({
                         className="px-2 py-1.5 text-center align-middle"
                         style={{
                           background: palette.cellBg,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
-                          borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
+                          borderLeft: borderStyle,
+                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
                         }}
                       >
@@ -1605,34 +1527,3 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── AffDisplay — hostname-only AFF render with click-through link ───────────
-//
-// Affiliate cells hold either a URL or a short label ("Lucky7even Casino").
-// Render hostname for URLs (keeps the column narrow) and full text for
-// non-URLs. The whole cell is wrapped in an EditableCell so click → edit;
-// the small ↗ icon opens the URL in a new tab without triggering edit.
-
-function AffDisplay({ value }: { value: string }) {
-  const isUrl = /^https?:\/\//i.test(value)
-  let hostname = value
-  if (isUrl) {
-    try { hostname = new URL(value).hostname.replace(/^www\./, '') } catch { hostname = value }
-  }
-  return (
-    <span className="inline-flex items-center gap-1 max-w-full" title={value}>
-      <span className="truncate text-[#0F172A]">{hostname}</span>
-      {isUrl && (
-        <a
-          href={value}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-[#2563EB] hover:underline shrink-0"
-          aria-label="Open affiliate link in new tab"
-        >
-          ↗
-        </a>
-      )}
-    </span>
-  )
-}
