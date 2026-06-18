@@ -996,12 +996,6 @@ function SnapshotMatrix({
       ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
       : null
     if (!lastTh) return
-    const tableEl = scrollEl.querySelector('table') as HTMLElement | null
-    if (!tableEl) return
-    if (tableEl.offsetWidth <= scrollEl.clientWidth) {
-      setScrollRightPad(0)
-      return
-    }
     const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
     setScrollRightPad(Math.max(0, pad))
   })
