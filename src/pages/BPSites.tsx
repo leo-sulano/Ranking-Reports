@@ -952,6 +952,7 @@ function SnapshotMatrix({
   const keywordColRef = useRef<HTMLTableCellElement>(null)
   const domainRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const [scrolled, setScrolled] = useState(false)
+  const [scrollRightPad, setScrollRightPad] = useState(0)
 
   const scrollToDomain = (key: string) => {
     const el = domainRefs.current[key]
@@ -979,6 +980,25 @@ function SnapshotMatrix({
       el.removeEventListener('scroll', onScroll)
     }
   }, [])
+
+  // After every render that may change column layout, measure real DOM widths so
+  // that at maximum scroll the last data column lands right beside the sticky
+  // keyword column — exactly like a frozen column in Google Sheets.
+  //   paddingRight = containerWidth - keywordWidth - lastColumnWidth
+  // At max scroll: scrollLeft = tableWidth + pad - cw, and
+  // first-visible-data = scrollLeft + kwWidth = tableWidth - lastColWidth ✓
+  useEffect(() => {
+    const scrollEl  = scrollRef.current
+    const kwEl      = keywordColRef.current
+    if (!scrollEl || !kwEl) return
+    const rows = scrollEl.querySelectorAll('thead tr')
+    const lastTh = rows.length >= 2
+      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
+      : null
+    if (!lastTh) return
+    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
+    setScrollRightPad(Math.max(0, pad))
+  })
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
 
@@ -1102,18 +1122,6 @@ function SnapshotMatrix({
     return map
   }, [snapshot])
 
-  // Size the table so that at maximum scroll the last data column lands
-  // right beside the sticky keyword column (frozen-column spreadsheet feel).
-  // Derivation: at maxScroll = TW - C, the first visible data position is
-  // (TW - C + K). Setting that equal to the last column's left edge gives:
-  //   TW = estNaturalWidth + C - keyColPx - oneColPx
-  const totalDataCols =
-    (showMain ? mainDomainCols.length : 0) +
-    bpDomains.reduce((sum, bp) => sum + (domainCountries.get(bp.toLowerCase())?.length ?? 0), 0)
-  const clientPx      = window.innerWidth - 56   // subtract sidebar
-  const estNaturalPx  = totalDataCols * 100 + 130 // ~100 px/col + 130 px keyword
-  const tableMinWidth = Math.max(estNaturalPx + clientPx - 230, clientPx)
-
   return (
     <div
       className="bg-white rounded-[6px] text-black shrink-0"
@@ -1161,8 +1169,9 @@ function SnapshotMatrix({
       </div>
 
       {/* Horizontal matrix */}
-      <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max" style={{ minWidth: tableMinWidth }}>
+      <div ref={scrollRef} className="overflow-x-auto"
+           style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
