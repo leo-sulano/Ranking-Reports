@@ -77,7 +77,19 @@ export function BPSites() {
     )
   }
 
-  return <BrandGrid snapshots={bpSnapshots} onSelect={(b) => navigate(`/bp-sites/${brandToSlug(b.name)}`)} />
+  return (
+    <BrandGrid
+      snapshots={bpSnapshots}
+      onSelect={(b) => navigate(`/bp-sites/${brandToSlug(b.name)}`)}
+      onSelectDomain={(b, domain) => {
+        const base = `/bp-sites/${brandToSlug(b.name)}`
+        const isBp = b.domains.some(
+          (d) => d.toLowerCase() === domain.toLowerCase() && d.toLowerCase() !== b.mainDomain.toLowerCase(),
+        )
+        navigate(isBp ? `${base}/${domain}` : base)
+      }}
+    />
+  )
 }
 
 // ─── Brand Grid (unchanged from prior) ────────────────────────────────────────
@@ -85,9 +97,11 @@ export function BPSites() {
 function BrandGrid({
   snapshots,
   onSelect,
+  onSelectDomain,
 }: {
   snapshots: Snapshot[]
   onSelect: (b: Brand) => void
+  onSelectDomain: (b: Brand, domain: string) => void
 }) {
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
@@ -129,36 +143,60 @@ function BrandGrid({
               </div>
 
               <div className="flex flex-col gap-1">
-                {brand.domains.map((d) => (
-                  <div
-                    key={d}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border"
-                    style={{
-                      borderColor: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c + '60' : '#E2E8F0',
-                      background: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c + '14' : '#F8FAFC',
-                    }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? c : '#94A3B8', flexShrink: 0 }}>
-                      <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                    </svg>
-                    <span
-                      className="text-[11px]  truncate"
-                      style={{ color: d.toLowerCase() === brand.mainDomain.toLowerCase() ? '#0F172A' : '#64748B' }}
+                {brand.domains.map((d) => {
+                  const isMain = d.toLowerCase() === brand.mainDomain.toLowerCase()
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onSelectDomain(brand, d) }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left w-full transition-all duration-100 group/domain"
+                      style={{
+                        borderColor: isMain ? c + '60' : '#E2E8F0',
+                        background: isMain ? c + '14' : '#F8FAFC',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = c + '90'
+                        e.currentTarget.style.background = isMain ? c + '22' : c + '0D'
+                        e.currentTarget.style.boxShadow = `0 1px 6px ${c}25`
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = isMain ? c + '60' : '#E2E8F0'
+                        e.currentTarget.style.background = isMain ? c + '14' : '#F8FAFC'
+                        e.currentTarget.style.boxShadow = ''
+                      }}
                     >
-                      {d}
-                    </span>
-                    {d.toLowerCase() === brand.mainDomain.toLowerCase() && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ color: isMain ? c : '#94A3B8', flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
                       <span
-                        className="ml-auto text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
-                        style={{ background: c + '30', color: c }}
+                        className="text-[11px] truncate flex-1"
+                        style={{ color: isMain ? '#0F172A' : '#64748B' }}
                       >
-                        MAIN
+                        {d}
                       </span>
-                    )}
-                  </div>
-                ))}
+                      {isMain ? (
+                        <span
+                          className="ml-auto text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
+                          style={{ background: c + '30', color: c }}
+                        >
+                          MAIN
+                        </span>
+                      ) : (
+                        <svg
+                          width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                          strokeLinecap="round" strokeLinejoin="round"
+                          className="shrink-0 opacity-0 group-hover/domain:opacity-60 transition-opacity"
+                          style={{ color: c }}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </button>
           )
