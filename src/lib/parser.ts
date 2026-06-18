@@ -276,7 +276,7 @@ export interface StatsCounts {
 
 // For BP-matrix "⇑ (n)" / "⇓ (n)" cells, n is the previous position not a
 // delta. If n === current position there is no actual movement; return 0.
-function effectiveDelta(change: string, currentPos: number | 'NR' | null): number {
+export function effectiveDelta(change: string, currentPos: number | 'NR' | null): number {
   const d = parseChange(change) ?? 0
   if (d !== 0 && typeof currentPos === 'number') {
     const m = /^[⇑⇓↑↓]\s*\(\s*(\d+)\s*\)$/.exec(change.trim())

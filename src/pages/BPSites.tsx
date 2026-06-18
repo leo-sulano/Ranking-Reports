@@ -5,7 +5,7 @@ import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } fro
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { EditableCell } from '../components/EditableCell'
-import { computeStats, parsePosition, parseChange } from '../lib/parser'
+import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -242,6 +242,7 @@ function BrandView({
 
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
+  const [showClassChart, setShowClassChart] = useState(false)
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id.
@@ -271,6 +272,23 @@ function BrandView({
     })
   }, [statsSnap, visibleBpDomains, activeCountries])
 
+  // Previous-snapshot position map — shared by both the stats counter and the
+  // modal so they use identical comparison logic.
+  const prevPosMap = useMemo(() => {
+    const snapIdx = statsSnap ? brandSnapshots.findIndex((s) => s.id === statsSnap.id) : -1
+    const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
+    if (!prevSnap) return null
+    const map = new Map<string, number | 'NR'>()
+    for (const r of prevSnap.records) {
+      const pos = parsePosition(r.position)
+      if (pos !== null) {
+        const k = `${r.keyword.toLowerCase()}|${r.domain.toLowerCase()}|${COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()}`
+        map.set(k, pos)
+      }
+    }
+    return map
+  }, [statsSnap, brandSnapshots])
+
   // Stats for the selected stats-date snapshot. Restricted to visible BP-site
   // rows — when a specific BP domain is selected, counts reflect that domain only.
   // Uses cross-snapshot comparison (same logic as PosBadge) so the IMPROVED /
@@ -278,18 +296,7 @@ function BrandView({
   const stats = useMemo(() => {
     const recs = statsRecords
 
-    const snapIdx = statsSnap ? brandSnapshots.findIndex((s) => s.id === statsSnap.id) : -1
-    const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
-    if (!prevSnap) return computeStats(recs)
-
-    const prevPosMap = new Map<string, number | 'NR'>()
-    for (const r of prevSnap.records) {
-      const pos = parsePosition(r.position)
-      if (pos !== null) {
-        const k = `${r.keyword.toLowerCase()}|${r.domain.toLowerCase()}|${COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()}`
-        prevPosMap.set(k, pos)
-      }
-    }
+    if (!prevPosMap) return computeStats(recs)
 
     let top3 = 0, improved = 0, dropped = 0, notRanking = 0, unchanged = 0
     for (const r of recs) {
@@ -304,7 +311,7 @@ function BrandView({
       else                                                         unchanged++
     }
     return { total: recs.length, top3, improved, dropped, notRanking, unchanged }
-  }, [statsRecords, statsSnap, brandSnapshots])
+  }, [statsRecords, prevPosMap])
 
   // Keyword count for the latest snapshot (filtered) — drives the summary chip
   const latestKeywordCount = useMemo(() => {
@@ -443,9 +450,22 @@ function BrandView({
               </div>
             )}
 
-            <div className="hidden sm:block ml-auto text-[11px] font-mono text-[#64748B]">
-              {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
-              {' (1 main + ' + bpDomains.length + ' BP)'}
+            <div className="hidden sm:flex items-center gap-2 ml-auto">
+              <span className="text-[11px] font-mono text-[#64748B]">
+                {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
+                {' (1 main + ' + bpDomains.length + ' BP)'}
+              </span>
+              <button
+                onClick={() => setShowClassChart(true)}
+                title="How keywords are classified"
+                className="flex items-center gap-1 text-[10px] text-[#94A3B8] hover:text-[#475569] transition-colors border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-md px-2 py-1"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+                Guide
+              </button>
             </div>
           </div>
 
@@ -483,10 +503,15 @@ function BrandView({
         </>
       )}
 
+      {showClassChart && (
+        <ClassificationChartModal onClose={() => setShowClassChart(false)} />
+      )}
+
       {modalCard !== null && (
         <StatsCardModal
           card={modalCard}
           records={statsRecords}
+          prevPosMap={prevPosMap}
           onClose={() => setModalCard(null)}
         />
       )}
@@ -1277,24 +1302,38 @@ type ModalEntry = { keyword: string; country: string; position: string; change: 
 function StatsCardModal({
   card,
   records,
+  prevPosMap,
   onClose,
 }: {
   card: CardFilterKey
   records: RankingRecord[]
+  prevPosMap: Map<string, number | 'NR'> | null
   onClose: () => void
 }) {
   const filtered = useMemo(() => {
     return records.filter((r) => {
       const p = parsePosition(r.position)
-      const d = parseChange(r.change ?? '') ?? 0
       if (card === 'top3')       return typeof p === 'number' && p <= 3
-      if (card === 'improved')   return d > 0
-      if (card === 'dropped')    return d < 0
-      if (card === 'unchanged')  return p !== 'NR' && d === 0
       if (card === 'notRanking') return p === 'NR'
+      // NR / null records don't participate in improved/dropped/unchanged
+      if (p === 'NR' || p === null) return false
+
+      if (prevPosMap) {
+        const cc = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+        const key = `${r.keyword.toLowerCase()}|${r.domain.toLowerCase()}|${cc}`
+        const prevPos = prevPosMap.get(key) ?? null
+        if (card === 'improved')  return prevPos === 'NR' || (typeof prevPos === 'number' && prevPos > p)
+        if (card === 'dropped')   return typeof prevPos === 'number' && prevPos < p
+        if (card === 'unchanged') return prevPos === null || (typeof prevPos === 'number' && prevPos === p)
+      } else {
+        const d = effectiveDelta(r.change ?? '', p)
+        if (card === 'improved')  return d > 0
+        if (card === 'dropped')   return d < 0
+        if (card === 'unchanged') return d === 0
+      }
       return false
     })
-  }, [records, card])
+  }, [records, card, prevPosMap])
 
   // Group: domain → keyword_lower → ModalEntry[]
   const grouped = useMemo(() => {
@@ -1413,6 +1452,153 @@ function StatsCardModal({
               </div>
             ))
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── ClassificationChartModal — explains how keyword movement is classified ───
+
+function ChartRow({
+  condition,
+  badge,
+  badgeColor,
+  accent = '#F8FAFC',
+  border = '#E2E8F0',
+}: {
+  condition: React.ReactNode
+  badge: string
+  badgeColor: string
+  accent?: string
+  border?: string
+}) {
+  return (
+    <div
+      className="flex items-center gap-2.5 py-2 px-3 rounded-[8px] border text-[11px]"
+      style={{ background: accent, borderColor: border }}
+    >
+      <span className="text-[#334155] flex-1 leading-snug">{condition}</span>
+      <span
+        className="px-2.5 py-[3px] rounded-full text-[10px] font-bold text-white whitespace-nowrap shrink-0"
+        style={{ background: badgeColor }}
+      >
+        {badge}
+      </span>
+    </div>
+  )
+}
+
+function ClassificationChartModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,23,42,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-[12px] w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
+        style={{ borderTop: '3px solid #0F172A' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#E2E8F0]">
+          <span className="text-[11px] font-bold text-[#0F172A] uppercase tracking-[0.1em]">
+            Keyword Classification
+          </span>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 flex flex-col gap-3">
+          <p className="text-[11px] text-[#64748B]">
+            Lower rank number = better position &nbsp;
+            <span className="text-[#94A3B8]">(rank 3 is better than rank 10)</span>
+          </p>
+
+          {/* Step 1 */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="w-[18px] h-[18px] rounded-full bg-[#0F172A] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                1
+              </span>
+              <span className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.1em]">
+                Check current position
+              </span>
+            </div>
+            <ChartRow
+              condition={<>Position is <span className="font-semibold text-[#0F172A]">"Not in top 100"</span></>}
+              badge="NOT RANKED"
+              badgeColor="#64748B"
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-[#E2E8F0]"/>
+            <span className="text-[10px] text-[#94A3B8] shrink-0">if ranked → continue</span>
+            <div className="flex-1 h-px bg-[#E2E8F0]"/>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="w-[18px] h-[18px] rounded-full bg-[#0F172A] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                2
+              </span>
+              <span className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.1em]">
+                Compare with previous snapshot
+              </span>
+            </div>
+            <ChartRow
+              condition={
+                <>
+                  Previous was <span className="font-semibold text-[#0F172A]">NR</span>,
+                  {' '}or previous rank# was <span className="font-semibold text-[#0F172A]">higher</span>
+                  {' '}<span className="text-[#94A3B8]">(e.g. 8 → 5)</span>
+                </>
+              }
+              badge="IMPROVED ↑"
+              badgeColor="#10B981"
+              accent="#F0FDF4"
+              border="#BBF7D0"
+            />
+            <ChartRow
+              condition={
+                <>
+                  Previous rank# was <span className="font-semibold text-[#0F172A]">lower</span>
+                  {' '}<span className="text-[#94A3B8]">(e.g. 5 → 8)</span>
+                </>
+              }
+              badge="DROPPED ↓"
+              badgeColor="#F43F5E"
+              accent="#FFF1F2"
+              border="#FECDD3"
+            />
+            <ChartRow
+              condition={
+                <>
+                  Same rank# as previous,
+                  {' '}or <span className="font-semibold text-[#0F172A]">no previous data</span>
+                </>
+              }
+              badge="UNCHANGED"
+              badgeColor="#0F172A"
+            />
+          </div>
         </div>
       </div>
     </div>
