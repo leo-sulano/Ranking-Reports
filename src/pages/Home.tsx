@@ -66,33 +66,52 @@ export function Home() {
 
   const leaderboard = useMemo(() => {
     // Only use bp-sites snapshots (mirrors what BP Sites page shows) sorted newest-first
-    const sorted = ctx.snapshots
+    const bpSnaps = ctx.snapshots
       .filter((s) => s.category === 'bp-sites')
       .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
 
-    return BRANDS.map((brand) => {
-      const main = brand.mainDomain.toLowerCase()
-      // Exclude main domain — BP Sites stats only count BP partner domains
-      const bpSet = new Set(
-        brand.domains.filter((d) => d.toLowerCase() !== main).map((d) => d.toLowerCase())
-      )
-      // Use the most recent bp-sites snapshot that has records for this brand
-      let own: RankingRecord[] = []
-      for (const snap of sorted) {
-        const found = snap.records.filter((r) => bpSet.has(r.domain.toLowerCase()))
-        if (found.length > 0) { own = found; break }
-      }
-      let p1 = 0, t3 = 0, t10 = 0
-      for (const r of own) {
-        const p = parsePosition(r.position)
-        if (p === 1) { p1 += 1; t3 += 1; t10 += 1 }
-        else if (p === 2 || p === 3) { t3 += 1; t10 += 1 }
-        else if (typeof p === 'number' && p >= 4 && p <= 10) { t10 += 1 }
-      }
-      return { brand, total: own.length, p1, t3, t10, records: own }
+    function computeRows(snaps: typeof bpSnaps) {
+      return BRANDS.map((brand) => {
+        const main = brand.mainDomain.toLowerCase()
+        // Exclude main domain — BP Sites stats only count BP partner domains
+        const bpSet = new Set(
+          brand.domains.filter((d) => d.toLowerCase() !== main).map((d) => d.toLowerCase())
+        )
+        // Use the most recent bp-sites snapshot that has records for this brand
+        let own: RankingRecord[] = []
+        for (const snap of snaps) {
+          const found = snap.records.filter((r) => bpSet.has(r.domain.toLowerCase()))
+          if (found.length > 0) { own = found; break }
+        }
+        let p1 = 0, t3 = 0, t10 = 0
+        for (const r of own) {
+          const p = parsePosition(r.position)
+          if (p === 1) { p1 += 1; t3 += 1; t10 += 1 }
+          else if (p === 2 || p === 3) { t3 += 1; t10 += 1 }
+          else if (typeof p === 'number' && p >= 4 && p <= 10) { t10 += 1 }
+        }
+        return { brand, total: own.length, p1, t3, t10, records: own }
+      })
+        .filter((row) => row.total > 0)
+        .sort((a, b) => b.t10 - a.t10 || b.total - a.total)
+    }
+
+    const current = computeRows(bpSnaps)
+
+    // Build previous rank map by recomputing without the newest snapshot
+    const prevRankMap = new Map<string, number>()
+    if (bpSnaps.length >= 2) {
+      computeRows(bpSnaps.slice(1)).forEach((row, i) => {
+        prevRankMap.set(row.brand.name, i + 1)
+      })
+    }
+
+    return current.map((row, i) => {
+      const prevRank = prevRankMap.get(row.brand.name)
+      const rankChange = prevRank !== undefined ? prevRank - (i + 1) : null
+      const cvg = row.total > 0 ? Math.round((row.t10 / row.total) * 100) : 0
+      return { ...row, rankChange, cvg }
     })
-      .filter((row) => row.total > 0)
-      .sort((a, b) => b.t10 - a.t10 || b.total - a.total)
   }, [ctx.snapshots])
 
   const movers = useMemo(() => {
@@ -185,7 +204,7 @@ export function Home() {
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E86600]">Top-10</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Total</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">CVG%</th>
                     <th className="pl-3 pr-5 py-1.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Share</th>
                   </tr>
                 </thead>
@@ -209,10 +228,21 @@ export function Home() {
                         style={{ animation: `fadeUp 0.35s ease ${0.12 + i * 0.025}s both` }}
                       >
                         <td
-                          className="pl-5 pr-2 py-0 font-mono text-[11px] text-[#ABABAA] tabular-nums cursor-pointer"
+                          className="pl-5 pr-2 py-0 cursor-pointer"
                           onClick={() => navigate(brandUrl)}
                         >
-                          {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-[11px] text-[#ABABAA] tabular-nums">
+                              {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
+                            </span>
+                            {row.rankChange === null || row.rankChange === 0 ? (
+                              <span className="font-mono text-[9px] text-[#D0CFC9]">—</span>
+                            ) : row.rankChange > 0 ? (
+                              <span className="font-mono text-[9px] font-semibold text-[#1A7A3A]">↑{row.rankChange}</span>
+                            ) : (
+                              <span className="font-mono text-[9px] font-semibold text-[#CC0000]">↓{Math.abs(row.rankChange)}</span>
+                            )}
+                          </div>
                         </td>
                         <td
                           className="px-3 py-0 cursor-pointer"
@@ -249,9 +279,9 @@ export function Home() {
                         <td
                           className="px-3 py-0 text-right font-mono text-[12px] tabular-nums text-[#8A8A85] cursor-pointer hover:text-[#0A0A0A] hover:underline"
                           onClick={() => navigate(brandUrl)}
-                          title="View all keywords"
+                          title={`${row.t10} of ${row.total} keywords in Top-10`}
                         >
-                          {row.total}
+                          {row.cvg}%
                         </td>
                         <td
                           className="pl-3 pr-5 py-0 cursor-pointer"
