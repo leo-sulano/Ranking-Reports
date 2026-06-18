@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
-import type { RankingRecord, RROutletContext } from '../types'
+import type { Brand, RankingRecord, RROutletContext } from '../types'
+
+type ModalTier = 'p1' | 'top3' | 'top10'
 
 function brandOfDomain(domain: string): string | undefined {
   return DOMAIN_TO_BRAND[domain.toLowerCase()]
@@ -13,6 +15,19 @@ function brandOfDomain(domain: string): string | undefined {
 export function Home() {
   const ctx = useOutletContext<RROutletContext>()
   const navigate = useNavigate()
+
+  const [kwModal, setKwModal] = useState<{
+    brand: Brand
+    tier: ModalTier
+    records: RankingRecord[]
+  } | null>(null)
+
+  useEffect(() => {
+    if (!kwModal) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setKwModal(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [kwModal])
 
   const latestSnapshot = ctx.snapshots.find((s) => s.category === 'bp-sites') ?? ctx.snapshots[0]
   const records: RankingRecord[] = latestSnapshot?.records ?? []
@@ -68,7 +83,7 @@ export function Home() {
         else if (p === 2 || p === 3) { t3 += 1; t10 += 1 }
         else if (typeof p === 'number' && p >= 4 && p <= 10) { t10 += 1 }
       }
-      return { brand, total: own.length, p1, t3, t10 }
+      return { brand, total: own.length, p1, t3, t10, records: own }
     })
       .filter((row) => row.total > 0)
       .sort((a, b) => b.t10 - a.t10 || b.total - a.total)
@@ -127,34 +142,21 @@ export function Home() {
             </div>
           </div>
 
-          {/* Records — German red (middle band) */}
+          {/* Brands — red card */}
           <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden" style={{ background: '#CC0000' }}>
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2">Records</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2">Brands</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
-              {totals.records.toLocaleString()}
+              {totals.brands}
             </div>
           </div>
 
-          {/* Brands — gold-accented light card */}
-          <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="h-[3px] bg-[#FFCC00]" />
-            <div className="px-4 sm:px-6 py-4 sm:py-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2">Brands</div>
-              <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
-                {totals.brands}
-              </div>
-            </div>
-          </div>
-
-          {/* Countries — gold-accented light card */}
-          <div className="rounded-xl overflow-hidden bg-white border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="h-[3px] bg-[#FFCC00]" />
-            <div className="px-4 sm:px-6 py-4 sm:py-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ABABAA] mb-2">Countries</div>
-              <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
-                {totals.countries}
-              </div>
+          {/* Countries — #ffcc00 card */}
+          <div className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden" style={{ background: '#ffcc00' }}>
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-black" />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/50 mb-2">Countries</div>
+            <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
+              {totals.countries}
             </div>
           </div>
         </div>
@@ -219,21 +221,21 @@ export function Home() {
                         </td>
                         <td
                           className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A] cursor-pointer hover:text-[#1E40AF] hover:underline"
-                          onClick={() => row.p1 > 0 && navigate(`${brandUrl}?pos=p1`)}
+                          onClick={() => row.p1 > 0 && setKwModal({ brand: row.brand, tier: 'p1', records: row.records })}
                           title={row.p1 > 0 ? 'View P1 keywords' : undefined}
                         >
                           {row.p1 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
                         <td
                           className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
-                          onClick={() => row.t3 > 0 && navigate(`${brandUrl}?pos=top3`)}
+                          onClick={() => row.t3 > 0 && setKwModal({ brand: row.brand, tier: 'top3', records: row.records })}
                           title={row.t3 > 0 ? 'View Top-3 keywords' : undefined}
                         >
                           {row.t3 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
                         <td
                           className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-semibold text-[#E86600] cursor-pointer hover:text-[#9a3412] hover:underline"
-                          onClick={() => row.t10 > 0 && navigate(`${brandUrl}?pos=top10`)}
+                          onClick={() => row.t10 > 0 && setKwModal({ brand: row.brand, tier: 'top10', records: row.records })}
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
                           {row.t10 || <span className="text-[#D8D7D2] no-underline">—</span>}
@@ -307,6 +309,15 @@ export function Home() {
         </section>
 
       </div>
+
+      {kwModal && (
+        <KeywordModal
+          brand={kwModal.brand}
+          tier={kwModal.tier}
+          records={kwModal.records}
+          onClose={() => setKwModal(null)}
+        />
+      )}
     </div>
   )
 }
@@ -399,6 +410,121 @@ function NavCard({
       </div>
       <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
     </button>
+  )
+}
+
+const TIER_LIMIT: Record<ModalTier, number> = { p1: 1, top3: 3, top10: 10 }
+const TIER_LABEL: Record<ModalTier, string>  = { p1: 'P1', top3: 'Top-3', top10: 'Top-10' }
+const TIER_RANGE: Record<ModalTier, string>  = { p1: 'Position 1', top3: 'Positions 1–3', top10: 'Positions 1–10' }
+
+function KeywordModal({
+  brand, tier, records, onClose,
+}: {
+  brand: Brand
+  tier: ModalTier
+  records: RankingRecord[]
+  onClose: () => void
+}) {
+  const limit = TIER_LIMIT[tier]
+  const filtered = records
+    .filter((r) => {
+      const p = parsePosition(r.position)
+      return typeof p === 'number' && p >= 1 && p <= limit
+    })
+    .sort((a, b) => {
+      const pa = parsePosition(a.position) as number
+      const pb = parsePosition(b.position) as number
+      return pa - pb || a.keyword.localeCompare(b.keyword)
+    })
+
+  function posBadgeStyle(pos: number) {
+    if (pos === 1)  return { bg: '#FFF3CD', color: '#92400E' }
+    if (pos <= 3)   return { bg: '#FFF0F0', color: '#CC0000' }
+    return              { bg: '#FFF4EC', color: '#E86600' }
+  }
+
+  const tierBadgeStyle = posBadgeStyle(limit === 1 ? 1 : limit <= 3 ? 2 : 5)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(10,10,10,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-[580px] flex flex-col overflow-hidden"
+        style={{ maxHeight: '80vh', animation: 'fadeUp 0.2s ease both' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF] shrink-0">
+          <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: brand.color }} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[14px] font-bold" style={{ color: brand.color }}>
+                {brand.name}
+              </span>
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: tierBadgeStyle.bg, color: tierBadgeStyle.color }}
+              >
+                {TIER_LABEL[tier]}
+              </span>
+              <span className="text-[11px] text-[#ABABAA]">{filtered.length} keywords</span>
+            </div>
+            <p className="text-[11px] text-[#ABABAA] mt-0.5">{TIER_RANGE[tier]}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[#ABABAA] hover:bg-[#F5F4EF] hover:text-[#0A0A0A] transition-colors shrink-0"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-y-auto flex-1">
+          {filtered.length === 0 ? (
+            <p className="text-[12px] text-[#ABABAA] text-center py-10">No keywords found.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="sticky top-0 bg-white border-b border-[#F5F4EF]">
+                <tr>
+                  <th className="pl-5 pr-2 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-14">Pos</th>
+                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Keyword</th>
+                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-16">Country</th>
+                  <th className="pl-3 pr-5 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Domain</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r, i) => {
+                  const pos = parsePosition(r.position) as number
+                  const { bg, color } = posBadgeStyle(pos)
+                  return (
+                    <tr
+                      key={`${r.domain}-${r.keyword}-${r.country}-${i}`}
+                      className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors"
+                    >
+                      <td className="pl-5 pr-2 py-2.5">
+                        <span
+                          className="inline-flex items-center justify-center font-mono text-[11px] font-bold w-7 h-6 rounded-lg"
+                          style={{ background: bg, color }}
+                        >
+                          {pos}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-[12px] font-medium text-[#0A0A0A]">{r.keyword}</td>
+                      <td className="px-3 py-2.5 font-mono text-[11px] text-[#8A8A85]">{r.country}</td>
+                      <td className="pl-3 pr-5 py-2.5 font-mono text-[10px] text-[#ABABAA] max-w-[160px] truncate">{r.domain}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
