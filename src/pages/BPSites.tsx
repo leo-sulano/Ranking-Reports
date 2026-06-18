@@ -1008,24 +1008,14 @@ function SnapshotMatrix({
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
 
-  // Per-domain: only the countries (from visibleCountries) that have at least one
-  // record in this snapshot — avoids rendering blank columns and caps scroll width.
+  // All domains always show all visible countries so every snapshot has the same
+  // column structure and horizontal scroll width regardless of data presence.
   const domainCountries = useMemo(() => {
-    const has = new Map<string, Set<string>>()
-    for (const r of snapshot.records) {
-      const dk = r.domain.toLowerCase()
-      const ck = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
-      if (!has.has(dk)) has.set(dk, new Set())
-      has.get(dk)!.add(ck)
-    }
     const result = new Map<string, string[]>()
-    result.set(mainDomain, visibleCountries.filter(c => has.get(mainDomain)?.has(c)))
-    for (const bp of bpDomains) {
-      const dk = bp.toLowerCase()
-      result.set(dk, visibleCountries.filter(c => has.get(dk)?.has(c)))
-    }
+    result.set(mainDomain, visibleCountries)
+    for (const bp of bpDomains) result.set(bp.toLowerCase(), visibleCountries)
     return result
-  }, [snapshot, mainDomain, bpDomains, visibleCountries])
+  }, [mainDomain, bpDomains, visibleCountries])
 
   const mainDomainCols = domainCountries.get(mainDomain) ?? []
   const mainColCount = mainDomainCols.length
@@ -1213,7 +1203,6 @@ function SnapshotMatrix({
               )}
               {bpDomains.map((bp, bpIdx) => {
                 const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                if (bpCols.length === 0) return null
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
                   <th
@@ -1257,7 +1246,6 @@ function SnapshotMatrix({
               )}
               {bpDomains.map((bp, bpIdx) => {
                 const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                if (bpCols.length === 0) return null
                 const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                 return (
                   <Fragment key={`bp-sub-${bp}`}>
@@ -1330,7 +1318,6 @@ function SnapshotMatrix({
                 {bpDomains.map((bp, bpIdx) => {
                   const dk = bp.toLowerCase()
                   const bpCols = domainCountries.get(dk) ?? []
-                  if (bpCols.length === 0) return null
                   const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
                   return bpCols.map((c, ci) => {
                     const rec = lookup?.[kw]?.[dk]?.[c]
