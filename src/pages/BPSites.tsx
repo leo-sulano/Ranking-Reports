@@ -898,6 +898,7 @@ function SnapshotMatrix({
   isLatest: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -909,8 +910,13 @@ function SnapshotMatrix({
       e.preventDefault()
       el.scrollLeft += e.deltaY
     }
+    const onScroll = () => setScrolled(el.scrollLeft > 0)
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
@@ -1071,6 +1077,7 @@ function SnapshotMatrix({
                   color: '#000',
                   borderRight: borderStyle,
                   borderBottom: borderStyle,
+                  boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                 }}
               >
                 Keyword
@@ -1171,6 +1178,7 @@ function SnapshotMatrix({
                     color: '#000',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
+                    boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                   }}
                 >
                   {label}
