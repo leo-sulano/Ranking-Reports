@@ -1043,8 +1043,8 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-white rounded-[6px] overflow-hidden text-black shrink-0"
-      style={{ border: borderStyle }}
+      className="bg-white rounded-[6px] text-black shrink-0"
+      style={{ border: borderStyle, overflow: 'clip' }}
     >
       {/* Date band */}
       <div
