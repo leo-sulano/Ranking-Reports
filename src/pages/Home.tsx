@@ -374,9 +374,9 @@ export function Home() {
         >
           <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
           <div className="grid grid-cols-2 gap-3 p-5">
-            <NavCard label="BP Sites"    hint="Brand × keyword matrix"  onClick={() => navigate('/bp-sites')} />
-            <NavCard label="FTDs"        hint="First-time depositors"   onClick={() => navigate('/ftds')} />
-            <NavCard label="Import Data" hint="Upload an XLSX snapshot" onClick={ctx.onOpenUpload} highlight />
+            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#FFCC00" borderColor="#FFCC00" />
+            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#FFFDE6" borderColor="#0A0A0A" />
+            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} highlight />
           </div>
         </section>
 
@@ -500,15 +500,15 @@ function MoverGroup({
 }
 
 function NavCard({
-  label, hint, onClick, highlight,
-}: { label: string; hint: string; onClick: () => void; highlight?: boolean }) {
+  label, hint, onClick, highlight, bgColor, borderColor,
+}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string }) {
   return (
     <button
       onClick={onClick}
       className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
       style={{
-        background:  highlight ? '#FFFDE6' : '#FAFAF7',
-        borderColor: highlight ? '#FFCC00' : '#E5E4DF',
+        background:  bgColor ?? (highlight ? '#FFFDE6' : '#FAFAF7'),
+        borderColor: borderColor ?? (highlight ? '#FFCC00' : '#E5E4DF'),
       }}
     >
       <div className="flex items-start justify-between gap-2">
