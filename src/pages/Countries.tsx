@@ -367,7 +367,7 @@ function CountryBrandTable({
                     borderBottom: 'none',
                   }}
                 >
-                  BP
+                  BP Sites
                 </th>
               )}
 
@@ -383,7 +383,7 @@ function CountryBrandTable({
                     borderBottom: 'none',
                   }}
                 >
-                  LP
+                  LP Sites
                 </th>
               )}
 
