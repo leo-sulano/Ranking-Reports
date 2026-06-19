@@ -47,10 +47,9 @@ export function Sidebar({
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
-  const isBPSitesRoute      = location.pathname.startsWith('/bp-sites')
-  const isLPSitesRoute      = location.pathname.startsWith('/lp-sites')
-  const isCountriesRoute    = location.pathname.startsWith('/countries')
-  const hasBrandList        = isBPSitesRoute || isLPSitesRoute || isCountriesRoute
+  const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
+  const isLPSitesRoute = location.pathname.startsWith('/lp-sites')
+  const hasBrandList   = isBPSitesRoute || isLPSitesRoute
 
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
@@ -132,60 +131,34 @@ export function Sidebar({
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] whitespace-nowrap">
-                {isBPSitesRoute ? 'BP Sites' : isLPSitesRoute ? 'LP Sites' : 'Countries'}
+                {isBPSitesRoute ? 'BP Sites' : 'LP Sites'}
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5">
-              {isCountriesRoute ? (
-                <>
-                  {([
-                    { code: 'au', label: 'Australia' },
-                    { code: 'ca', label: 'Canada' },
-                    { code: 'de', label: 'Germany' },
-                    { code: 'it', label: 'Italy' },
-                    { code: 'nz', label: 'New Zealand' },
-                  ] as const).map(({ code, label }) => {
-                    const isActive = location.pathname === `/countries/${code}`
-                    return (
-                      <button
-                        key={code}
-                        onClick={() => navigate(`/countries/${code}`)}
-                        className={`flex items-center w-full px-3 py-2 rounded-lg text-left transition-colors ${
-                          isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
-                        }`}
-                      >
-                        <span className="text-[11px] font-bold text-[#ABABAA] w-7 shrink-0">{code.toUpperCase()}</span>
-                        <span className="text-[12px] font-semibold text-[#0A0A0A] truncate whitespace-nowrap">{label}</span>
-                      </button>
-                    )
-                  })}
-                </>
-              ) : (
-                BRANDS.map((brand) => {
-                  const activeSlug = isBPSitesRoute
-                    ? (location.pathname.startsWith('/bp-sites/') ? location.pathname.slice('/bp-sites/'.length).split('/')[0] : null)
-                    : (location.pathname.startsWith('/lp-sites/') ? location.pathname.slice('/lp-sites/'.length).split('/')[0] : null)
-                  const isActive = activeSlug === brandToSlug(brand.name)
-                  return (
-                    <button
-                      key={brand.name}
-                      onClick={() => {
-                        navigate(isBPSitesRoute
-                          ? `/bp-sites/${brandToSlug(brand.name)}`
-                          : `/lp-sites/${brandToSlug(brand.name)}`)
-                      }}
-                      className={`flex items-center w-full px-3 py-2 rounded-lg text-left transition-colors ${
-                        isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
-                      }`}
-                    >
-                      <div className="text-[12px] font-semibold text-[#0A0A0A] truncate whitespace-nowrap">
-                        {brand.name}
-                      </div>
-                    </button>
-                  )
-                })
-              )}
+              {BRANDS.map((brand) => {
+                const activeSlug = isBPSitesRoute
+                  ? (location.pathname.startsWith('/bp-sites/') ? location.pathname.slice('/bp-sites/'.length).split('/')[0] : null)
+                  : (location.pathname.startsWith('/lp-sites/') ? location.pathname.slice('/lp-sites/'.length).split('/')[0] : null)
+                const isActive = activeSlug === brandToSlug(brand.name)
+                return (
+                  <button
+                    key={brand.name}
+                    onClick={() => {
+                      navigate(isBPSitesRoute
+                        ? `/bp-sites/${brandToSlug(brand.name)}`
+                        : `/lp-sites/${brandToSlug(brand.name)}`)
+                    }}
+                    className={`flex items-center w-full px-3 py-2 rounded-lg text-left transition-colors ${
+                      isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
+                    }`}
+                  >
+                    <div className="text-[12px] font-semibold text-[#0A0A0A] truncate whitespace-nowrap">
+                      {brand.name}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         ) : (

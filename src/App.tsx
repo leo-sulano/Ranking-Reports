@@ -25,7 +25,6 @@ import { BPSites }      from './pages/BPSites'
 import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
 import { AskAI }        from './pages/AskAI'
-import { Countries }     from './pages/Countries'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -426,7 +425,6 @@ export function App() {
           <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
           <Route path="/ftds"             element={<FTDs />} />
           <Route path="/ask-ai"           element={<AskAI />} />
-          <Route path="/countries/:code"  element={<Countries />} />
         </Route>
       </Routes>
     </AuthGate>

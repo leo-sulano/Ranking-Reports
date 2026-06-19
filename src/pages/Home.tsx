@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { Brand, RankingRecord, RROutletContext } from '../types'
 
@@ -22,7 +22,7 @@ export function Home() {
     records: RankingRecord[]
   } | null>(null)
 
-  const [metricModal, setMetricModal] = useState<'keywords' | 'brands' | 'countries' | null>(null)
+  const [metricModal, setMetricModal] = useState<'keywords' | 'brands' | null>(null)
 
   useEffect(() => {
     if (!kwModal && !metricModal) return
@@ -37,9 +37,8 @@ export function Home() {
   const records: RankingRecord[] = latestSnapshot?.records ?? []
 
   const totals = useMemo(() => {
-    const keywords  = new Set(records.map((r) => r.keyword.toLowerCase()))
-    const countries = new Set(records.map((r) => r.country))
-    const brandSet  = new Set<string>()
+    const keywords = new Set(records.map((r) => r.keyword.toLowerCase()))
+    const brandSet = new Set<string>()
     for (const r of records) {
       const b = brandOfDomain(r.domain)
       if (b) brandSet.add(b)
@@ -48,7 +47,6 @@ export function Home() {
       records:   records.length,
       keywords:  keywords.size,
       brands:    brandSet.size,
-      countries: countries.size,
       snapshots: ctx.snapshots.length,
     }
   }, [records, ctx.snapshots])
@@ -70,14 +68,11 @@ export function Home() {
 
   const metricDetails = useMemo(() => {
     const kwMap       = new Map<string, number>()
-    const kwBrandCts  = new Map<string, Map<string, number>>()
-    const ctyMap      = new Map<string, number>()
-    const brandMap    = new Map<string, { brand: Brand; count: number }>()
+    const kwBrandCts = new Map<string, Map<string, number>>()
+    const brandMap   = new Map<string, { brand: Brand; count: number }>()
     for (const r of records) {
       const kw = r.keyword
       kwMap.set(kw, (kwMap.get(kw) ?? 0) + 1)
-      const normalizedCty = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
-      ctyMap.set(normalizedCty, (ctyMap.get(normalizedCty) ?? 0) + 1)
       const bName = brandOfDomain(r.domain)
       if (bName) {
         const brand = BRAND_BY_NAME[bName]
@@ -94,8 +89,7 @@ export function Home() {
         if (bm) { let max = 0; bm.forEach((c, n) => { if (c > max) { max = c; topBrand = n } }) }
         return { kw, count, brandSlug: topBrand ? brandToSlug(topBrand) : undefined }
       }),
-      countries: [...ctyMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([country, count]) => ({ country, count })),
-      brands:    [...brandMap.values()].sort((a, b) => b.count - a.count),
+      brands: [...brandMap.values()].sort((a, b) => b.count - a.count),
     }
   }, [records])
 
@@ -221,7 +215,7 @@ export function Home() {
       <div className="px-3 sm:px-6 py-4 sm:py-5 space-y-4">
 
         {/* ── Hero metric cards ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
           {/* Keywords — solid black (top band of flag) */}
           <div
@@ -248,18 +242,6 @@ export function Home() {
             </div>
           </div>
 
-          {/* Countries — #ffcc00 card */}
-          <div
-            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
-            style={{ background: '#ffcc00' }}
-            onClick={() => setMetricModal('countries')}
-          >
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-black" />
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/50 mb-2">Countries</div>
-            <div className="font-display text-[28px] sm:text-[38px] font-[600] text-[#0A0A0A] tabular-nums leading-none">
-              {totals.countries}
-            </div>
-          </div>
         </div>
 
         {/* ── Leaderboard + Movers ──────────────────────────────────────────── */}
@@ -687,21 +669,19 @@ function KeywordModal({
 }
 
 type MetricDetails = {
-  keywords:  { kw: string; count: number; brandSlug?: string }[]
-  countries: { country: string; count: number }[]
-  brands:    { brand: Brand; count: number }[]
+  keywords: { kw: string; count: number; brandSlug?: string }[]
+  brands:   { brand: Brand; count: number }[]
 }
 
 const METRIC_META = {
-  keywords:  { title: 'Keywords',  subtitle: 'All tracked keywords', color: '#0A0A0A', light: false },
-  brands:    { title: 'Brands',    subtitle: 'Active brands in snapshot', color: '#CC0000', light: false },
-  countries: { title: 'Countries', subtitle: 'Markets in snapshot', color: '#FFCC00', light: true },
+  keywords: { title: 'Keywords', subtitle: 'All tracked keywords', color: '#0A0A0A', light: false },
+  brands:   { title: 'Brands',   subtitle: 'Active brands in snapshot', color: '#CC0000', light: false },
 }
 
 function MetricModal({
   type, details, onClose, onNavigate,
 }: {
-  type: 'keywords' | 'brands' | 'countries'
+  type: 'keywords' | 'brands'
   details: MetricDetails
   onClose: () => void
   onNavigate: (path: string) => void
@@ -765,20 +745,6 @@ function MetricModal({
             </div>
           )}
 
-          {type === 'countries' && (
-            <div className="divide-y divide-[#F3F2EE]">
-              {details.countries.map(({ country, count }) => (
-                <div
-                  key={country}
-                  className="flex items-center justify-between gap-4 py-2 cursor-pointer hover:bg-[#F5F4EF] rounded-lg px-2 -mx-2 transition-colors"
-                  onClick={() => onNavigate(`/countries/${country.toLowerCase()}`)}
-                >
-                  <span className="text-[13px] font-medium text-[#0A0A0A]">{country}</span>
-                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
