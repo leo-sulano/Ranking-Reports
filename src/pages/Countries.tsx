@@ -317,7 +317,10 @@ function CountryBrandTable({
 
       {/* Scrollable table */}
       <div ref={scrollRef} className="overflow-x-auto" style={{ background: '#fff' }}>
-        <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '100%' }}>
+        <table
+          className="border-collapse text-[12px] w-max min-w-full"
+          style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}
+        >
           <thead>
             {/* Row 1 — group labels */}
             <tr>
@@ -384,13 +387,6 @@ function CountryBrandTable({
                 </th>
               )}
 
-              {/* right-pad spacer */}
-              {scrollRightPad > 0 && (
-                <th
-                  style={{ minWidth: scrollRightPad, background: '#fff', borderBottom: borderStyle }}
-                  aria-hidden
-                />
-              )}
             </tr>
 
             {/* Row 2 — domain names */}
@@ -451,12 +447,6 @@ function CountryBrandTable({
                 </th>
               ))}
 
-              {scrollRightPad > 0 && (
-                <th
-                  style={{ minWidth: scrollRightPad, background: '#fff', borderBottom: borderStyle }}
-                  aria-hidden
-                />
-              )}
             </tr>
           </thead>
 
@@ -545,9 +535,6 @@ function CountryBrandTable({
                   )
                 })}
 
-                {scrollRightPad > 0 && (
-                  <td style={{ minWidth: scrollRightPad, borderBottom: borderStyle }} aria-hidden />
-                )}
               </tr>
             ))}
           </tbody>
