@@ -719,7 +719,7 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-white rounded-[6px] overflow-hidden text-black shrink-0"
+      className="bg-white rounded-[6px] overflow-hidden text-black shrink-0 w-full"
       style={{ border: borderStyle }}
     >
       <div
