@@ -86,6 +86,11 @@ function prevSnap(snapshots: Snapshot[], category: string): Snapshot | null {
 // ─── Entry ────────────────────────────────────────────────────────────────────
 
 export function Countries() {
+  const { code = 'au' } = useParams<{ code: string }>()
+  return <CountriesPage key={code} />
+}
+
+function CountriesPage() {
   const ctx = useOutletContext<RROutletContext>()
   const { code = 'au' } = useParams<{ code: string }>()
   const navigate = useNavigate()
@@ -115,34 +120,32 @@ export function Countries() {
 
   return (
     <div
-      className="flex-1 flex flex-col min-h-0 bg-[#07090F]"
-      style={{
-        backgroundImage: 'radial-gradient(circle at 1px 1px, #1C2B3A 1px, transparent 0)',
-        backgroundSize: '24px 24px',
-      }}
+      className="flex-1 flex flex-col min-h-0"
     >
       {/* ── Page header ── */}
-      <div className="px-4 sm:px-6 pt-5 pb-4 shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <h1 className="font-display text-[22px] sm:text-[28px] tracking-wider text-white leading-none">
+      <div className="px-3 sm:px-7 pt-4 sm:pt-5 pb-3 shrink-0">
+        <div className="flex items-center gap-3 mb-3">
+          <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">
             {countryName}
           </h1>
-          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-white/10 text-white/60 select-none">
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#F1F5F9] text-[#64748B] select-none">
             {countryCode}
           </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Country chips */}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">Countries</span>
           {COUNTRY_ORDER.map((c) => (
             <button
               key={c}
               onClick={() => navigate(`/countries/${c.toLowerCase()}`)}
-              className={`px-3 py-1 rounded-full text-[12px] font-semibold transition-colors ${
+              className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
+              style={
                 c === countryCode
-                  ? 'bg-white text-[#0A0A0A]'
-                  : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
-              }`}
+                  ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
+                  : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+              }
             >
               {c}
             </button>
@@ -151,7 +154,7 @@ export function Countries() {
           {/* Keyword search */}
           <div className="ml-auto relative">
             <svg
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#64748B]"
               width="12" height="12" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             >
@@ -162,16 +165,16 @@ export function Countries() {
               value={kwFilter}
               onChange={(e) => setKwFilter(e.target.value)}
               placeholder="Search keywords…"
-              className="pl-7 pr-3 py-1 bg-white/10 border border-white/20 rounded-full text-[12px] text-white outline-none w-36 sm:w-44 placeholder:text-white/40 focus:border-white/40 transition-colors"
+              className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
             />
           </div>
         </div>
       </div>
 
       {/* ── Brand tables ── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-7 pb-7 space-y-6">
         {noData ? (
-          <div className="flex items-center justify-center h-40 text-white/30 text-[14px]">
+          <div className="flex items-center justify-center h-40 text-[#94A3B8] text-[14px]">
             No data for {countryCode} — upload a snapshot to get started.
           </div>
         ) : (
@@ -242,8 +245,8 @@ function CountryBrandTable({
       ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
       : null
     if (!lastTh) return
-    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
+    const pad = Math.max(0, scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth)
+    setScrollRightPad(prev => prev === pad ? prev : pad)
   })
 
   useEffect(() => {
