@@ -268,3 +268,47 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** Feature
 
 ---
+
+## June 19, 2026
+
+**Task Title:** BP/LP Sites — Stable Per-Domain Colors & Responsive Table Layout
+**Task Description:** Each BP/LP domain now always receives the same palette color based on its fixed position in the full brand domain list, not its index in the current visible selection — colors no longer shift when sites are toggled. Table stretches to fill viewport width when all selected columns fit, and switches to horizontal scroll when they overflow. LPSites also received the `scrollRightPad` measurement effect so the last column snaps cleanly beside the sticky KEYWORD column at maximum scroll.
+**Date Completed:** June 19, 2026
+**Label:** UI
+
+---
+
+**Task Title:** Deep Navigation — Clickable Keywords from Home & Top Movers
+**Task Description:** Made Top Movers keyword rows clickable: clicking a keyword navigates directly to the BP Sites brand view pre-filtered by that domain and keyword. Home hero metric keyword modal rows are also clickable and navigate to the matching filtered BP Sites view. Removed the CVG%/Share columns from the Leaderboard and removed FTDs/Countries from the sidebar nav to streamline the layout.
+**Date Completed:** June 19, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Bidirectional URL Sync for All Filters (BP/LP Sites)
+**Task Description:** Every filter on BP Sites and LP Sites — site selection, countries, keyword search, position filter, and date — now writes to the URL query string on change, making any filter combination bookmarkable and shareable. Visiting a URL with query params restores the exact filter state on mount. Keyword filter is also applied to the stats record set so the Top 3/Improved/Dropped/NR counts always reflect only the visible rows.
+**Date Completed:** June 19, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Navigate Cards Redesign
+**Task Description:** Updated the Navigate quick-action cards on the home dashboard. BP Sites card uses a light tint background with a solid border; Import Data card gets a solid red style; LP Sites card uses neutral grey with a black border. The NavCard arrow indicator is hidden until hover to reduce visual noise.
+**Date Completed:** June 19, 2026
+**Label:** UI
+
+---
+
+**Task Title:** StatsCard Modal — Clickable Sites & Keywords
+**Task Description:** Made site and keyword rows in the Stats Card detail modal clickable. Clicking a site or keyword navigates directly to the BP Sites brand view with that site or keyword pre-filtered. NavCard arrow hidden until hover for a cleaner idle state.
+**Date Completed:** June 19, 2026
+**Label:** Feature
+
+---
+
+**Task Title:** Performance — Deferred Snapshot Loading on Brand Views
+**Task Description:** Brand detail views (BP Sites and LP Sites) previously rendered all snapshots' full keyword tables simultaneously on mount, blocking the main thread for several seconds with tens of thousands of DOM nodes. Now only the latest snapshot matrix is rendered on initial load. A "Show N older snapshots" button loads the remaining snapshots on demand, keeping initial navigation fast regardless of how many historical snapshots exist.
+**Date Completed:** June 19, 2026
+**Label:** Feature
+
+---

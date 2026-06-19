@@ -67,7 +67,7 @@ export function BPSites() {
   if (activeBrand) {
     return (
       <BrandView
-        key={activeBrand.name}
+        key={`${activeBrand.name}|${domainFilter ?? ''}`}
         brand={activeBrand}
         snapshots={bpSnapshots}
         domainFilter={domainFilter}
@@ -290,6 +290,12 @@ function BrandView({
     return COUNTRY_ORDER
   })
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
+
+  // Keep kwFilter in sync when the URL kw param changes externally (e.g. modal navigation)
+  const kwUrlParam = searchParams.get('kw') ?? ''
+  useEffect(() => {
+    setKwFilter(kwUrlParam)
+  }, [kwUrlParam])
 
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
@@ -652,7 +658,7 @@ function BrandView({
           prevPosMap={prevPosMap}
           brand={brand}
           onClose={() => setModalCard(null)}
-          onNavigate={(path) => { setModalCard(null); navigate(path) }}
+          onNavigate={(path) => { setModalCard(null); setCardFilter(null); navigate(path) }}
         />
       )}
     </>
