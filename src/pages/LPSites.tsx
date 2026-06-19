@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
+import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
@@ -169,6 +169,7 @@ function BrandView({
   )
 
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Resolve domainFilter — only known LP domains are valid; everything else → All
   const resolvedFilter = useMemo(() => {
@@ -201,11 +202,29 @@ function BrandView({
   const [kwFilter, setKwFilter] = useState('')
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
 
-  const [statsFilter, setStatsFilter] = useState<string>('all')
+  const [statsFilter, setStatsFilter] = useState<string>(
+    () => searchParams.get('date') ?? 'all',
+  )
+
+  const handleStatsFilterChange = (next: string) => {
+    setStatsFilter(next)
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (next === 'all') p.delete('date')
+        else p.set('date', next)
+        return p
+      },
+      { replace: true },
+    )
+  }
+
+  const monthKey = statsFilter.startsWith('month:') ? statsFilter.slice(6) : null
   const statsSnap = useMemo(() => {
+    if (monthKey) return brandSnapshots.find((s) => snapMonthKey(s) === monthKey) ?? latestSnap
     if (statsFilter === 'all') return latestSnap
     return brandSnapshots.find((s) => s.id === statsFilter) ?? latestSnap
-  }, [statsFilter, brandSnapshots, latestSnap])
+  }, [statsFilter, monthKey, brandSnapshots, latestSnap])
 
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
@@ -256,7 +275,7 @@ function BrandView({
             <StatsDateFilter
               value={statsFilter}
               snapshots={brandSnapshots}
-              onChange={setStatsFilter}
+              onChange={handleStatsFilterChange}
             />
           </div>
         )}
@@ -346,7 +365,9 @@ function BrandView({
           <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
             {(statsFilter === 'all'
               ? brandSnapshots
-              : brandSnapshots.filter((s) => s.id === statsFilter)
+              : monthKey
+                ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
+                : brandSnapshots.filter((s) => s.id === statsFilter)
             ).map((snap) => (
               <SnapshotMatrix
                 key={snap.id}
@@ -366,7 +387,13 @@ function BrandView({
   )
 }
 
-// ─── StatsDateFilter — identical to BP Sites' filter ──────────────────────────
+function snapMonthKey(snap: Snapshot): string {
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const [y, m] = snap.rawDate.split('-')
+  return MONTH_NAMES[parseInt(m, 10) - 1] + ' ' + (y ?? '')
+}
+
+// ─── StatsDateFilter ──────────────────────────────────────────────────────────
 
 function StatsDateFilter({
   value,

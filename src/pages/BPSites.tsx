@@ -232,7 +232,7 @@ function BrandView({
     [brand, mainDomain],
   )
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Position filter from URL (?pos=p1 | top3 | top10)
   const [posFilter, setPosFilter] = useState<'p1' | 'top3' | 'top10' | 'all'>(() => {
@@ -286,8 +286,23 @@ function BrandView({
   const [showClassChart, setShowClassChart] = useState(false)
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
-  // selected snapshot id.
-  const [statsFilter, setStatsFilter] = useState<string>('all')
+  // selected snapshot id or 'month:<MonthYear>'.
+  const [statsFilter, setStatsFilter] = useState<string>(
+    () => searchParams.get('date') ?? 'all',
+  )
+
+  const handleStatsFilterChange = (next: string) => {
+    setStatsFilter(next)
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (next === 'all') p.delete('date')
+        else p.set('date', next)
+        return p
+      },
+      { replace: true },
+    )
+  }
   const monthKey = statsFilter.startsWith('month:') ? statsFilter.slice(6) : null
   const statsSnap = useMemo(() => {
     if (monthKey) return brandSnapshots.find((s) => snapMonthKey(s) === monthKey) ?? latestSnap
@@ -409,7 +424,7 @@ function BrandView({
             <StatsDateFilter
               value={statsFilter}
               snapshots={brandSnapshots}
-              onChange={setStatsFilter}
+              onChange={handleStatsFilterChange}
             />
           </div>
         )}
@@ -595,7 +610,7 @@ function StatsDateFilter({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [monthly, setMonthly] = useState(false)
+  const [monthly, setMonthly] = useState(() => value.startsWith('month:'))
   const ref = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
