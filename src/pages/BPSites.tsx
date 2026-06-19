@@ -954,6 +954,17 @@ function SnapshotMatrix({
   const [scrolled, setScrolled] = useState(false)
   const [scrollRightPad, setScrollRightPad] = useState(0)
 
+  // Stable index so each BP domain always gets the same palette colour
+  // regardless of which other sites are currently selected.
+  const allBpDomains = useMemo(
+    () => brand.domains.filter((d) => d.toLowerCase() !== mainDomain),
+    [brand, mainDomain],
+  )
+  const bpPaletteIndex = (bp: string) => {
+    const idx = allBpDomains.findIndex((d) => d.toLowerCase() === bp.toLowerCase())
+    return (idx >= 0 ? idx : 0) % BP_PALETTE.length
+  }
+
   const scrollToDomain = (key: string) => {
     const el = domainRefs.current[key]
     const scrollEl = scrollRef.current
@@ -1161,7 +1172,7 @@ function SnapshotMatrix({
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto"
            style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
-        <table className="border-collapse text-[11px] w-max">
+        <table className="border-collapse text-[11px] w-full">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
@@ -1197,7 +1208,7 @@ function SnapshotMatrix({
               )}
               {bpDomains.map((bp, bpIdx) => {
                 const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                const palette = BP_PALETTE[bpPaletteIndex(bp)]
                 return (
                   <th
                     key={`bp-h-${bp}`}
@@ -1240,7 +1251,7 @@ function SnapshotMatrix({
               )}
               {bpDomains.map((bp, bpIdx) => {
                 const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                const palette = BP_PALETTE[bpPaletteIndex(bp)]
                 return (
                   <Fragment key={`bp-sub-${bp}`}>
                     {bpCols.map((c, ci) => (
@@ -1312,7 +1323,7 @@ function SnapshotMatrix({
                 {bpDomains.map((bp, bpIdx) => {
                   const dk = bp.toLowerCase()
                   const bpCols = domainCountries.get(dk) ?? []
-                  const palette = BP_PALETTE[bpIdx % BP_PALETTE.length]
+                  const palette = BP_PALETTE[bpPaletteIndex(bp)]
                   return bpCols.map((c, ci) => {
                     const rec = lookup?.[kw]?.[dk]?.[c]
                     const prevRec = prevLookup?.[kw]?.[dk]?.[c]

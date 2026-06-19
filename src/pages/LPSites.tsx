@@ -352,6 +352,7 @@ function BrandView({
                 key={snap.id}
                 snapshot={snap}
                 lpDomains={visibleLpDomains}
+                allLpDomains={lpDomains}
                 visibleCountries={visibleCountries}
                 kwFilter={kwFilter}
                 cardFilter={cardFilter}
@@ -612,6 +613,7 @@ function LPSiteOption({
 function SnapshotMatrix({
   snapshot,
   lpDomains,
+  allLpDomains,
   visibleCountries,
   kwFilter,
   cardFilter,
@@ -619,6 +621,7 @@ function SnapshotMatrix({
 }: {
   snapshot: Snapshot
   lpDomains: string[]
+  allLpDomains: string[]
   visibleCountries: string[]
   kwFilter: string
   cardFilter: CardFilterKey | null
@@ -627,6 +630,11 @@ function SnapshotMatrix({
   const scrollRef      = useRef<HTMLDivElement>(null)
   const keywordColRef  = useRef<HTMLTableCellElement>(null)
   const [scrollRightPad, setScrollRightPad] = useState(0)
+
+  const lpPaletteIndex = (lp: string) => {
+    const idx = allLpDomains.findIndex((d) => d.toLowerCase() === lp.toLowerCase())
+    return (idx >= 0 ? idx : 0) % LP_PALETTE.length
+  }
 
   useEffect(() => {
     const scrollEl = scrollRef.current
@@ -731,7 +739,7 @@ function SnapshotMatrix({
 
       <div ref={scrollRef} className="overflow-x-auto"
            style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
-        <table className="border-collapse text-[11px] w-max">
+        <table className="border-collapse text-[11px] w-full">
 
           {/* Row 1 — LP domain block label */}
           <thead>
@@ -750,7 +758,7 @@ function SnapshotMatrix({
                 Keyword
               </th>
               {lpDomains.map((lp, idx) => {
-                const palette = LP_PALETTE[idx % LP_PALETTE.length]
+                const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <th
                     key={`lp-h-${lp}`}
@@ -772,7 +780,7 @@ function SnapshotMatrix({
             {/* Row 2 — country sub-header */}
             <tr>
               {lpDomains.map((lp, idx) => {
-                const palette = LP_PALETTE[idx % LP_PALETTE.length]
+                const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <Fragment key={`lp-sub-${lp}`}>
                     {visibleCountries.map((c, ci) => (
@@ -813,7 +821,7 @@ function SnapshotMatrix({
 
                 {lpDomains.map((lp, idx) => {
                   const dk = lp.toLowerCase()
-                  const palette = LP_PALETTE[idx % LP_PALETTE.length]
+                  const palette = LP_PALETTE[lpPaletteIndex(lp)]
                   return visibleCountries.map((c, ci) => {
                     const rec = lookup?.[kw]?.[dk]?.[c]
                     return (
