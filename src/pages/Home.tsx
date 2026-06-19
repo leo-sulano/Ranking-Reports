@@ -375,8 +375,8 @@ export function Home() {
           <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
           <div className="grid grid-cols-2 gap-3 p-5">
             <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#FFCC00" borderColor="#FFCC00" />
-            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#FFFDE6" borderColor="#0A0A0A" />
-            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} highlight />
+            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#F5F5F3" borderColor="#0A0A0A" />
+            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} bgColor="#CC0000" borderColor="#CC0000" lightText />
           </div>
         </section>
 
@@ -500,8 +500,8 @@ function MoverGroup({
 }
 
 function NavCard({
-  label, hint, onClick, highlight, bgColor, borderColor,
-}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string }) {
+  label, hint, onClick, highlight, bgColor, borderColor, lightText,
+}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string; lightText?: boolean }) {
   return (
     <button
       onClick={onClick}
@@ -512,10 +512,10 @@ function NavCard({
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] font-semibold text-[#0A0A0A] leading-tight">{label}</span>
-        <span className="text-[#ABABAA] text-[13px] transition-transform duration-150 group-hover:translate-x-0.5 shrink-0">→</span>
+        <span className="text-[13px] font-semibold leading-tight" style={{ color: lightText ? 'rgba(255,255,255,0.95)' : '#0A0A0A' }}>{label}</span>
+        <span className="text-[13px] transition-transform duration-150 group-hover:translate-x-0.5 shrink-0" style={{ color: lightText ? 'rgba(255,255,255,0.6)' : '#ABABAA' }}>→</span>
       </div>
-      <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
+      <div className="text-[11px] mt-1.5" style={{ color: lightText ? 'rgba(255,255,255,0.6)' : '#ABABAA' }}>{hint}</div>
     </button>
   )
 }
