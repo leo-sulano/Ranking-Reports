@@ -23,20 +23,8 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
       <line x1="9" y1="21" x2="9" y2="9"/>
     </svg>
   )},
-  { path: '/ftds', label: 'FTDs', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-    </svg>
-  )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
     <AiIcon size={18} />
-  )},
-  { path: '/countries/au', activePath: '/countries', label: 'Countries', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="2" y1="12" x2="22" y2="12"/>
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-    </svg>
   )},
 ]
 

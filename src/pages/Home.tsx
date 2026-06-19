@@ -280,21 +280,17 @@ export function Home() {
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E86600]">Top-10</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">CVG%</th>
-                    <th className="pl-3 pr-5 py-1.5 w-[96px] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Share</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboard.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-[12px] text-[#ABABAA]">
+                      <td colSpan={5} className="px-5 py-10 text-center text-[12px] text-[#ABABAA]">
                         No brand data in current snapshot.
                       </td>
                     </tr>
                   )}
                   {leaderboard.map((row, i) => {
-                    const maxT10 = leaderboard[0].t10 || 1
-                    const share  = row.t10 / maxT10
                     const MEDALS = ['🥇', '🥈', '🥉']
                     const brandUrl = `/bp-sites/${brandToSlug(row.brand.name)}`
                     return (
@@ -351,24 +347,6 @@ export function Home() {
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
                           {row.t10 || <span className="text-[#D8D7D2] no-underline">—</span>}
-                        </td>
-                        <td
-                          className="px-3 py-0 text-right font-mono text-[12px] tabular-nums text-[#8A8A85] cursor-pointer hover:text-[#0A0A0A] hover:underline"
-                          onClick={() => navigate(brandUrl)}
-                          title={`${row.t10} of ${row.total} keywords in Top-10`}
-                        >
-                          {row.cvg}%
-                        </td>
-                        <td
-                          className="pl-3 pr-5 py-0 cursor-pointer"
-                          onClick={() => navigate(brandUrl)}
-                        >
-                          <div className="h-[3px] bg-[#F0EFEA] rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-700"
-                              style={{ width: `${share * 100}%`, background: row.brand.color }}
-                            />
-                          </div>
                         </td>
                       </tr>
                     )
@@ -577,6 +555,7 @@ function KeywordModal({
   records: RankingRecord[]
   onClose: () => void
 }) {
+  const navigate = useNavigate()
   const limit = TIER_LIMIT[tier]
   const filtered = records.filter((r) => {
     const p = parsePosition(r.position)
@@ -676,9 +655,13 @@ function KeywordModal({
                   {group.keywords.map(({ keyword, entries }) => (
                     <div
                       key={keyword}
-                      className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors"
+                      className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors cursor-pointer group"
+                      onClick={() => {
+                        navigate(`/bp-sites/${brandToSlug(brand)}/${group.domain}?kw=${encodeURIComponent(keyword)}`)
+                        onClose()
+                      }}
                     >
-                      <span className="text-[12px] text-[#1A1A1A]">{keyword}</span>
+                      <span className="text-[12px] text-[#1A1A1A] group-hover:underline">{keyword}</span>
                       <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
                         {entries.map(({ country, pos }) => (
                           <span
