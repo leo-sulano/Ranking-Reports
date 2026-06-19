@@ -294,6 +294,7 @@ function BrandView({
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
   const [showClassChart, setShowClassChart] = useState(false)
+  const [showAllSnapshots, setShowAllSnapshots] = useState(false)
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id or 'month:<MonthYear>'.
@@ -589,32 +590,53 @@ function BrandView({
               When the Stats date filter picks a specific date, narrow the
               tables to that one date too. */}
           <div className="flex-1 overflow-y-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
-            {(statsFilter === 'all'
-              ? brandSnapshots
-              : monthKey
-                ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
-                : brandSnapshots.filter((s) => s.id === statsFilter)
-            ).map((snap) => {
-              const snapIdx = brandSnapshots.findIndex((s) => s.id === snap.id)
-              const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
+            {(() => {
+              const allSnaps = statsFilter === 'all'
+                ? brandSnapshots
+                : monthKey
+                  ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
+                  : brandSnapshots.filter((s) => s.id === statsFilter)
+              // When showing all dates, only render the latest snapshot initially
+              // to avoid blocking the main thread with thousands of table cells.
+              const visibleSnaps = (statsFilter === 'all' && !showAllSnapshots)
+                ? allSnaps.slice(0, 1)
+                : allSnaps
+              const hiddenCount = allSnaps.length - visibleSnaps.length
               return (
-              <SnapshotMatrix
-                key={snap.id}
-                snapshot={snap}
-                prevSnapshot={prevSnap}
-                brand={brand}
-                mainDomain={mainDomain}
-                bpDomains={visibleBpDomains}
-                showMain={showMain}
-                visibleCountries={visibleCountries}
-                kwFilter={kwFilter}
-                posFilter={posFilter}
-                cardFilter={cardFilter}
-                onEditCell={onEditCell}
-                isLatest={snap.id === latestSnap?.id}
-              />
+                <>
+                  {visibleSnaps.map((snap) => {
+                    const snapIdx = brandSnapshots.findIndex((s) => s.id === snap.id)
+                    const prevSnap = snapIdx >= 0 ? (brandSnapshots[snapIdx + 1] ?? null) : null
+                    return (
+                      <SnapshotMatrix
+                        key={snap.id}
+                        snapshot={snap}
+                        prevSnapshot={prevSnap}
+                        brand={brand}
+                        mainDomain={mainDomain}
+                        bpDomains={visibleBpDomains}
+                        showMain={showMain}
+                        visibleCountries={visibleCountries}
+                        kwFilter={kwFilter}
+                        posFilter={posFilter}
+                        cardFilter={cardFilter}
+                        onEditCell={onEditCell}
+                        isLatest={snap.id === latestSnap?.id}
+                      />
+                    )
+                  })}
+                  {hiddenCount > 0 && (
+                    <button
+                      onClick={() => setShowAllSnapshots(true)}
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+                    >
+                      <ChevronDown size={14} />
+                      Show {hiddenCount} older snapshot{hiddenCount !== 1 ? 's' : ''}
+                    </button>
+                  )}
+                </>
               )
-            })}
+            })()}
           </div>
         </>
       )}

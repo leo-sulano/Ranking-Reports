@@ -208,6 +208,7 @@ function BrandView({
   })
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
+  const [showAllSnapshots, setShowAllSnapshots] = useState(false)
 
   const [statsFilter, setStatsFilter] = useState<string>(
     () => searchParams.get('date') ?? 'all',
@@ -386,23 +387,42 @@ function BrandView({
           </div>
 
           <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 flex flex-col gap-6">
-            {(statsFilter === 'all'
-              ? brandSnapshots
-              : monthKey
-                ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
-                : brandSnapshots.filter((s) => s.id === statsFilter)
-            ).map((snap) => (
-              <SnapshotMatrix
-                key={snap.id}
-                snapshot={snap}
-                lpDomains={visibleLpDomains}
-                allLpDomains={lpDomains}
-                visibleCountries={visibleCountries}
-                kwFilter={kwFilter}
-                cardFilter={cardFilter}
-                isLatest={snap.id === latestSnap?.id}
-              />
-            ))}
+            {(() => {
+              const allSnaps = statsFilter === 'all'
+                ? brandSnapshots
+                : monthKey
+                  ? brandSnapshots.filter((s) => snapMonthKey(s) === monthKey)
+                  : brandSnapshots.filter((s) => s.id === statsFilter)
+              const visibleSnaps = (statsFilter === 'all' && !showAllSnapshots)
+                ? allSnaps.slice(0, 1)
+                : allSnaps
+              const hiddenCount = allSnaps.length - visibleSnaps.length
+              return (
+                <>
+                  {visibleSnaps.map((snap) => (
+                    <SnapshotMatrix
+                      key={snap.id}
+                      snapshot={snap}
+                      lpDomains={visibleLpDomains}
+                      allLpDomains={lpDomains}
+                      visibleCountries={visibleCountries}
+                      kwFilter={kwFilter}
+                      cardFilter={cardFilter}
+                      isLatest={snap.id === latestSnap?.id}
+                    />
+                  ))}
+                  {hiddenCount > 0 && (
+                    <button
+                      onClick={() => setShowAllSnapshots(true)}
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+                    >
+                      <ChevronDown size={14} />
+                      Show {hiddenCount} older snapshot{hiddenCount !== 1 ? 's' : ''}
+                    </button>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </>
       )}
