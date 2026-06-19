@@ -221,6 +221,7 @@ function BrandView({
   onBack: () => void
   onEditCell: EditCellFn
 }) {
+  const navigate = useNavigate()
   const brandDomainSet = useMemo(
     () => new Set(brand.domains.map((d) => d.toLowerCase())),
     [brand],
@@ -627,7 +628,9 @@ function BrandView({
           card={modalCard}
           records={statsRecords}
           prevPosMap={prevPosMap}
+          brand={brand}
           onClose={() => setModalCard(null)}
+          onNavigate={(path) => { setModalCard(null); navigate(path) }}
         />
       )}
     </>
@@ -1440,12 +1443,16 @@ function StatsCardModal({
   card,
   records,
   prevPosMap,
+  brand,
   onClose,
+  onNavigate,
 }: {
   card: CardFilterKey
   records: RankingRecord[]
   prevPosMap: Map<string, number | 'NR'> | null
+  brand: Brand
   onClose: () => void
+  onNavigate: (path: string) => void
 }) {
   const filtered = useMemo(() => {
     return records.filter((r) => {
@@ -1538,9 +1545,12 @@ function StatsCardModal({
             Array.from(grouped.entries()).map(([domain, kwMap]) => (
               <div key={domain}>
                 {/* Site header */}
-                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#F1F5F9]">
+                <div
+                  className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#F1F5F9] cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => { onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}`); onClose() }}
+                >
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
-                  <span className="text-[12px] font-bold text-[#0F172A] uppercase tracking-[0.05em] truncate flex-1">
+                  <span className="text-[12px] font-bold text-[#0F172A] uppercase tracking-[0.05em] truncate flex-1 hover:underline">
                     {domain}
                   </span>
                   <span className="text-[10px] text-[#94A3B8] shrink-0">
@@ -1562,8 +1572,12 @@ function StatsCardModal({
                         return na - nb
                       })
                       return (
-                        <div key={kwL} className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors">
-                          <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate">
+                        <div
+                          key={kwL}
+                          className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors cursor-pointer group/kw"
+                          onClick={() => { onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}`); onClose() }}
+                        >
+                          <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate group-hover/kw:underline">
                             {kwLabel}
                           </span>
                           <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">

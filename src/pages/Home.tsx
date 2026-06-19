@@ -513,7 +513,7 @@ function NavCard({
     >
       <div className="flex items-start justify-between gap-2">
         <span className="text-[13px] font-semibold text-[#0A0A0A] leading-tight">{label}</span>
-        <span className="text-[#ABABAA] text-[13px] transition-transform duration-150 group-hover:translate-x-0.5 shrink-0">→</span>
+        <span className="text-[#ABABAA] text-[13px] transition-all duration-150 group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100 shrink-0">→</span>
       </div>
       <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
     </button>
