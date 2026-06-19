@@ -512,7 +512,7 @@ function MoverGroup({
                   {m.keywords.map((kw, j) => (
                     <li
                       key={`${kw.record.keyword}-${kw.record.country}-${j}`}
-                      onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}?kw=${encodeURIComponent(kw.record.keyword)}`)}
+                      onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}/${kw.record.domain}?kw=${encodeURIComponent(kw.record.keyword)}`)}
                       className="flex items-center gap-2 px-2 py-0.5 rounded-lg hover:bg-[#FAF9F4] transition-colors cursor-pointer"
                     >
                       <div className="min-w-0 flex-1">
