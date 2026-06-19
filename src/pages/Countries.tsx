@@ -261,8 +261,10 @@ function CountryBrandTable({
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-  const lookup     = useMemo(() => buildDomainLookup([...bpRecords, ...lpRecords]),     [bpRecords, lpRecords])
-  const prevLookup = useMemo(() => buildDomainLookup([...prevBpRecords, ...prevLpRecords]), [prevBpRecords, prevLpRecords])
+  const bpLookup     = useMemo(() => buildDomainLookup(bpRecords),     [bpRecords])
+  const lpLookup     = useMemo(() => buildDomainLookup(lpRecords),     [lpRecords])
+  const prevBpLookup = useMemo(() => buildDomainLookup(prevBpRecords), [prevBpRecords])
+  const prevLpLookup = useMemo(() => buildDomainLookup(prevLpRecords), [prevLpRecords])
   const hasPrev    = prevBpRecords.length > 0 || prevLpRecords.length > 0
 
   // Columns: only domains that have at least 1 record for this country
@@ -474,8 +476,8 @@ function CountryBrandTable({
 
                 {/* MAIN cell */}
                 {showMain && (() => {
-                  const rec    = lookup[kw]?.[mainDomain]
-                  const prevPos = hasPrev ? parsePosition(prevLookup[kw]?.[mainDomain]?.position ?? '') : undefined
+                  const rec    = bpLookup[kw]?.[mainDomain]
+                  const prevPos = hasPrev ? parsePosition(prevBpLookup[kw]?.[mainDomain]?.position ?? '') : undefined
                   return (
                     <td
                       key={`main-${kw}`}
@@ -497,8 +499,8 @@ function CountryBrandTable({
                 {/* BP cells */}
                 {activeBpDoms.map((d, i) => {
                   const dk     = d.toLowerCase()
-                  const rec    = lookup[kw]?.[dk]
-                  const prevPos = hasPrev ? parsePosition(prevLookup[kw]?.[dk]?.position ?? '') : undefined
+                  const rec    = bpLookup[kw]?.[dk]
+                  const prevPos = hasPrev ? parsePosition(prevBpLookup[kw]?.[dk]?.position ?? '') : undefined
                   return (
                     <td
                       key={`bp-${kw}-${d}`}
@@ -520,8 +522,8 @@ function CountryBrandTable({
                 {/* LP cells */}
                 {activeLpDoms.map((d, i) => {
                   const dk     = d.toLowerCase()
-                  const rec    = lookup[kw]?.[dk]
-                  const prevPos = hasPrev ? parsePosition(prevLookup[kw]?.[dk]?.position ?? '') : undefined
+                  const rec    = lpLookup[kw]?.[dk]
+                  const prevPos = hasPrev ? parsePosition(prevLpLookup[kw]?.[dk]?.position ?? '') : undefined
                   return (
                     <td
                       key={`lp-${kw}-${d}`}

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { Brand, RankingRecord, RROutletContext } from '../types'
 
@@ -76,7 +76,8 @@ export function Home() {
     for (const r of records) {
       const kw = r.keyword
       kwMap.set(kw, (kwMap.get(kw) ?? 0) + 1)
-      ctyMap.set(r.country, (ctyMap.get(r.country) ?? 0) + 1)
+      const normalizedCty = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      ctyMap.set(normalizedCty, (ctyMap.get(normalizedCty) ?? 0) + 1)
       const bName = brandOfDomain(r.domain)
       if (bName) {
         const brand = BRAND_BY_NAME[bName]
