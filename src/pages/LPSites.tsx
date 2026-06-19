@@ -624,7 +624,23 @@ function SnapshotMatrix({
   cardFilter: CardFilterKey | null
   isLatest: boolean
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef      = useRef<HTMLDivElement>(null)
+  const keywordColRef  = useRef<HTMLTableCellElement>(null)
+  const [scrollRightPad, setScrollRightPad] = useState(0)
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current
+    const kwEl     = keywordColRef.current
+    if (!scrollEl || !kwEl) return
+    const rows  = scrollEl.querySelectorAll('thead tr')
+    const lastTh = rows.length >= 2
+      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
+      : null
+    if (!lastTh) return
+    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
+    setScrollRightPad(Math.max(0, pad))
+  })
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -713,13 +729,15 @@ function SnapshotMatrix({
         )}
       </div>
 
-      <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full">
+      <div ref={scrollRef} className="overflow-x-auto"
+           style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max">
 
           {/* Row 1 — LP domain block label */}
           <thead>
             <tr>
               <th
+                ref={keywordColRef}
                 rowSpan={2}
                 className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
                 style={{
@@ -760,7 +778,7 @@ function SnapshotMatrix({
                     {visibleCountries.map((c, ci) => (
                       <th
                         key={`lp-sub-${lp}-${c}`}
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em] min-w-[90px]"
                         style={{
                           background: palette.headerBg,
                           color: HEADER_FG,
@@ -801,7 +819,7 @@ function SnapshotMatrix({
                     return (
                       <td
                         key={`lp-cell-${kw}-${lp}-${c}`}
-                        className="px-2 py-1.5 text-center align-middle"
+                        className="px-2 py-1.5 text-center align-middle min-w-[90px]"
                         style={{
                           background: palette.cellBg,
                           borderLeft: ci === 0 ? borderStyle : borderStyle,

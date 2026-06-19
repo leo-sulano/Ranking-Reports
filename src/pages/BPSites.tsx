@@ -1161,7 +1161,7 @@ function SnapshotMatrix({
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto"
            style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
-        <table className="border-collapse text-[11px] min-w-full">
+        <table className="border-collapse text-[11px] w-max">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
@@ -1224,7 +1224,7 @@ function SnapshotMatrix({
                   {mainDomainCols.map((c, ci) => (
                     <th
                       key={`main-sub-${c}`}
-                      className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
+                      className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em] min-w-[90px]"
                       style={{
                         background: MAIN_HEADER_BG,
                         color: HEADER_FG,
@@ -1293,7 +1293,7 @@ function SnapshotMatrix({
                       return (
                         <td
                           key={`main-cell-${kw}-${c}`}
-                          className="px-2 py-1.5 text-center align-middle"
+                          className="px-2 py-1.5 text-center align-middle min-w-[90px]"
                           style={{
                             background: MAIN_CELL_BG,
                             borderLeft: ci === 0 ? undefined : borderStyle,
