@@ -69,9 +69,10 @@ export function Home() {
   const page1Pct = totals.records ? Math.round((tier.top10 / totals.records) * 100) : 0
 
   const metricDetails = useMemo(() => {
-    const kwMap    = new Map<string, number>()
-    const ctyMap   = new Map<string, number>()
-    const brandMap = new Map<string, { brand: Brand; count: number }>()
+    const kwMap       = new Map<string, number>()
+    const kwBrandCts  = new Map<string, Map<string, number>>()
+    const ctyMap      = new Map<string, number>()
+    const brandMap    = new Map<string, { brand: Brand; count: number }>()
     for (const r of records) {
       const kw = r.keyword
       kwMap.set(kw, (kwMap.get(kw) ?? 0) + 1)
@@ -80,10 +81,18 @@ export function Home() {
       if (bName) {
         const brand = BRAND_BY_NAME[bName]
         if (brand) brandMap.set(bName, { brand, count: (brandMap.get(bName)?.count ?? 0) + 1 })
+        if (!kwBrandCts.has(kw)) kwBrandCts.set(kw, new Map())
+        const bm = kwBrandCts.get(kw)!
+        bm.set(bName, (bm.get(bName) ?? 0) + 1)
       }
     }
     return {
-      keywords:  [...kwMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([kw, count]) => ({ kw, count })),
+      keywords: [...kwMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([kw, count]) => {
+        const bm = kwBrandCts.get(kw)
+        let topBrand: string | undefined
+        if (bm) { let max = 0; bm.forEach((c, n) => { if (c > max) { max = c; topBrand = n } }) }
+        return { kw, count, brandSlug: topBrand ? brandToSlug(topBrand) : undefined }
+      }),
       countries: [...ctyMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([country, count]) => ({ country, count })),
       brands:    [...brandMap.values()].sort((a, b) => b.count - a.count),
     }
@@ -426,6 +435,7 @@ export function Home() {
           type={metricModal}
           details={metricDetails}
           onClose={() => setMetricModal(null)}
+          onNavigate={(path) => { setMetricModal(null); navigate(path) }}
         />
       )}
     </div>
@@ -692,7 +702,7 @@ function KeywordModal({
 }
 
 type MetricDetails = {
-  keywords:  { kw: string; count: number }[]
+  keywords:  { kw: string; count: number; brandSlug?: string }[]
   countries: { country: string; count: number }[]
   brands:    { brand: Brand; count: number }[]
 }
@@ -704,11 +714,12 @@ const METRIC_META = {
 }
 
 function MetricModal({
-  type, details, onClose,
+  type, details, onClose, onNavigate,
 }: {
   type: 'keywords' | 'brands' | 'countries'
   details: MetricDetails
   onClose: () => void
+  onNavigate: (path: string) => void
 }) {
   const meta = METRIC_META[type]
 
@@ -740,8 +751,12 @@ function MetricModal({
         <div className="overflow-y-auto flex-1 px-5 py-3">
           {type === 'keywords' && (
             <div className="divide-y divide-[#F3F2EE]">
-              {details.keywords.map(({ kw, count }) => (
-                <div key={kw} className="flex items-center justify-between gap-4 py-2">
+              {details.keywords.map(({ kw, count, brandSlug }) => (
+                <div
+                  key={kw}
+                  className={`flex items-center justify-between gap-4 py-2 rounded-lg px-2 -mx-2 transition-colors ${brandSlug ? 'cursor-pointer hover:bg-[#F5F4EF]' : ''}`}
+                  onClick={() => brandSlug && onNavigate(`/bp-sites/${brandSlug}?kw=${encodeURIComponent(kw)}`)}
+                >
                   <span className="text-[13px] text-[#1A1A1A]">{kw}</span>
                   <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} record{count !== 1 ? 's' : ''}</span>
                 </div>
@@ -752,7 +767,11 @@ function MetricModal({
           {type === 'brands' && (
             <div className="divide-y divide-[#F3F2EE]">
               {details.brands.map(({ brand, count }) => (
-                <div key={brand.name} className="flex items-center gap-3 py-2.5">
+                <div
+                  key={brand.name}
+                  className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-[#F5F4EF] rounded-lg px-2 -mx-2 transition-colors"
+                  onClick={() => onNavigate(`/bp-sites/${brandToSlug(brand.name)}`)}
+                >
                   <div className="w-[3px] h-6 rounded-full shrink-0" style={{ background: brand.color }} />
                   <span className="text-[13px] font-medium text-[#0A0A0A] flex-1">{brand.name}</span>
                   <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
@@ -764,7 +783,11 @@ function MetricModal({
           {type === 'countries' && (
             <div className="divide-y divide-[#F3F2EE]">
               {details.countries.map(({ country, count }) => (
-                <div key={country} className="flex items-center justify-between gap-4 py-2">
+                <div
+                  key={country}
+                  className="flex items-center justify-between gap-4 py-2 cursor-pointer hover:bg-[#F5F4EF] rounded-lg px-2 -mx-2 transition-colors"
+                  onClick={() => onNavigate(`/countries/${country.toLowerCase()}`)}
+                >
                   <span className="text-[13px] font-medium text-[#0A0A0A]">{country}</span>
                   <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
                 </div>
