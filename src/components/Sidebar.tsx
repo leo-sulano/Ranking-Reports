@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
 import { BRANDS, brandToSlug } from '../lib/brands'
 
-const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
+const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: string }> = [
   { path: '/', label: 'Home', icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -31,7 +31,7 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode }> = [
   { path: '/ask-ai', label: 'Ask AI', icon: (
     <AiIcon size={18} />
   )},
-  { path: '/countries/au', label: 'Countries', icon: (
+  { path: '/countries/au', activePath: '/countries', label: 'Countries', icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
       <line x1="2" y1="12" x2="22" y2="12"/>
@@ -107,7 +107,7 @@ export function Sidebar({
         {/* Nav */}
         <nav className="px-2 pt-3 pb-3 border-b border-[#EEEEE9] space-y-0.5 shrink-0">
           {PAGES.map((p) => {
-            const active = isActivePath(p.path)
+            const active = isActivePath(p.activePath ?? p.path)
             return (
               <button
                 key={p.path}
