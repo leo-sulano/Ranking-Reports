@@ -319,12 +319,15 @@ function BrandView({
   const statsRecords = useMemo(() => {
     const all = statsSnap?.records ?? []
     const bpSet = new Set(visibleBpDomains.map((d) => d.toLowerCase()))
+    const filter = kwFilter.trim().toLowerCase()
     return all.filter((r) => {
       if (!bpSet.has(r.domain.toLowerCase())) return false
       const countryCode = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
-      return activeCountries.includes(countryCode)
+      if (!activeCountries.includes(countryCode)) return false
+      if (filter && !r.keyword.toLowerCase().includes(filter)) return false
+      return true
     })
-  }, [statsSnap, visibleBpDomains, activeCountries])
+  }, [statsSnap, visibleBpDomains, activeCountries, kwFilter])
 
   // Previous-snapshot position map — shared by both the stats counter and the
   // modal so they use identical comparison logic.
