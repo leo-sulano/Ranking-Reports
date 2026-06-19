@@ -737,9 +737,9 @@ function SnapshotMatrix({
         )}
       </div>
 
-      <div ref={scrollRef} className="overflow-x-auto"
-           style={scrollRightPad > 0 ? { paddingRight: scrollRightPad } : undefined}>
-        <table className="border-collapse text-[11px] w-full">
+      <div ref={scrollRef} className="overflow-x-auto">
+        <table className="border-collapse text-[11px] w-max min-w-full"
+               style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}>
 
           {/* Row 1 — LP domain block label */}
           <thead>
