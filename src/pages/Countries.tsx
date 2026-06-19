@@ -26,6 +26,14 @@ const DATE_BAND_BG   = '#5894CD'
 const DATE_BAND_FG   = '#FFFFFF'
 const HEADER_FG      = '#000000'
 
+// Bold section-label backgrounds for the group header row
+const BP_GROUP_BG  = '#6B7280'   // solid slate — distinct from per-column palette
+const LP_GROUP_BG  = '#0F766E'   // teal — clearly different from BP
+const GROUP_FG     = '#FFFFFF'
+
+// Thicker left border that marks the start of the LP section
+const SECTION_DIVIDER = '3px solid #6B7280'
+
 // Same palette as BPSites — BP partner domains
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
   { headerBg: '#CCCCCC', cellBg: '#D9D9D9' },
@@ -360,8 +368,8 @@ function CountryBrandTable({
                   colSpan={activeBpDoms.length}
                   className="px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
                   style={{
-                    background: BP_PALETTE[0].headerBg,
-                    color: HEADER_FG,
+                    background: BP_GROUP_BG,
+                    color: GROUP_FG,
                     borderLeft: borderStyle,
                     borderRight: borderStyle,
                     borderBottom: 'none',
@@ -376,9 +384,9 @@ function CountryBrandTable({
                   colSpan={activeLpDoms.length}
                   className="px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
                   style={{
-                    background: LP_PALETTE[0].headerBg,
-                    color: HEADER_FG,
-                    borderLeft: borderStyle,
+                    background: LP_GROUP_BG,
+                    color: GROUP_FG,
+                    borderLeft: SECTION_DIVIDER,
                     borderRight: borderStyle,
                     borderBottom: 'none',
                   }}
@@ -435,7 +443,7 @@ function CountryBrandTable({
                   style={{
                     background: LP_PALETTE[i % LP_PALETTE.length].headerBg,
                     color: HEADER_FG,
-                    borderLeft: borderStyle,
+                    borderLeft: i === 0 ? SECTION_DIVIDER : borderStyle,
                     borderRight: i === activeLpDoms.length - 1 ? borderStyle : undefined,
                     borderBottom: borderStyle,
                     maxWidth: 140,
@@ -523,7 +531,7 @@ function CountryBrandTable({
                       className="px-2 py-1.5 text-center align-middle min-w-[100px]"
                       style={{
                         background: LP_PALETTE[i % LP_PALETTE.length].cellBg,
-                        borderLeft: borderStyle,
+                        borderLeft: i === 0 ? SECTION_DIVIDER : borderStyle,
                         borderRight: i === activeLpDoms.length - 1 ? borderStyle : undefined,
                         borderBottom: borderStyle,
                       }}
