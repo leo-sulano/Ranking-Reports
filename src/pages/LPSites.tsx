@@ -198,8 +198,15 @@ function BrandView({
 
   const latestSnap = brandSnapshots[0] ?? null
 
-  const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
-  const [kwFilter, setKwFilter] = useState('')
+  const [activeCountries, setActiveCountries] = useState<string[]>(() => {
+    const param = searchParams.get('countries')
+    if (param) {
+      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      if (parsed.length > 0) return parsed
+    }
+    return COUNTRY_ORDER
+  })
+  const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
 
   const [statsFilter, setStatsFilter] = useState<string>(
@@ -229,7 +236,14 @@ function BrandView({
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
-      return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+      const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+      setSearchParams((sp) => {
+        const p = new URLSearchParams(sp)
+        if (next.length === COUNTRY_ORDER.length) p.delete('countries')
+        else p.set('countries', next.join(','))
+        return p
+      }, { replace: true })
+      return next
     })
   }
 
@@ -351,7 +365,16 @@ function BrandView({
               <input
                 type="text"
                 value={kwFilter}
-                onChange={(e) => setKwFilter(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setKwFilter(v)
+                  setSearchParams((prev) => {
+                    const p = new URLSearchParams(prev)
+                    if (!v) p.delete('kw')
+                    else p.set('kw', v)
+                    return p
+                  }, { replace: true })
+                }}
                 placeholder="Search keywords…"
                 className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />

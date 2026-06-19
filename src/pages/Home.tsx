@@ -657,7 +657,8 @@ function KeywordModal({
                       key={keyword}
                       className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors cursor-pointer group"
                       onClick={() => {
-                        navigate(`/bp-sites/${brandToSlug(brand.name)}/${group.domain}?kw=${encodeURIComponent(keyword)}`)
+                        const countriesParam = entries.map((e) => e.country).join(',')
+                        navigate(`/bp-sites/${brandToSlug(brand.name)}/${group.domain}?kw=${encodeURIComponent(keyword)}&countries=${countriesParam}`)
                         onClose()
                       }}
                     >

@@ -241,17 +241,19 @@ function BrandView({
     return 'all'
   })
 
-  // Site filter — local state supporting multi-select for individual BP domains
+  // Site filter — prefer ?site= query param, fall back to domainFilter path param
   const [siteMode, setSiteMode] = useState<'all' | 'bp' | 'custom'>(() => {
-    if (!domainFilter) return 'all'
-    if (domainFilter === 'bp') return 'bp'
-    if (bpDomains.some((d) => d.toLowerCase() === domainFilter.toLowerCase())) return 'custom'
-    return 'all'
+    const src = searchParams.get('site') ?? domainFilter
+    if (!src || src === 'bp') return 'bp'
+    if (src === 'all') return 'all'
+    if (src.split(',').some((s) => bpDomains.some((d) => d.toLowerCase() === s.trim().toLowerCase()))) return 'custom'
+    return 'bp'
   })
   const [customDomains, setCustomDomains] = useState<string[]>(() => {
-    if (!domainFilter || domainFilter === 'bp') return []
-    const match = bpDomains.find((d) => d.toLowerCase() === domainFilter.toLowerCase())
-    return match ? [match] : []
+    const src = searchParams.get('site') ?? domainFilter
+    if (!src || src === 'all' || src === 'bp') return []
+    const parts = src.split(',').map((s) => s.trim().toLowerCase())
+    return bpDomains.filter((d) => parts.includes(d.toLowerCase()))
   })
 
   const showMain = siteMode === 'all'
@@ -278,7 +280,14 @@ function BrandView({
   const latestSnap = brandSnapshots[0] ?? null
 
   // Local filters — independent from Rankings page
-  const [activeCountries, setActiveCountries] = useState<string[]>(COUNTRY_ORDER)
+  const [activeCountries, setActiveCountries] = useState<string[]>(() => {
+    const param = searchParams.get('countries')
+    if (param) {
+      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      if (parsed.length > 0) return parsed
+    }
+    return COUNTRY_ORDER
+  })
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
 
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
@@ -313,19 +322,41 @@ function BrandView({
   const toggleCountry = (c: string) => {
     setActiveCountries((prev) => {
       if (prev.includes(c) && prev.length === 1) return prev
-      return prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+      const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+      setSearchParams((sp) => {
+        const p = new URLSearchParams(sp)
+        if (next.length === COUNTRY_ORDER.length) p.delete('countries')
+        else p.set('countries', next.join(','))
+        return p
+      }, { replace: true })
+      return next
     })
   }
 
-  const handleSiteAll = () => { setSiteMode('all'); setCustomDomains([]) }
-  const handleSiteBP  = () => { setSiteMode('bp');  setCustomDomains([]) }
+  const handleSiteAll = () => {
+    setSiteMode('all')
+    setCustomDomains([])
+    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set('site', 'all'); return p }, { replace: true })
+  }
+  const handleSiteBP = () => {
+    setSiteMode('bp')
+    setCustomDomains([])
+    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('site'); return p }, { replace: true })
+  }
   const handleToggleDomain = (domain: string) => {
     setCustomDomains((prev) => {
       const already = prev.some((d) => d.toLowerCase() === domain.toLowerCase())
       const next = already
         ? prev.filter((d) => d.toLowerCase() !== domain.toLowerCase())
         : [...prev, domain]
-      setSiteMode(next.length === 0 ? 'all' : 'custom')
+      const newMode = next.length === 0 ? 'bp' : 'custom'
+      setSiteMode(newMode)
+      setSearchParams((sp) => {
+        const p = new URLSearchParams(sp)
+        if (next.length === 0) p.delete('site')
+        else p.set('site', next.join(','))
+        return p
+      }, { replace: true })
       return next
     })
   }
@@ -500,7 +531,16 @@ function BrandView({
               <input
                 type="text"
                 value={kwFilter}
-                onChange={(e) => setKwFilter(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setKwFilter(v)
+                  setSearchParams((prev) => {
+                    const p = new URLSearchParams(prev)
+                    if (!v) p.delete('kw')
+                    else p.set('kw', v)
+                    return p
+                  }, { replace: true })
+                }}
                 placeholder="Search keywords…"
                 className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />
@@ -513,7 +553,10 @@ function BrandView({
                   {posFilter === 'p1' ? 'P1 only' : posFilter === 'top3' ? 'Top-3 only' : 'Top-10 only'}
                 </span>
                 <button
-                  onClick={() => setPosFilter('all')}
+                  onClick={() => {
+                    setPosFilter('all')
+                    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('pos'); return p }, { replace: true })
+                  }}
                   className="ml-0.5 hover:text-[#312E81] leading-none"
                   title="Clear position filter"
                 >
