@@ -472,7 +472,7 @@ function MoverGroup({
                   {m.keywords.map((kw, j) => (
                     <li
                       key={`${kw.record.keyword}-${kw.record.country}-${j}`}
-                      onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}/${kw.record.domain}?kw=${encodeURIComponent(kw.record.keyword)}&countries=${encodeURIComponent(kw.record.country)}`)}
+                      onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}/${kw.record.domain}?kw=${encodeURIComponent(kw.record.keyword)}&countries=${encodeURIComponent(kw.record.country)}&exact=1`)}
                       className="flex items-center gap-2 px-2 py-0.5 rounded-lg hover:bg-[#FAF9F4] transition-colors cursor-pointer"
                     >
                       <div className="min-w-0 flex-1">
@@ -640,7 +640,7 @@ function KeywordModal({
                       className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors cursor-pointer group"
                       onClick={() => {
                         const countriesParam = entries.map((e) => e.country).join(',')
-                        navigate(`/bp-sites/${brandToSlug(brand.name)}/${group.domain}?kw=${encodeURIComponent(keyword)}&countries=${countriesParam}`)
+                        navigate(`/bp-sites/${brandToSlug(brand.name)}/${group.domain}?kw=${encodeURIComponent(keyword)}&countries=${countriesParam}&exact=1`)
                         onClose()
                       }}
                     >

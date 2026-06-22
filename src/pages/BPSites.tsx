@@ -297,6 +297,10 @@ function BrandView({
     setKwFilter(kwUrlParam)
   }, [kwUrlParam])
 
+  const [kwExact, setKwExact] = useState(() => searchParams.get('exact') === '1')
+  const exactUrlParam = searchParams.get('exact') === '1'
+  useEffect(() => { setKwExact(exactUrlParam) }, [exactUrlParam])
+
   // Keep activeCountries in sync when the URL countries param changes externally (e.g. modal navigation)
   const countriesUrlParam = searchParams.get('countries') ?? ''
   useEffect(() => {
@@ -388,10 +392,10 @@ function BrandView({
       if (!bpSet.has(r.domain.toLowerCase())) return false
       const countryCode = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
       if (!activeCountries.includes(countryCode)) return false
-      if (filter && !r.keyword.toLowerCase().includes(filter)) return false
+      if (filter && (kwExact ? r.keyword.toLowerCase() !== filter : !r.keyword.toLowerCase().includes(filter))) return false
       return true
     })
-  }, [statsSnap, visibleBpDomains, activeCountries, kwFilter])
+  }, [statsSnap, visibleBpDomains, activeCountries, kwFilter, kwExact])
 
   // Previous-snapshot position map — shared by both the stats counter and the
   // modal so they use identical comparison logic.
@@ -444,8 +448,8 @@ function BrandView({
       if (!seen.has(kl)) { seen.add(kl); labels[kl] = r.keyword }
     }
     const filter = kwFilter.trim().toLowerCase()
-    return Object.keys(labels).filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter)).length
-  }, [latestSnap, kwFilter])
+    return Object.keys(labels).filter((kl) => !filter || (kwExact ? kl === filter || labels[kl].toLowerCase() === filter : kl.includes(filter) || labels[kl].toLowerCase().includes(filter))).length
+  }, [latestSnap, kwFilter, kwExact])
 
   // Country columns honor the chip filter, but preserve canonical order
   const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
@@ -556,6 +560,7 @@ function BrandView({
                     const p = new URLSearchParams(prev)
                     if (!v) p.delete('kw')
                     else p.set('kw', v)
+                    p.delete('exact')
                     return p
                   }, { replace: true })
                 }}
@@ -634,6 +639,7 @@ function BrandView({
                         showMain={showMain}
                         visibleCountries={visibleCountries}
                         kwFilter={kwFilter}
+                        kwExact={kwExact}
                         posFilter={posFilter}
                         cardFilter={cardFilter}
                         onEditCell={onEditCell}
@@ -1032,6 +1038,7 @@ function SnapshotMatrix({
   showMain,
   visibleCountries,
   kwFilter,
+  kwExact,
   posFilter,
   cardFilter,
   onEditCell,
@@ -1045,6 +1052,7 @@ function SnapshotMatrix({
   showMain: boolean
   visibleCountries: string[]
   kwFilter: string
+  kwExact: boolean
   posFilter: 'p1' | 'top3' | 'top10' | 'all'
   cardFilter: CardFilterKey | null
   onEditCell: EditCellFn
@@ -1153,7 +1161,7 @@ function SnapshotMatrix({
     }
     const filter = kwFilter.trim().toLowerCase()
     let keys = Object.keys(labels)
-      .filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter))
+      .filter((kl) => !filter || (kwExact ? kl === filter || labels[kl].toLowerCase() === filter : kl.includes(filter) || labels[kl].toLowerCase().includes(filter)))
 
     if (posFilter !== 'all' || cardFilter) {
       const kwRecords = new Map<string, typeof snapshot.records>()
@@ -1613,7 +1621,7 @@ function StatsCardModal({
                         <div
                           key={kwL}
                           className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors cursor-pointer group/kw"
-                          onClick={() => { const countries = [...new Set(sorted.map((e) => e.country))].join(','); onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}&countries=${encodeURIComponent(countries)}`); onClose() }}
+                          onClick={() => { const countries = [...new Set(sorted.map((e) => e.country))].join(','); onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}&countries=${encodeURIComponent(countries)}&exact=1`); onClose() }}
                         >
                           <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate group-hover/kw:underline">
                             {kwLabel}
