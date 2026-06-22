@@ -1603,7 +1603,7 @@ function StatsCardModal({
                         <div
                           key={kwL}
                           className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors cursor-pointer group/kw"
-                          onClick={() => { onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}`); onClose() }}
+                          onClick={() => { const countries = [...new Set(sorted.map((e) => e.country))].join(','); onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}&countries=${encodeURIComponent(countries)}`); onClose() }}
                         >
                           <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate group-hover/kw:underline">
                             {kwLabel}
