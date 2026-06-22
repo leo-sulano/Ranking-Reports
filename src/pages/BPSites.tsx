@@ -297,6 +297,16 @@ function BrandView({
     setKwFilter(kwUrlParam)
   }, [kwUrlParam])
 
+  // Keep activeCountries in sync when the URL countries param changes externally (e.g. modal navigation)
+  const countriesUrlParam = searchParams.get('countries') ?? ''
+  useEffect(() => {
+    if (countriesUrlParam) {
+      const parsed = countriesUrlParam.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      if (parsed.length > 0) { setActiveCountries(parsed); return }
+    }
+    setActiveCountries(COUNTRY_ORDER)
+  }, [countriesUrlParam])
+
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
   const [showClassChart, setShowClassChart] = useState(false)
