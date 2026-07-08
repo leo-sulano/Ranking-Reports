@@ -1,7 +1,7 @@
 const STEPS: Array<{ title: string; desc: string }> = [
   {
     title: 'Upload your data',
-    desc: 'Click "Import Data," pick a category, and drop in your ranking export (.xlsx/.xls/.csv).',
+    desc: 'Click "Import Data," pick a category, and drop in your ranking export (.xlsx/.xls/.csv). This file contains Rooster Partners keyword ranking data pulled from your ranking-tracking system/software.',
   },
   {
     title: 'Pick a brand',
