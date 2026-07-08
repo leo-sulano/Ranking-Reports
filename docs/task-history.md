@@ -505,3 +505,15 @@ Made site and keyword rows in the Stats Card detail modal clickable. Clicking a 
 Brand detail views (BP Sites and LP Sites) previously rendered all snapshots' full keyword tables simultaneously on mount, blocking the main thread for several seconds with tens of thousands of DOM nodes. Now only the latest snapshot matrix is rendered on initial load. A "Show N older snapshots" button loads the remaining snapshots on demand, keeping initial navigation fast regardless of how many historical snapshots exist.
 
 ---
+
+## Task 45: Navigation Filter Fixes — Exact Keyword Match & Country Sync from Modal Clicks
+
+**Date:** 2026-06-22
+**PMS Task ID:** cmqp9xtv5000n04l173ziin3k
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Fixed a series of navigation bugs when clicking through to BP Sites from home page modals and Top Movers. Country filters now correctly pass a single country (not an array) from Top Movers keyword clicks. `activeCountries` is synced from the `?countries=` URL param on external navigation so country filtering applies immediately on mount. Keyword filter switched to exact match when navigating from modal/Top Movers clicks to avoid partial-match false positives.
+
+---

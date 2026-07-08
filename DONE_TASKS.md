@@ -312,3 +312,12 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** Feature
 
 ---
+
+## June 22, 2026
+
+**Task Title:** Navigation Filter Fixes — Exact Keyword Match & Country Sync from Modal Clicks
+**Task Description:** Fixed a series of navigation bugs when clicking through to BP Sites from home page modals and Top Movers. Country filters now correctly pass a single country (not an array) from Top Movers keyword clicks. `activeCountries` is synced from the `?countries=` URL param on external navigation so country filtering applies immediately on mount. Keyword filter switched to exact match when navigating from modal/Top Movers clicks to avoid partial-match false positives.
+**Date Completed:** June 22, 2026
+**Label:** Feature
+
+---
