@@ -517,3 +517,15 @@ Brand detail views (BP Sites and LP Sites) previously rendered all snapshots' fu
 Fixed a series of navigation bugs when clicking through to BP Sites from home page modals and Top Movers. Country filters now correctly pass a single country (not an array) from Top Movers keyword clicks. `activeCountries` is synced from the `?countries=` URL param on external navigation so country filtering applies immediately on mount. Keyword filter switched to exact match when navigating from modal/Top Movers clicks to avoid partial-match false positives.
 
 ---
+
+## Task 46: How It Works Help Page
+
+**Date:** 2026-07-08
+**PMS Task ID:** cmrc3st6n000004jtph3lfdwa
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Added a new "How It Works" help page (routed at `/how-it-works`, linked from a new sidebar nav entry) that walks users through the core dashboard workflow: uploading a ranking export, picking a brand, reading the ranking table, filtering, and tracking changes over time. The upload step notes that imported files contain Rooster BP Sites ranking data extracted from a ranking-tracking system/software.
+
+---

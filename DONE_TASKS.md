@@ -321,3 +321,12 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** Feature
 
 ---
+
+## July 8, 2026
+
+**Task Title:** How It Works Help Page
+**Task Description:** Added a new "How It Works" help page (routed at `/how-it-works`, linked from a new sidebar nav entry) that walks users through the core dashboard workflow: uploading a ranking export, picking a brand, reading the ranking table, filtering, and tracking changes over time. The upload step notes that imported files contain Rooster BP Sites ranking data extracted from a ranking-tracking system/software.
+**Date Completed:** July 8, 2026
+**Label:** Feature
+
+---
