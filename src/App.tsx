@@ -25,6 +25,7 @@ import { BPSites }      from './pages/BPSites'
 import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
 import { AskAI }        from './pages/AskAI'
+import { HowItWorks }   from './pages/HowItWorks'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -302,9 +303,10 @@ function Layout() {
   const activeCategory: CategoryId = location.pathname.startsWith('/lp-sites') ? 'lp-sites' : 'bp-sites'
 
   const SECTION_TITLES: Record<string, [string, string]> = {
-    '/bp-sites':    ['BP Sites', 'Brand website ranking report'],
-    '/lp-sites':    ['LP Sites', 'Landing page ranking report'],
-    '/ftds':        ['FTDs', 'First-time depositors'],
+    '/bp-sites':      ['BP Sites', 'Brand website ranking report'],
+    '/lp-sites':      ['LP Sites', 'Landing page ranking report'],
+    '/ftds':          ['FTDs', 'First-time depositors'],
+    '/how-it-works':  ['How It Works', 'A quick guide to using the dashboard'],
   }
   const currentPath =
     location.pathname === '/'
@@ -425,6 +427,7 @@ export function App() {
           <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
           <Route path="/ftds"             element={<FTDs />} />
           <Route path="/ask-ai"           element={<AskAI />} />
+          <Route path="/how-it-works"     element={<HowItWorks />} />
         </Route>
       </Routes>
     </AuthGate>
