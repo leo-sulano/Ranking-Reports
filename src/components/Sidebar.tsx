@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
+import { CircleHelp } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: string }> = [
@@ -25,6 +26,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
   )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
     <AiIcon size={18} />
+  )},
+  { path: '/how-it-works', label: 'How It Works', icon: (
+    <CircleHelp size={18} />
   )},
 ]
 
