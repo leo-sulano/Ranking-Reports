@@ -82,11 +82,11 @@ export function Sidebar({
       >
         {/* Logo */}
         <div className="px-3 pt-5 pb-4 border-b border-[#EEEEE9] shrink-0 flex items-center gap-3">
-          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0A0A0A] text-white font-display text-[13px] tracking-wider shrink-0">
+          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#1e2a6e] text-white font-display text-[13px] tracking-wider shrink-0">
             RR
           </div>
           <div className={labelCls}>
-            <div className="font-display text-[14px] tracking-widest text-[#0A0A0A] leading-none">
+            <div className="font-display text-[14px] tracking-widest text-[#1e2a6e] leading-none">
               RANKING REPORTS
             </div>
             <div className="text-[9px] text-[#ABABAA] uppercase tracking-[0.12em] mt-1">
@@ -105,19 +105,18 @@ export function Sidebar({
                 onClick={() => navigate(p.path)}
                 title={p.label}
                 className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-colors relative ${
-                  active ? 'bg-[#FFF5F5]' : 'hover:bg-[#F7F7F5]'
+                  active ? 'bg-[#E8F6FD]' : 'hover:bg-[#F7F7F5]'
                 }`}
-                style={active ? { borderLeft: '2px solid #CC0000', paddingLeft: '10px' } : {}}
+                style={active ? { borderLeft: '2px solid #1c9fe0', paddingLeft: '10px' } : {}}
               >
                 <span
                   className="w-[18px] flex items-center justify-center shrink-0"
-                  style={{ color: active ? '#CC0000' : '#ABABAA' }}
+                  style={{ color: active ? '#1c9fe0' : '#ABABAA' }}
                 >
                   {p.icon}
                 </span>
                 <span
-                  className={`text-[12px] font-semibold ${labelCls}`}
-                  style={{ color: active ? '#0A0A0A' : '#6B6B65' }}
+                  className={`text-[12px] font-semibold text-glow ${labelCls} ${active ? 'text-[#1e2a6e]' : 'text-[#6B6B65]'}`}
                 >
                   {p.label}
                 </span>
@@ -157,7 +156,7 @@ export function Sidebar({
                       isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
                     }`}
                   >
-                    <div className="text-[12px] font-semibold text-[#0A0A0A] truncate whitespace-nowrap">
+                    <div className="text-[12px] font-semibold text-glow text-[#1e2a6e] truncate whitespace-nowrap">
                       {brand.name}
                     </div>
                   </button>
@@ -174,7 +173,7 @@ export function Sidebar({
           <button
             onClick={onOpenUpload}
             title="Import Data"
-            className="w-full flex items-center gap-3 px-3 py-2 bg-[#CC0000] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#AA0000] active:scale-95"
+            className="w-full flex items-center gap-3 px-3 py-2 bg-[#1e2a6e] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#136a99] active:scale-95 text-glow-light"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

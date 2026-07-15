@@ -201,7 +201,7 @@ export function Home() {
           <p className="text-[13px] text-[#ABABAA] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
           <button
             onClick={ctx.onOpenUpload}
-            className="px-5 py-1.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95"
+            className="px-5 py-1.5 bg-[#1e2a6e] text-white text-[13px] font-semibold rounded-xl hover:bg-[#1c9fe0] transition-all active:scale-95 text-glow-light"
           >
             Import data
           </button>
@@ -217,9 +217,9 @@ export function Home() {
         {/* ── Hero metric cards ────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" style={{ animation: 'fadeUp 0.35s ease both' }}>
 
-          {/* Keywords — solid black (top band of flag) */}
+          {/* Keywords — navy card */}
           <div
-            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#0A0A0A] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
+            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#1e2a6e] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
             onClick={() => setMetricModal('keywords')}
           >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
@@ -229,10 +229,10 @@ export function Home() {
             </div>
           </div>
 
-          {/* Brands — red card */}
+          {/* Brands — blue card */}
           <div
             className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
-            style={{ background: '#CC0000' }}
+            style={{ background: '#1c9fe0' }}
             onClick={() => setMetricModal('brands')}
           >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
@@ -261,7 +261,7 @@ export function Home() {
                     <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Brand</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E86600]">Top-10</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1e2a6e]">Top-10</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,7 +304,7 @@ export function Home() {
                         >
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
-                            <span className="text-[13px] font-medium truncate group-hover:underline text-[#0A0A0A]">
+                            <span className="text-[13px] font-medium truncate group-hover:underline text-glow text-[#1e2a6e]">
                               {row.brand.name}
                             </span>
                           </div>
@@ -324,7 +324,7 @@ export function Home() {
                           {row.t3 || <span className="text-[#D8D7D2] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#E86600] cursor-pointer hover:text-[#9a3412] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#1e2a6e] cursor-pointer hover:text-[#18225a] hover:underline"
                           onClick={() => row.t10 > 0 && setKwModal({ brand: row.brand, tier: 'top10', records: row.records })}
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
@@ -374,9 +374,9 @@ export function Home() {
         >
           <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
           <div className="grid grid-cols-2 gap-3 p-5">
-            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#FFFBCC" borderColor="#FFCC00" />
-            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#F5F5F3" borderColor="#0A0A0A" />
-            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} bgColor="#FFF0F0" borderColor="#CC0000" />
+            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#E8F6FD" borderColor="#1c9fe0" />
+            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#F5F7FB" borderColor="#1e2a6e" />
+            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} bgColor="#E8F6FD" borderColor="#1e2a6e" />
           </div>
         </section>
 
@@ -408,14 +408,14 @@ export function Home() {
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF]">
-      {/* Mini German flag — 3 horizontal bands */}
+      {/* Brand accent bars — navy / blue / light-blue */}
       <div className="flex flex-col w-[3px] h-[15px] rounded-sm overflow-hidden shrink-0">
-        <div className="flex-1 bg-[#0A0A0A]" />
-        <div className="flex-1 bg-[#CC0000]" />
-        <div className="flex-1 bg-[#FFCC00]" />
+        <div className="flex-1 bg-[#1e2a6e]" />
+        <div className="flex-1 bg-[#1c9fe0]" />
+        <div className="flex-1 bg-[#7fd4f5]" />
       </div>
       <div>
-        <h2 className="text-[13px] font-[600] text-[#0A0A0A] leading-none">{title}</h2>
+        <h2 className="text-[13px] font-[600] text-[#1e2a6e] leading-none">{title}</h2>
         <p className="text-[10px] text-[#ABABAA] mt-0.5">{subtitle}</p>
       </div>
     </div>
@@ -507,12 +507,12 @@ function NavCard({
       onClick={onClick}
       className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
       style={{
-        background:  bgColor ?? (highlight ? '#FFFDE6' : '#FAFAF7'),
-        borderColor: borderColor ?? (highlight ? '#FFCC00' : '#E5E4DF'),
+        background:  bgColor ?? (highlight ? '#E8F6FD' : '#FAFAF7'),
+        borderColor: borderColor ?? (highlight ? '#7FD4F5' : '#E5E4DF'),
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] font-semibold text-[#0A0A0A] leading-tight">{label}</span>
+        <span className="text-[13px] font-semibold text-glow text-[#1e2a6e] leading-tight">{label}</span>
         <span className="text-[#ABABAA] text-[13px] transition-all duration-150 group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100 shrink-0">→</span>
       </div>
       <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
@@ -573,9 +573,9 @@ function KeywordModal({
     })
 
   function tierBadgeStyle() {
-    if (limit === 1)  return { bg: '#FFF3CD', color: '#92400E' }
-    if (limit <= 3)   return { bg: '#FFF0F0', color: '#CC0000' }
-    return                   { bg: '#FFF4EC', color: '#E86600' }
+    if (limit === 1)  return { bg: '#EEF0F9', color: '#1e2a6e' }
+    if (limit <= 3)   return { bg: '#E8F6FD', color: '#1c9fe0' }
+    return                   { bg: '#F5F7FB', color: '#136a99' }
   }
   const headerBadge = tierBadgeStyle()
 
@@ -650,7 +650,7 @@ function KeywordModal({
                           <span
                             key={`${country}-${pos}`}
                             className="inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                            style={{ background: '#D6EFE7', color: '#0D5C42' }}
+                            style={{ background: '#E8F6FD', color: '#136a99' }}
                           >
                             {country} <span className="opacity-70">#</span>{pos}
                           </span>
@@ -674,8 +674,8 @@ type MetricDetails = {
 }
 
 const METRIC_META = {
-  keywords: { title: 'Keywords', subtitle: 'All tracked keywords', color: '#0A0A0A', light: false },
-  brands:   { title: 'Brands',   subtitle: 'Active brands in snapshot', color: '#CC0000', light: false },
+  keywords: { title: 'Keywords', subtitle: 'All tracked keywords', color: '#1e2a6e', light: false },
+  brands:   { title: 'Brands',   subtitle: 'Active brands in snapshot', color: '#1c9fe0', light: false },
 }
 
 function MetricModal({
