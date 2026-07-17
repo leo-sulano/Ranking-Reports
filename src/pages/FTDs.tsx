@@ -4,6 +4,14 @@ import { FtdMatrixTable } from '../components/FtdMatrixTable'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: unknown }).message)
+  }
+  return String(err)
+}
+
 export function FTDs() {
   const { addToast } = useOutletContext<RROutletContext>()
   const [records, setRecords] = useState<FtdRecord[]>([])
@@ -23,7 +31,7 @@ export function FTDs() {
       })
       .catch((err) => {
         if (cancelled) return
-        addToast(`Failed to load FTD data: ${err instanceof Error ? err.message : String(err)}`, 'error')
+        addToast(`Failed to load FTD data: ${formatError(err)}`, 'error')
         setLoading(false)
       })
     return () => { cancelled = true }
@@ -33,7 +41,7 @@ export function FTDs() {
     try {
       await upsertFtdRecord(brand, yearMonth, patch)
     } catch (err) {
-      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
     setRecords((prev) => {
@@ -57,7 +65,7 @@ export function FTDs() {
     try {
       await upsertFtdTotals(yearMonth, conversionPct)
     } catch (err) {
-      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
     setTotals((prev) => {
@@ -73,7 +81,7 @@ export function FTDs() {
     try {
       await upsertBrandStags(brand, stagsValue)
     } catch (err) {
-      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
     setStags((prev) => {
