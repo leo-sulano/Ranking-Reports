@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FtdMatrixTable } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
+import { parseFtdXlsx } from '../lib/ftdParser'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
 function formatError(err: unknown): string {
@@ -20,6 +21,9 @@ export function FTDs() {
   const [stags,   setStags]   = useState<BrandStags[]>([])
   const [loading, setLoading] = useState(true)
   const [showEntryForm, setShowEntryForm] = useState(false)
+  const [importing,      setImporting]      = useState(false)
+  const [importSkipped,  setImportSkipped]  = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -95,6 +99,35 @@ export function FTDs() {
     })
   }, [addToast])
 
+  const handleImportFile = useCallback(async (file: File) => {
+    setImporting(true)
+    setImportSkipped([])
+    try {
+      const buf = await file.arrayBuffer()
+      const { records: parsedRecords, totals: parsedTotals, stags: parsedStags, skipped } = parseFtdXlsx(buf)
+
+      for (const r of parsedRecords) {
+        await upsertFtdRecord(r.brand, r.yearMonth, { reg: r.reg, ftd: r.ftd, conversionPct: r.conversionPct })
+      }
+      for (const t of parsedTotals) {
+        await upsertFtdTotals(t.yearMonth, t.conversionPct)
+      }
+      for (const s of parsedStags) {
+        await upsertBrandStags(s.brand, s.stags)
+      }
+
+      const fresh = await loadFtdData()
+      setRecords(fresh.records)
+      setTotals(fresh.totals)
+      setStags(fresh.stags)
+      setImportSkipped(skipped)
+    } catch (err) {
+      addToast(`Import failed: ${formatError(err)}`, 'error')
+    } finally {
+      setImporting(false)
+    }
+  }, [addToast])
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
@@ -106,6 +139,20 @@ export function FTDs() {
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
       <div className="flex items-center justify-end gap-2 mb-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={importing}
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
+        >
+          {importing ? 'Importing…' : 'Import History'}
+        </button>
         <button
           onClick={() => setShowEntryForm(true)}
           className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
@@ -113,6 +160,15 @@ export function FTDs() {
           + Add / Edit Month
         </button>
       </div>
+
+      {importSkipped.length > 0 && (
+        <div className="mb-4 px-4 py-2.5 rounded-md bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.3)] text-[12px] text-[#F43F5E]">
+          Skipped {importSkipped.length} row{importSkipped.length !== 1 ? 's' : ''} during import:
+          <ul className="list-disc list-inside mt-1">
+            {importSkipped.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </div>
+      )}
 
       <FtdMatrixTable
         records={records}
