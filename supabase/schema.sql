@@ -14,8 +14,12 @@ create table if not exists public.snapshots (
   id            text primary key,             -- client-generated id (e.g. "snap-1715600000000")
   raw_date      text not null,                -- from "Last Check" column, e.g. "5/20/2026"
   display_date  text not null,                -- formatted, e.g. "20 May 26"
+  category      text,                         -- "bp-sites" | "lp-sites" — null reads as DEFAULT_CATEGORY client-side
   created_at    timestamptz not null default now()
 );
+
+-- Backfill ALTER for existing tables (idempotent — Postgres ignores duplicates).
+alter table public.snapshots add column if not exists category text;
 
 create index if not exists snapshots_created_at_idx
   on public.snapshots (created_at desc);
@@ -56,14 +60,21 @@ alter table public.ranking_records   enable row level security;
 
 drop policy if exists "anon read snapshots"   on public.snapshots;
 drop policy if exists "anon write snapshots"  on public.snapshots;
+drop policy if exists "anon update snapshots" on public.snapshots;
 drop policy if exists "anon delete snapshots" on public.snapshots;
 drop policy if exists "anon read records"     on public.ranking_records;
 drop policy if exists "anon write records"    on public.ranking_records;
+drop policy if exists "anon update records"   on public.ranking_records;
 drop policy if exists "anon delete records"   on public.ranking_records;
 
 create policy "anon read snapshots"   on public.snapshots         for select using (true);
 create policy "anon write snapshots"  on public.snapshots         for insert with check (true);
+create policy "anon update snapshots" on public.snapshots         for update using (true) with check (true);
 create policy "anon delete snapshots" on public.snapshots         for delete using (true);
 create policy "anon read records"     on public.ranking_records   for select using (true);
 create policy "anon write records"    on public.ranking_records   for insert with check (true);
+-- updateRecordFields() in storage.ts issues UPDATEs against ranking_records under the
+-- anon key (inline GSV/SV/AFF edits) — without this policy those writes are silently
+-- denied by RLS instead of erroring loudly.
+create policy "anon update records"   on public.ranking_records   for update using (true) with check (true);
 create policy "anon delete records"   on public.ranking_records   for delete using (true);
