@@ -144,7 +144,7 @@ export function FTDs() {
           type="file"
           accept=".xlsx,.xls"
           className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
         />
         <button
           onClick={() => fileInputRef.current?.click()}

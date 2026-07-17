@@ -80,6 +80,7 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
     try {
       for (const b of BRANDS) {
         const v = values[b.name]
+        if (v.reg.trim() === '' && v.ftd.trim() === '' && v.conversionPct.trim() === '') continue
         await onEditRecord(b.name, yearMonth, {
           reg:           toNum(v.reg),
           ftd:           toNum(v.ftd),

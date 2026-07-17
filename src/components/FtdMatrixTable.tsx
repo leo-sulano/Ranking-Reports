@@ -80,14 +80,14 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
           <tr>
             <th
               rowSpan={3}
-              className="sticky left-0 z-[6] px-3 py-2 text-left align-bottom whitespace-nowrap"
+              className="sticky left-0 top-0 z-[7] px-3 py-2 text-left align-bottom whitespace-nowrap"
               style={{ background: STICKY_BG, borderRight: border, borderBottom: border, minWidth: 90 }}
             >
               MONTH
             </th>
             <th
               colSpan={3}
-              className="px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white"
+              className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white"
               style={{ background: TOTALS_HEAD_BG, borderLeft: border, borderRight: border }}
             >
               TOTALS
@@ -96,7 +96,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
               <th
                 key={b.name}
                 colSpan={3}
-                className="px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
+                className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
                 style={{ background: b.color, borderLeft: border, borderRight: border }}
               >
                 {b.abbr}
@@ -107,7 +107,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
           <tr>
             <th
               colSpan={3}
-              className="px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
+              className="sticky top-[29px] z-[6] px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
               style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border }}
             >
               STAGS
@@ -116,7 +116,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
               <th
                 key={b.name}
                 colSpan={3}
-                className="px-2 py-1 text-center text-[10px] font-mono"
+                className="sticky top-[29px] z-[6] px-2 py-1 text-center text-[10px] font-mono"
                 style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border }}
               >
                 <EditableCell
@@ -133,7 +133,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
             {SUB_COLS.map((label) => (
               <th
                 key={`totals-${label}`}
-                className="px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
+                className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
                 style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
               >
                 {label}
@@ -144,7 +144,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
                 {SUB_COLS.map((label) => (
                   <th
                     key={`${b.name}-${label}`}
-                    className="px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
+                    className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
                     style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
                   >
                     {label}
