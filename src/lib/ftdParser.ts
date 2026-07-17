@@ -39,11 +39,34 @@ function cellNumber(row: unknown[] | undefined, col: number): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-// Google Sheets exports percentages either as a fraction (0.23) or as a
-// plain number (23) depending on cell formatting — normalize to 0-100.
+// Fallback heuristic for a percentage cell with no literal "%" in its
+// displayed text: Google Sheets exports these either as a fraction (0.23) or
+// as an already-scaled plain number (23) depending on cell formatting, with
+// no way to tell which from the value alone — guess based on range.
+// Only used by cellPercent() when the "%" sign itself isn't present, since
+// that sign is a much stronger, unambiguous signal (see cellPercent below).
 function normalizePct(n: number | null): number | null {
   if (n == null) return null
   return n > 0 && n <= 1 ? Math.round(n * 1000) / 10 : Math.round(n * 10) / 10
+}
+
+// Reads a Conv% cell. With `raw: false`, sheet_to_json returns the cell's
+// DISPLAYED text, so a percentage-formatted cell shows up as "23%" or
+// "23.5%" — and critically, that literal "%" is an unambiguous signal that
+// the number shown IS already the percentage (e.g. "0.5%" means half a
+// percent, NOT 50%, which the plain fraction-vs-number heuristic below would
+// get wrong). Only fall back to that heuristic when no "%" suffix is present
+// (e.g. a raw fraction with no percent formatting applied at all).
+function cellPercent(row: unknown[] | undefined, col: number): number | null {
+  const v = row?.[col]
+  if (v == null || v === '') return null
+  const text = String(v).trim()
+  if (!text) return null
+  if (text.includes('%')) {
+    const n = parseFloat(text.replace(/[^0-9.-]/g, ''))
+    return Number.isFinite(n) ? Math.round(n * 10) / 10 : null
+  }
+  return normalizePct(cellNumber(row, col))
 }
 
 const ABBR_TO_BRAND: Record<string, string> = Object.fromEntries(
@@ -51,9 +74,21 @@ const ABBR_TO_BRAND: Record<string, string> = Object.fromEntries(
 )
 
 export function parseFtdXlsx(buffer: ArrayBuffer): FtdParseResult {
+  // `cellDates: true` only affects the raw `.v` value XLSX attaches to a
+  // date-typed cell (Date object vs. serial number) — it has no effect on
+  // the `.w` formatted-text field that `sheet_to_json` reads below once
+  // `raw: false` is set, so this option is effectively inert here. Left on
+  // to match the convention in parser.ts (which keeps it for the same
+  // reason across its own raw:false sheet_to_json calls).
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
   const sheet = wb.Sheets[wb.SheetNames[0]]
-  const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
+  // raw: false — read cells as their DISPLAYED text, not the underlying
+  // value. Critical for the month column: a real Google Sheet may store the
+  // month label as a Date-typed cell with a custom "mmm ''yy" number format
+  // rather than a literal string. With raw:true that cell would come back as
+  // a JS Date object, and cellText()'s String(date) would never match
+  // parseMonthLabel's regex, so every row would land in `skipped`.
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null })
 
   // Row 0: group labels ("Totals", brand abbreviations) at each group's
   // leftmost column. Row 1: Stags reference values. Row 2: REG/FTD/Conv%
@@ -100,7 +135,7 @@ export function parseFtdXlsx(buffer: ArrayBuffer): FtdParseResult {
       if (g.brand === 'totals') continue
       const reg  = cellNumber(row, g.startCol)
       const ftd  = cellNumber(row, g.startCol + 1)
-      const conv = normalizePct(cellNumber(row, g.startCol + 2))
+      const conv = cellPercent(row, g.startCol + 2)
       if (reg == null && ftd == null && conv == null) continue
       records.push({
         brand: g.brand,
@@ -112,7 +147,7 @@ export function parseFtdXlsx(buffer: ArrayBuffer): FtdParseResult {
     }
 
     if (totalsGroup) {
-      const totalsConv = normalizePct(cellNumber(row, totalsGroup.startCol + 2))
+      const totalsConv = cellPercent(row, totalsGroup.startCol + 2)
       if (totalsConv != null) totals.push({ yearMonth, conversionPct: totalsConv })
     }
   }
