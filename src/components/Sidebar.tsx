@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp } from 'lucide-react'
+import { CircleHelp, DollarSign } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: string }> = [
@@ -23,6 +23,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
       <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
       <line x1="9" y1="21" x2="9" y2="9"/>
     </svg>
+  )},
+  { path: '/ftds', label: 'FTDs', icon: (
+    <DollarSign size={18} />
   )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
     <AiIcon size={18} />

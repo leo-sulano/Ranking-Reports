@@ -1,16 +1,108 @@
-export function FTDs() {
-  return <PlaceholderPage icon="💰" label="FTDs" desc="Track first-time depositor data and conversion metrics across brands." />
-}
+import { useCallback, useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import { FtdMatrixTable } from '../components/FtdMatrixTable'
+import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
+import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
-function PlaceholderPage({ icon, label, desc }: { icon: string; label: string; desc: string }) {
+export function FTDs() {
+  const { addToast } = useOutletContext<RROutletContext>()
+  const [records, setRecords] = useState<FtdRecord[]>([])
+  const [totals,  setTotals]  = useState<FtdTotals[]>([])
+  const [stags,   setStags]   = useState<BrandStags[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    loadFtdData()
+      .then((data) => {
+        if (cancelled) return
+        setRecords(data.records)
+        setTotals(data.totals)
+        setStags(data.stags)
+        setLoading(false)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        addToast(`Failed to load FTD data: ${err instanceof Error ? err.message : String(err)}`, 'error')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [addToast])
+
+  const handleEditRecord = useCallback(async (brand: string, yearMonth: string, patch: FtdRecordPatch) => {
+    try {
+      await upsertFtdRecord(brand, yearMonth, patch)
+    } catch (err) {
+      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      return
+    }
+    setRecords((prev) => {
+      const idx = prev.findIndex((r) => r.brand === brand && r.yearMonth === yearMonth)
+      if (idx === -1) {
+        return [...prev, {
+          brand,
+          yearMonth,
+          reg:           patch.reg ?? 0,
+          ftd:           patch.ftd ?? 0,
+          conversionPct: patch.conversionPct ?? null,
+        }]
+      }
+      const next = [...prev]
+      next[idx] = { ...next[idx], ...patch }
+      return next
+    })
+  }, [addToast])
+
+  const handleEditTotals = useCallback(async (yearMonth: string, conversionPct: number | null) => {
+    try {
+      await upsertFtdTotals(yearMonth, conversionPct)
+    } catch (err) {
+      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      return
+    }
+    setTotals((prev) => {
+      const idx = prev.findIndex((t) => t.yearMonth === yearMonth)
+      if (idx === -1) return [...prev, { yearMonth, conversionPct }]
+      const next = [...prev]
+      next[idx] = { ...next[idx], conversionPct }
+      return next
+    })
+  }, [addToast])
+
+  const handleEditStags = useCallback(async (brand: string, stagsValue: string) => {
+    try {
+      await upsertBrandStags(brand, stagsValue)
+    } catch (err) {
+      addToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      return
+    }
+    setStags((prev) => {
+      const idx = prev.findIndex((s) => s.brand === brand)
+      if (idx === -1) return [...prev, { brand, stags: stagsValue }]
+      const next = [...prev]
+      next[idx] = { ...next[idx], stags: stagsValue }
+      return next
+    })
+  }, [addToast])
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
+        Loading FTD data…
+      </div>
+    )
+  }
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center h-full text-center gap-4 px-7 pb-7">
-      <div className="text-5xl opacity-30">{icon}</div>
-      <div className="font-display text-[28px] tracking-wider text-[#475569]">{label}</div>
-      <p className="text-[14px] text-[#64748B] max-w-sm leading-relaxed">{desc}</p>
-      <span className="px-3 py-1 rounded-full border border-[#E2E8F0] text-[11px] font-mono text-[#64748B] bg-white">
-        Coming Soon
-      </span>
+    <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <FtdMatrixTable
+        records={records}
+        totals={totals}
+        stags={stags}
+        onEditRecord={handleEditRecord}
+        onEditTotals={handleEditTotals}
+        onEditStags={handleEditStags}
+      />
     </div>
   )
 }
