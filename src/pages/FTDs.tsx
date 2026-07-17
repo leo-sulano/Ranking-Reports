@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FtdMatrixTable } from '../components/FtdMatrixTable'
+import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
@@ -18,6 +19,7 @@ export function FTDs() {
   const [totals,  setTotals]  = useState<FtdTotals[]>([])
   const [stags,   setStags]   = useState<BrandStags[]>([])
   const [loading, setLoading] = useState(true)
+  const [showEntryForm, setShowEntryForm] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -103,6 +105,15 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <button
+          onClick={() => setShowEntryForm(true)}
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
+        >
+          + Add / Edit Month
+        </button>
+      </div>
+
       <FtdMatrixTable
         records={records}
         totals={totals}
@@ -111,6 +122,16 @@ export function FTDs() {
         onEditTotals={handleEditTotals}
         onEditStags={handleEditStags}
       />
+
+      {showEntryForm && (
+        <FtdEntryForm
+          records={records}
+          totals={totals}
+          onEditRecord={handleEditRecord}
+          onEditTotals={handleEditTotals}
+          onClose={() => setShowEntryForm(false)}
+        />
+      )}
     </div>
   )
 }
