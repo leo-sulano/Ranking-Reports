@@ -529,3 +529,15 @@ Fixed a series of navigation bugs when clicking through to BP Sites from home pa
 Added a new "How It Works" help page (routed at `/how-it-works`, linked from a new sidebar nav entry) that walks users through the core dashboard workflow: uploading a ranking export, picking a brand, reading the ranking table, filtering, and tracking changes over time. The upload step notes that imported files contain Rooster BP Sites ranking data extracted from a ranking-tracking system/software.
 
 ---
+
+## Task 47: Sync schema.sql with Live Schema Drift
+
+**Date:** 2026-07-17
+**PMS Task ID:** cmrp0fkh6000704l4j3krmai2
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Backported the `category` column ALTER on `snapshots` and the anon UPDATE policies on both `snapshots` and `ranking_records` into the checked-in `supabase/schema.sql`. Both changes already existed on the live DB (applied ad hoc) but were never captured in the file — without the anon UPDATE policy on `ranking_records`, inline GSV/SV/AFF edits would silently fail under RLS if this file were ever used to provision a fresh environment.
+
+---
