@@ -323,6 +323,7 @@ function Layout() {
     onOpenUpload:      () => setShowUpload(true),
     onDeleteSnapshot:  handleDeleteSnapshot,
     onEditCell:        handleEditCell,
+    addToast,
   }
 
   if (loading) {

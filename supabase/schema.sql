@@ -78,3 +78,59 @@ create policy "anon write records"    on public.ranking_records   for insert wit
 -- denied by RLS instead of erroring loudly.
 create policy "anon update records"   on public.ranking_records   for update using (true) with check (true);
 create policy "anon delete records"   on public.ranking_records   for delete using (true);
+
+-- ============================================================================
+-- FTD tracking — REG / FTD / Conversion % per brand per month
+-- ============================================================================
+-- Deliberately independent of snapshots/ranking_records: FTD data is
+-- brand+month shaped, not domain+keyword+country shaped.
+
+create table if not exists public.ftd_records (
+  brand           text not null,
+  year_month      text not null,               -- 'YYYY-MM', e.g. '2023-08'
+  reg             int not null default 0,
+  ftd             int not null default 0,
+  conversion_pct  numeric,                       -- manually entered, nullable
+  primary key (brand, year_month)
+);
+
+create table if not exists public.ftd_totals (
+  year_month      text primary key,
+  conversion_pct  numeric                        -- manually entered; REG/FTD totals are derived client-side
+);
+
+create table if not exists public.brand_stags (
+  brand  text primary key,
+  stags  text not null default ''
+);
+
+alter table public.ftd_records enable row level security;
+alter table public.ftd_totals  enable row level security;
+alter table public.brand_stags enable row level security;
+
+drop policy if exists "anon read ftd_records"   on public.ftd_records;
+drop policy if exists "anon write ftd_records"  on public.ftd_records;
+drop policy if exists "anon update ftd_records" on public.ftd_records;
+drop policy if exists "anon delete ftd_records" on public.ftd_records;
+create policy "anon read ftd_records"   on public.ftd_records for select using (true);
+create policy "anon write ftd_records"  on public.ftd_records for insert with check (true);
+create policy "anon update ftd_records" on public.ftd_records for update using (true) with check (true);
+create policy "anon delete ftd_records" on public.ftd_records for delete using (true);
+
+drop policy if exists "anon read ftd_totals"   on public.ftd_totals;
+drop policy if exists "anon write ftd_totals"  on public.ftd_totals;
+drop policy if exists "anon update ftd_totals" on public.ftd_totals;
+drop policy if exists "anon delete ftd_totals" on public.ftd_totals;
+create policy "anon read ftd_totals"   on public.ftd_totals for select using (true);
+create policy "anon write ftd_totals"  on public.ftd_totals for insert with check (true);
+create policy "anon update ftd_totals" on public.ftd_totals for update using (true) with check (true);
+create policy "anon delete ftd_totals" on public.ftd_totals for delete using (true);
+
+drop policy if exists "anon read brand_stags"   on public.brand_stags;
+drop policy if exists "anon write brand_stags"  on public.brand_stags;
+drop policy if exists "anon update brand_stags" on public.brand_stags;
+drop policy if exists "anon delete brand_stags" on public.brand_stags;
+create policy "anon read brand_stags"   on public.brand_stags for select using (true);
+create policy "anon write brand_stags"  on public.brand_stags for insert with check (true);
+create policy "anon update brand_stags" on public.brand_stags for update using (true) with check (true);
+create policy "anon delete brand_stags" on public.brand_stags for delete using (true);

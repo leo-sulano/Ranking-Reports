@@ -56,6 +56,12 @@ export interface EditCellPatch {
   globalSearchVolume?: string
 }
 
+export interface ToastItem {
+  id: string
+  message: string
+  type: 'success' | 'warning' | 'error'
+}
+
 export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
@@ -65,12 +71,32 @@ export interface RROutletContext {
   // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows
   // which rows are patched within the snapshot.
   onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
+  addToast: (message: string, type?: ToastItem['type']) => void
 }
 
-export interface ToastItem {
-  id: string
-  message: string
-  type: 'success' | 'warning' | 'error'
+// FTD tracking — brand+month shaped, independent of the Snapshot model above.
+export interface FtdRecord {
+  brand: string
+  yearMonth: string       // 'YYYY-MM', e.g. '2023-08'
+  reg: number
+  ftd: number
+  conversionPct: number | null
+}
+
+export interface FtdRecordPatch {
+  reg?: number
+  ftd?: number
+  conversionPct?: number | null
+}
+
+export interface FtdTotals {
+  yearMonth: string
+  conversionPct: number | null
+}
+
+export interface BrandStags {
+  brand: string
+  stags: string
 }
 
 export type ParsedPosition = number | 'NR' | null
