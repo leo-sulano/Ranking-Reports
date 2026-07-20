@@ -275,7 +275,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 {expanded && yearMonths.map((ym) => (
                   <tr key={ym}>
                     <td
-                      className="sticky left-0 z-[5] px-3 py-1 pl-7 text-[11px] font-semibold whitespace-nowrap"
+                      className="sticky left-0 z-[5] px-3 py-2 pl-7 font-semibold whitespace-nowrap"
                       style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
                     >
                       {formatMonthLabel(ym)}
@@ -286,7 +286,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                       return (
                         <Fragment key={b.name}>
-                          <td className="px-2 py-0.5 text-center text-[11px]" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
                             <EditableCell
                               value={rec?.reg != null ? String(rec.reg) : ''}
                               onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
@@ -294,7 +294,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                               title={`Edit ${b.name} REG`}
                             />
                           </td>
-                          <td className="px-2 py-0.5 text-center text-[11px]" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
                             <EditableCell
                               value={rec?.ftd != null ? String(rec.ftd) : ''}
                               onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
@@ -302,7 +302,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                               title={`Edit ${b.name} FTD`}
                             />
                           </td>
-                          <td className="px-2 py-0.5 text-center text-[11px]" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
                             <EditableCell
                               value={formatPct(rec?.conversionPct ?? null)}
                               onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
