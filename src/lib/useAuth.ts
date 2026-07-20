@@ -40,8 +40,10 @@ export function useAuth() {
   // has finished updating approvedRef/isAdmin. requireAuth and the
   // post-sign-in resume both wait on this before deciding.
   const accessCheck = useRef<Promise<void>>(Promise.resolve())
+  const accessGen = useRef(0)
 
   const refreshAccess = useCallback((userId: string | undefined) => {
+    const gen = ++accessGen.current
     if (!userId) {
       approvedRef.current = false
       setIsApproved(false)
@@ -49,11 +51,19 @@ export function useAuth() {
       accessCheck.current = Promise.resolve()
       return
     }
-    accessCheck.current = getUserAccess(userId).then((access) => {
-      approvedRef.current = access?.status === 'approved'
-      setIsApproved(approvedRef.current)
-      setIsAdmin(access?.isAdmin ?? false)
-    })
+    accessCheck.current = getUserAccess(userId)
+      .then((access) => {
+        if (gen !== accessGen.current) return
+        approvedRef.current = access?.status === 'approved'
+        setIsApproved(approvedRef.current)
+        setIsAdmin(access?.isAdmin ?? false)
+      })
+      .catch(() => {
+        if (gen !== accessGen.current) return
+        approvedRef.current = false
+        setIsApproved(false)
+        setIsAdmin(false)
+      })
   }, [])
 
   const runGated = useCallback(<T,>(fn: () => T | Promise<T>): Promise<T> => {
