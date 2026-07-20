@@ -34,13 +34,13 @@ function formatPct(v: number | null): string {
 export function averagePct(values: Array<number | null | undefined>): number | null {
   const nums = values.filter((v): v is number => v != null)
   if (nums.length === 0) return null
-  return Math.round((nums.reduce((s, v) => s + v, 0) / nums.length) * 10) / 10
+  return Math.round(nums.reduce((s, v) => s + v, 0) / nums.length)
 }
 
 // A single month's Conversion % is always FTD ÷ REG × 100 — never a
 // manually entered value.
 export function ratioPct(reg: number, ftd: number): number | null {
-  return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
+  return reg > 0 ? Math.round((ftd / reg) * 100) : null
 }
 
 // Same hex+alpha tint pattern BPSites uses for its domain quick-link
