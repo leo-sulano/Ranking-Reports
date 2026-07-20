@@ -153,3 +153,99 @@ create policy "anon read brand_stags"   on public.brand_stags for select using (
 create policy "auth write brand_stags"  on public.brand_stags for insert to authenticated with check (true);
 create policy "auth update brand_stags" on public.brand_stags for update to authenticated using (true) with check (true);
 create policy "auth delete brand_stags" on public.brand_stags for delete to authenticated using (true);
+
+-- ============================================================================
+-- User approval — see user-approval.sql for the full setup checklist
+-- (admin seeding, re-enabling signups). Table/trigger/RLS below are identical.
+-- ============================================================================
+
+create table if not exists public.user_access (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  email      text not null,
+  status     text not null default 'pending' check (status in ('pending', 'approved')),
+  is_admin   boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.user_access enable row level security;
+
+-- Auto-provision a pending row for every new auth.users insert -----------------
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_access (user_id, email)
+  values (new.id, new.email)
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Backfill existing users (created manually during the previous feature's
+-- setup) as already-approved, since an admin already vetted them by hand.
+insert into public.user_access (user_id, email, status)
+select id, email, 'approved' from auth.users
+on conflict (user_id) do nothing;
+
+-- RLS: user_access --------------------------------------------------------------
+drop policy if exists "self or admin read user_access" on public.user_access;
+drop policy if exists "admin update user_access" on public.user_access;
+
+create policy "self or admin read user_access" on public.user_access
+  for select
+  using (
+    user_id = auth.uid()
+    or exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin)
+  );
+
+create policy "admin update user_access" on public.user_access
+  for update
+  using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin))
+  with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin));
+
+-- RLS: tighten the 5 app tables' write policies to require APPROVAL -----------
+-- (not just authentication — replaces the `using (true)` / `with check (true)`
+-- policies from auth-write-lockdown.sql with an approval-aware check).
+
+drop policy if exists "auth write snapshots"  on public.snapshots;
+drop policy if exists "auth update snapshots" on public.snapshots;
+drop policy if exists "auth delete snapshots" on public.snapshots;
+create policy "auth write snapshots"  on public.snapshots for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth update snapshots" on public.snapshots for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth delete snapshots" on public.snapshots for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+drop policy if exists "auth write records"  on public.ranking_records;
+drop policy if exists "auth update records" on public.ranking_records;
+drop policy if exists "auth delete records" on public.ranking_records;
+create policy "auth write records"  on public.ranking_records for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth update records" on public.ranking_records for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth delete records" on public.ranking_records for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+drop policy if exists "auth write ftd_records"  on public.ftd_records;
+drop policy if exists "auth update ftd_records" on public.ftd_records;
+drop policy if exists "auth delete ftd_records" on public.ftd_records;
+create policy "auth write ftd_records"  on public.ftd_records for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth update ftd_records" on public.ftd_records for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth delete ftd_records" on public.ftd_records for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+drop policy if exists "auth write ftd_totals"  on public.ftd_totals;
+drop policy if exists "auth update ftd_totals" on public.ftd_totals;
+drop policy if exists "auth delete ftd_totals" on public.ftd_totals;
+create policy "auth write ftd_totals"  on public.ftd_totals for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth update ftd_totals" on public.ftd_totals for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth delete ftd_totals" on public.ftd_totals for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+drop policy if exists "auth write brand_stags"  on public.brand_stags;
+drop policy if exists "auth update brand_stags" on public.brand_stags;
+drop policy if exists "auth delete brand_stags" on public.brand_stags;
+create policy "auth write brand_stags"  on public.brand_stags for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth update brand_stags" on public.brand_stags for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+create policy "auth delete brand_stags" on public.brand_stags for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
