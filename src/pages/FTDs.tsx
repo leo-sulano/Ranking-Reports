@@ -59,7 +59,7 @@ function FtdStatCard({
 }
 
 export function FTDs() {
-  const { addToast } = useOutletContext<RROutletContext>()
+  const { addToast, requireAuth } = useOutletContext<RROutletContext>()
   const [records, setRecords] = useState<FtdRecord[]>([])
   const [totals,  setTotals]  = useState<FtdTotals[]>([])
   const [stags,   setStags]   = useState<BrandStags[]>([])
@@ -174,7 +174,7 @@ export function FTDs() {
 
   const handleEditRecord = useCallback(async (brand: string, yearMonth: string, patch: FtdRecordPatch) => {
     try {
-      await upsertFtdRecord(brand, yearMonth, patch)
+      await requireAuth(() => upsertFtdRecord(brand, yearMonth, patch))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
@@ -194,11 +194,11 @@ export function FTDs() {
       next[idx] = { ...next[idx], ...patch }
       return next
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const handleEditTotals = useCallback(async (yearMonth: string, conversionPct: number | null) => {
     try {
-      await upsertFtdTotals(yearMonth, conversionPct)
+      await requireAuth(() => upsertFtdTotals(yearMonth, conversionPct))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
@@ -210,11 +210,11 @@ export function FTDs() {
       next[idx] = { ...next[idx], conversionPct }
       return next
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const handleEditStags = useCallback(async (brand: string, stagsValue: string) => {
     try {
-      await upsertBrandStags(brand, stagsValue)
+      await requireAuth(() => upsertBrandStags(brand, stagsValue))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
@@ -226,7 +226,7 @@ export function FTDs() {
       next[idx] = { ...next[idx], stags: stagsValue }
       return next
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   if (loading) {
     return (
