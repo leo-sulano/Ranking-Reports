@@ -302,7 +302,7 @@ export function FTDs() {
           label="Conversion %"
           value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
           accent="#8B5CF6"
-          sub={periodFilter.length === 7 ? 'this month' : 'monthly average'}
+          sub={periodFilter.length === 7 ? 'Daily Average' : periodFilter.length === 4 ? 'Monthly Average' : 'Yearly Average'}
           formula={periodFilter.length === 7 ? 'FTD ÷ REG × 100' : 'AVG(FTD ÷ REG × 100 per month)'}
           active={activeMetric === 'conv'}
           onClick={() => toggleMetric('conv')}
