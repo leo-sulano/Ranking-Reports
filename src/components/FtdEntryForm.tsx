@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { BRANDS } from '../lib/brands'
+import { ratioPct } from './FtdMatrixTable'
 import type { FtdRecord, FtdRecordPatch, FtdTotals } from '../types'
 
 interface BrandInputs {
   reg: string
   ftd: string
-  conversionPct: string
 }
 
 function currentYearMonth(): string {
@@ -15,7 +15,7 @@ function currentYearMonth(): string {
 }
 
 function emptyInputs(): BrandInputs {
-  return { reg: '', ftd: '', conversionPct: '' }
+  return { reg: '', ftd: '' }
 }
 
 function toNum(raw: string): number {
@@ -27,6 +27,10 @@ function toPct(raw: string): number | null {
   if (raw.trim() === '') return null
   const n = parseFloat(raw)
   return Number.isFinite(n) ? n : null
+}
+
+function formatPct(v: number | null): string {
+  return v == null ? '—' : `${v}%`
 }
 
 interface Props {
@@ -53,11 +57,7 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
     for (const b of BRANDS) {
       const rec = records.find((r) => r.brand === b.name && r.yearMonth === ym)
       next[b.name] = rec
-        ? {
-            reg: String(rec.reg),
-            ftd: String(rec.ftd),
-            conversionPct: rec.conversionPct != null ? String(rec.conversionPct) : '',
-          }
+        ? { reg: String(rec.reg), ftd: String(rec.ftd) }
         : emptyInputs()
     }
     setValues(next)
@@ -80,12 +80,10 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
     try {
       for (const b of BRANDS) {
         const v = values[b.name]
-        if (v.reg.trim() === '' && v.ftd.trim() === '' && v.conversionPct.trim() === '') continue
-        await onEditRecord(b.name, yearMonth, {
-          reg:           toNum(v.reg),
-          ftd:           toNum(v.ftd),
-          conversionPct: toPct(v.conversionPct),
-        })
+        if (v.reg.trim() === '' && v.ftd.trim() === '') continue
+        const reg = toNum(v.reg)
+        const ftd = toNum(v.ftd)
+        await onEditRecord(b.name, yearMonth, { reg, ftd, conversionPct: ratioPct(reg, ftd) })
       }
       await onEditTotals(yearMonth, toPct(totalsConv))
       onClose()
@@ -146,12 +144,12 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
                     onChange={(e) => setValues((v) => ({ ...v, [b.name]: { ...v[b.name], ftd: e.target.value } }))}
                     className="border border-[#E2E8F0] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[#0F172A]"
                   />
-                  <input
-                    type="number"
-                    value={values[b.name]?.conversionPct ?? ''}
-                    onChange={(e) => setValues((v) => ({ ...v, [b.name]: { ...v[b.name], conversionPct: e.target.value } }))}
-                    className="border border-[#E2E8F0] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[#0F172A]"
-                  />
+                  <span
+                    className="text-[12px] text-center font-mono text-[#64748B]"
+                    title="Conversion % = FTD ÷ REG × 100, calculated automatically"
+                  >
+                    {formatPct(ratioPct(toNum(values[b.name]?.reg ?? ''), toNum(values[b.name]?.ftd ?? '')))}
+                  </span>
                 </div>
               ))}
             </div>

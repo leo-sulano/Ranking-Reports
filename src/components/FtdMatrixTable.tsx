@@ -23,13 +23,6 @@ function parseIntSafe(raw: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function parsePctSafe(raw: string): number | null {
-  const trimmed = raw.trim()
-  if (trimmed === '') return null
-  const n = parseFloat(trimmed.replace(/[^0-9.-]/g, ''))
-  return Number.isFinite(n) ? n : null
-}
-
 function formatPct(v: number | null): string {
   return v == null ? '' : `${v}%`
 }
@@ -42,6 +35,12 @@ export function averagePct(values: Array<number | null | undefined>): number | n
   const nums = values.filter((v): v is number => v != null)
   if (nums.length === 0) return null
   return Math.round((nums.reduce((s, v) => s + v, 0) / nums.length) * 10) / 10
+}
+
+// A single month's Conversion % is always FTD ÷ REG × 100 — never a
+// manually entered value.
+export function ratioPct(reg: number, ftd: number): number | null {
+  return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
 }
 
 // Same hex+alpha tint pattern BPSites uses for its domain quick-link
@@ -57,7 +56,8 @@ function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd:
   for (const r of recs) {
     perBrand[r.brand].reg += r.reg
     perBrand[r.brand].ftd += r.ftd
-    if (r.conversionPct != null) perBrand[r.brand].convValues.push(r.conversionPct)
+    const pct = ratioPct(r.reg, r.ftd)
+    if (pct != null) perBrand[r.brand].convValues.push(pct)
   }
   return perBrand
 }
@@ -296,7 +296,10 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                           <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
                             <EditableCell
                               value={rec?.reg != null ? String(rec.reg) : ''}
-                              onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
+                              onSave={(next) => {
+                                const reg = parseIntSafe(next)
+                                return onEditRecord(b.name, ym, { reg, conversionPct: ratioPct(reg, rec?.ftd ?? 0) })
+                              }}
                               placeholder="—"
                               title={`Edit ${b.name} REG`}
                             />
@@ -304,18 +307,20 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                           <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
                             <EditableCell
                               value={rec?.ftd != null ? String(rec.ftd) : ''}
-                              onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
+                              onSave={(next) => {
+                                const ftd = parseIntSafe(next)
+                                return onEditRecord(b.name, ym, { ftd, conversionPct: ratioPct(rec?.reg ?? 0, ftd) })
+                              }}
                               placeholder="—"
                               title={`Edit ${b.name} FTD`}
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                            <EditableCell
-                              value={formatPct(rec?.conversionPct ?? null)}
-                              onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
-                              placeholder="—"
-                              title={`Edit ${b.name} Conversion %`}
-                            />
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }} title="Conversion % = FTD ÷ REG × 100, calculated automatically">
+                            {rec ? (
+                              formatPct(ratioPct(rec.reg, rec.ftd)) || <span className="opacity-30">—</span>
+                            ) : (
+                              <span className="opacity-30">—</span>
+                            )}
                           </td>
                         </Fragment>
                       )
