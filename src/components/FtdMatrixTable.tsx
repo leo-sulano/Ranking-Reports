@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { BRANDS, BRAND_LOGO_COLORS } from '../lib/brands'
 import { EditableCell } from './EditableCell'
@@ -88,6 +88,47 @@ interface Props {
 }
 
 export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL', visibleMetric = null }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const monthColRef = useRef<HTMLTableCellElement>(null)
+  const [scrolled, setScrolled] = useState(false)
+  const [scrollRightPad, setScrollRightPad] = useState(0)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return
+      const atLeft  = el.scrollLeft <= 0
+      const atRight = el.scrollLeft >= el.scrollWidth - el.clientWidth
+      if ((e.deltaY < 0 && atLeft) || (e.deltaY > 0 && atRight)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    const onScroll = () => setScrolled(el.scrollLeft > 0)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
+  // Same "flush last column" trick as BPSites' SnapshotMatrix — pads the
+  // table so at max scroll the last brand's last metric column (Rollero /
+  // RO) lands right beside the sticky MONTH column instead of leaving
+  // leftover dead space.
+  useEffect(() => {
+    const scrollEl = scrollRef.current
+    const monthEl  = monthColRef.current
+    if (!scrollEl || !monthEl) return
+    const headerRows = scrollEl.querySelectorAll('thead tr')
+    const lastRow = headerRows[headerRows.length - 1]
+    const lastTh = lastRow?.querySelector('th:last-child') as HTMLElement | null
+    if (!lastTh) return
+    const pad = scrollEl.clientWidth - monthEl.offsetWidth - lastTh.offsetWidth
+    setScrollRightPad(Math.max(0, pad))
+  })
+
   const recordMap = useMemo(() => {
     const map = new Map<string, FtdRecord>()
     for (const r of records) map.set(`${r.brand}|${r.yearMonth}`, r)
@@ -164,14 +205,24 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   const YEAR_ROW_BG = '#EDF0F4'
 
   return (
-    <div className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
-      <table className="w-max min-w-full" style={{ borderCollapse: 'collapse', fontSize: '12px' }}>
+    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
+      <table
+        className="w-max min-w-full"
+        style={{ borderCollapse: 'collapse', fontSize: '12px', marginRight: scrollRightPad > 0 ? scrollRightPad : undefined }}
+      >
         <thead>
           <tr>
             <th
+              ref={monthColRef}
               rowSpan={3}
               className="sticky left-0 top-0 z-[7] px-3 py-2 text-left align-bottom whitespace-nowrap"
-              style={{ background: STICKY_BG, borderRight: border, borderBottom: border, minWidth: 90 }}
+              style={{
+                background: STICKY_BG,
+                borderRight: border,
+                borderBottom: border,
+                minWidth: 90,
+                boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+              }}
             >
               MONTH
             </th>
@@ -235,7 +286,12 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
             <tr style={{ background: SUBHEAD_BG }}>
               <td
                 className="sticky left-0 z-[5] px-3 py-2 font-bold whitespace-nowrap"
-                style={{ background: SUBHEAD_BG, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}
+                style={{
+                  background: SUBHEAD_BG,
+                  borderRight: border,
+                  borderBottom: `2px solid ${TABLE_BORDER}`,
+                  boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                }}
               >
                 {summaryLabel}
               </td>
@@ -274,7 +330,12 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 <tr onClick={() => toggleYear(year)} className="cursor-pointer">
                   <td
                     className="sticky left-0 z-[5] px-3 py-2 font-bold whitespace-nowrap"
-                    style={{ background: YEAR_ROW_BG, borderRight: border, borderBottom: border }}
+                    style={{
+                      background: YEAR_ROW_BG,
+                      borderRight: border,
+                      borderBottom: border,
+                      boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                    }}
                   >
                     <div className="flex items-center gap-1.5">
                       <ChevronRight
@@ -315,7 +376,12 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                   <tr key={ym}>
                     <td
                       className="sticky left-0 z-[5] px-3 py-2 pl-7 font-semibold whitespace-nowrap"
-                      style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
+                      style={{
+                        background: STICKY_BG,
+                        borderRight: border,
+                        borderBottom: border,
+                        boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                      }}
                     >
                       {formatMonthLabel(ym)}
                     </td>
