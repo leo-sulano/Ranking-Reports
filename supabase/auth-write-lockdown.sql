@@ -1,65 +1,35 @@
 -- ============================================================================
--- Ranking Reports — Supabase schema
+-- Ranking Reports — WRITE LOCKDOWN (read stays open, writes require login)
 -- ============================================================================
--- Run this once in the Supabase SQL editor (Project → SQL Editor → New query).
--- Safe to re-run: every statement is idempotent.
+-- Run this in the Supabase SQL editor when you're ready to require login for
+-- add/edit/upload/delete actions while keeping the dashboard viewable by
+-- anyone (no login needed to read data).
 --
--- Tables:
---   snapshots         — one row per uploaded XLSX (rr_snapshots equivalent)
---   ranking_records   — flat ranking rows, FK to snapshots
+-- Unlike auth-lockdown.sql (which blocks anon entirely — an all-or-nothing
+-- gate for the dormant VITE_REQUIRE_AUTH flag), this keeps `anon` able to
+-- SELECT, and only requires an authenticated session for INSERT/UPDATE/DELETE.
+--
+-- ── CHECKLIST ────────────────────────────────────────────────────────────────
+--   1. Supabase Dashboard → Authentication → Providers → Google: enable it,
+--      paste the Client ID/Secret from a Google Cloud OAuth client you create.
+--   2. Supabase Dashboard → Authentication → Users → "Add user" for each
+--      teammate who needs write access (set "Auto Confirm User").
+--   3. Supabase Dashboard → Authentication → URL Configuration: add your
+--      deployed app URL (and http://localhost:5173 for local dev) as a
+--      Redirect URL, so signInWithOAuth's redirectTo is accepted.
+--   4. Run THIS file: Supabase Dashboard → SQL Editor → New query → paste → Run.
+--
+-- Safe to re-run: every statement is idempotent.
+-- To ROLL BACK (re-open writes to anon), re-run the policy section of schema.sql.
 -- ============================================================================
 
--- Snapshots ------------------------------------------------------------------
-create table if not exists public.snapshots (
-  id            text primary key,             -- client-generated id (e.g. "snap-1715600000000")
-  raw_date      text not null,                -- from "Last Check" column, e.g. "5/20/2026"
-  display_date  text not null,                -- formatted, e.g. "20 May 26"
-  category      text,                         -- "bp-sites" | "lp-sites" — null reads as DEFAULT_CATEGORY client-side
-  created_at    timestamptz not null default now()
-);
+alter table public.snapshots       enable row level security;
+alter table public.ranking_records enable row level security;
+alter table public.ftd_records     enable row level security;
+alter table public.ftd_totals      enable row level security;
+alter table public.brand_stags     enable row level security;
 
--- Backfill ALTER for existing tables (idempotent — Postgres ignores duplicates).
-alter table public.snapshots add column if not exists category text;
-
-create index if not exists snapshots_created_at_idx
-  on public.snapshots (created_at desc);
-
--- Ranking records ------------------------------------------------------------
-create table if not exists public.ranking_records (
-  id             bigserial primary key,
-  snapshot_id    text not null references public.snapshots(id) on delete cascade,
-  domain         text not null,
-  keyword        text not null,
-  country        text not null,
-  position       text not null,                 -- text so "NR" / "Not in top 100" fit
-  previous       text not null default '',
-  change         text not null default '',
-  date           text not null default '',
-  search_volume         text not null default '',  -- per-(domain, country) SV — e.g. "6.3K"
-  affiliate_url         text not null default '',
-  global_search_volume  text not null default ''   -- per-keyword GSV — denormalized onto every record for the keyword
-);
-
--- Backfill ALTER for existing tables (idempotent — Postgres ignores duplicates).
-alter table public.ranking_records add column if not exists search_volume text not null default '';
-alter table public.ranking_records add column if not exists affiliate_url text not null default '';
-alter table public.ranking_records add column if not exists global_search_volume text not null default '';
-
-create index if not exists ranking_records_snapshot_idx
-  on public.ranking_records (snapshot_id);
-
-create index if not exists ranking_records_lookup_idx
-  on public.ranking_records (snapshot_id, domain, keyword, country);
-
--- Row Level Security ---------------------------------------------------------
--- Read is open to everyone (the anon key ships in the browser bundle, and
--- viewing the dashboard requires no login). Writes require an authenticated
--- Supabase session — see auth-write-lockdown.sql for the same policies
--- applied to an existing database, plus the setup checklist (Google OAuth
--- provider, manually-added users, redirect URLs).
-alter table public.snapshots         enable row level security;
-alter table public.ranking_records   enable row level security;
-
+-- snapshots -------------------------------------------------------------------
 drop policy if exists "anon read snapshots"   on public.snapshots;
 drop policy if exists "anon write snapshots"  on public.snapshots;
 drop policy if exists "anon update snapshots" on public.snapshots;
@@ -73,6 +43,7 @@ create policy "auth write snapshots"  on public.snapshots for insert to authenti
 create policy "auth update snapshots" on public.snapshots for update to authenticated using (true) with check (true);
 create policy "auth delete snapshots" on public.snapshots for delete to authenticated using (true);
 
+-- ranking_records ---------------------------------------------------------------
 drop policy if exists "anon read records"   on public.ranking_records;
 drop policy if exists "anon write records"  on public.ranking_records;
 drop policy if exists "anon update records" on public.ranking_records;
@@ -86,35 +57,7 @@ create policy "auth write records"  on public.ranking_records for insert to auth
 create policy "auth update records" on public.ranking_records for update to authenticated using (true) with check (true);
 create policy "auth delete records" on public.ranking_records for delete to authenticated using (true);
 
--- ============================================================================
--- FTD tracking — REG / FTD / Conversion % per brand per month
--- ============================================================================
--- Deliberately independent of snapshots/ranking_records: FTD data is
--- brand+month shaped, not domain+keyword+country shaped.
-
-create table if not exists public.ftd_records (
-  brand           text not null,
-  year_month      text not null,               -- 'YYYY-MM', e.g. '2023-08'
-  reg             int not null default 0,
-  ftd             int not null default 0,
-  conversion_pct  numeric,                       -- manually entered, nullable
-  primary key (brand, year_month)
-);
-
-create table if not exists public.ftd_totals (
-  year_month      text primary key,
-  conversion_pct  numeric                        -- manually entered; REG/FTD totals are derived client-side
-);
-
-create table if not exists public.brand_stags (
-  brand  text primary key,
-  stags  text not null default ''
-);
-
-alter table public.ftd_records enable row level security;
-alter table public.ftd_totals  enable row level security;
-alter table public.brand_stags enable row level security;
-
+-- ftd_records -------------------------------------------------------------------
 drop policy if exists "anon read ftd_records"   on public.ftd_records;
 drop policy if exists "anon write ftd_records"  on public.ftd_records;
 drop policy if exists "anon update ftd_records" on public.ftd_records;
@@ -128,6 +71,7 @@ create policy "auth write ftd_records"  on public.ftd_records for insert to auth
 create policy "auth update ftd_records" on public.ftd_records for update to authenticated using (true) with check (true);
 create policy "auth delete ftd_records" on public.ftd_records for delete to authenticated using (true);
 
+-- ftd_totals ----------------------------------------------------------------
 drop policy if exists "anon read ftd_totals"   on public.ftd_totals;
 drop policy if exists "anon write ftd_totals"  on public.ftd_totals;
 drop policy if exists "anon update ftd_totals" on public.ftd_totals;
@@ -141,6 +85,7 @@ create policy "auth write ftd_totals"  on public.ftd_totals for insert to authen
 create policy "auth update ftd_totals" on public.ftd_totals for update to authenticated using (true) with check (true);
 create policy "auth delete ftd_totals" on public.ftd_totals for delete to authenticated using (true);
 
+-- brand_stags -----------------------------------------------------------------
 drop policy if exists "anon read brand_stags"   on public.brand_stags;
 drop policy if exists "anon write brand_stags"  on public.brand_stags;
 drop policy if exists "anon update brand_stags" on public.brand_stags;
