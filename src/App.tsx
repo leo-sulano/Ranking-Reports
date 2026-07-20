@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
+import { useAuth } from './lib/useAuth'
+import { LoginModal } from './components/LoginModal'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
@@ -47,6 +49,7 @@ function Layout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+  const { session, modalOpen, requireAuth, openLogin, cancelAuth } = useAuth()
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -109,7 +112,7 @@ function Layout() {
     const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, records }
 
     try {
-      await upsertSnapshot(newSnap)
+      await requireAuth(() => upsertSnapshot(newSnap))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Save failed (${displayDate}): ${msg}`, 'error')
@@ -131,7 +134,7 @@ function Layout() {
     })
 
     return newSnap
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const reportUnknownDomains = useCallback((unknownDomains: UnknownDomain[]) => {
     const skipped = unknownDomains.reduce((s, u) => s + u.count, 0)
@@ -205,7 +208,7 @@ function Layout() {
     const { existing, pendingRecords, unknownDomains } = duplicateWarning
     setDuplicateWarning(null)
     try {
-      await deleteSnapshot(existing.id)
+      await requireAuth(() => deleteSnapshot(existing.id))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Delete failed: ${msg}`, 'error')
@@ -224,7 +227,7 @@ function Layout() {
       `✓ Imported ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
     )
     reportUnknownDomains(unknownDomains)
-  }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains])
+  }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains, requireAuth])
 
   // ── Inline-edit GSV / SV / AFF ────────────────────────────────────────────
   const handleEditCell = useCallback(async (
@@ -233,7 +236,7 @@ function Layout() {
     patch:      EditCellPatch,
   ) => {
     try {
-      await updateRecordFields(snapshotId, matcher, patch)
+      await requireAuth(() => updateRecordFields(snapshotId, matcher, patch))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Edit failed: ${msg}`, 'error')
@@ -259,7 +262,7 @@ function Layout() {
       // view layer.
       return { ...s, snapshots: next }
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
@@ -267,7 +270,7 @@ function Layout() {
     if (!window.confirm(`Delete snapshot for ${snap.displayDate}? This cannot be undone.`)) return
 
     try {
-      await deleteSnapshot(id)
+      await requireAuth(() => deleteSnapshot(id))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Delete failed: ${msg}`, 'error')
@@ -284,7 +287,7 @@ function Layout() {
     })
 
     addToast(`✓ Deleted snapshot for ${snap.displayDate}`)
-  }, [addToast, state.snapshots])
+  }, [addToast, requireAuth, state.snapshots])
 
   // ── Snapshot ──────────────────────────────────────────────────────────────
 
@@ -324,6 +327,7 @@ function Layout() {
     onDeleteSnapshot:  handleDeleteSnapshot,
     onEditCell:        handleEditCell,
     addToast,
+    requireAuth,
   }
 
   if (loading) {
@@ -359,6 +363,8 @@ function Layout() {
         <Topbar
           brandName={topbarTitle}
           domain={topbarDomain}
+          session={session}
+          onSignIn={openLogin}
           onMenuToggle={() => setMobileNavOpen((v) => !v)}
         />
 
@@ -402,6 +408,8 @@ function Layout() {
           </div>
         </div>
       )}
+
+      <LoginModal open={modalOpen} onClose={cancelAuth} />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 

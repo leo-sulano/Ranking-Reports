@@ -72,6 +72,9 @@ export interface RROutletContext {
   // which rows are patched within the snapshot.
   onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
   addToast: (message: string, type?: ToastItem['type']) => void
+  // Gate for mutating actions — runs fn immediately if signed in, otherwise
+  // opens the shared login modal and resumes fn on success. See useAuth().
+  requireAuth: <T>(fn: () => T | Promise<T>) => Promise<T>
 }
 
 // FTD tracking — brand+month shaped, independent of the Snapshot model above.
