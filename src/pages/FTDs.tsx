@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { Check, ChevronDown } from 'lucide-react'
 import { FtdMatrixTable, blendedPct } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
@@ -45,7 +46,9 @@ export function FTDs() {
   const [importing,      setImporting]      = useState(false)
   const [importSkipped,  setImportSkipped]  = useState<string[]>([])
   const [yearFilter, setYearFilter] = useState('all')
+  const [yearDdOpen, setYearDdOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const yearDdRef = useRef<HTMLDivElement>(null)
 
   const years = useMemo(() => {
     const set = new Set<string>()
@@ -53,6 +56,29 @@ export function FTDs() {
     totals.forEach((t) => set.add(t.yearMonth.slice(0, 4)))
     return Array.from(set).sort().reverse()
   }, [records, totals])
+
+  const yearOptions = useMemo(
+    () => [{ id: 'all', label: 'All Years' }, ...years.map((y) => ({ id: y, label: y }))],
+    [years],
+  )
+  const activeYearOption = yearOptions.find((o) => o.id === yearFilter) ?? yearOptions[0]
+
+  // Outside-click + Escape-to-close — same pattern as every other custom
+  // dropdown in this app (UploadModal's category selector, BPSites'/LPSites'
+  // filter dropdowns).
+  useEffect(() => {
+    if (!yearDdOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (yearDdRef.current && !yearDdRef.current.contains(e.target as Node)) setYearDdOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setYearDdOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [yearDdOpen])
 
   const filteredRecords = useMemo(
     () => (yearFilter === 'all' ? records : records.filter((r) => r.yearMonth.startsWith(yearFilter))),
@@ -194,16 +220,44 @@ export function FTDs() {
           />
         </div>
 
-        <select
-          value={yearFilter}
-          onChange={(e) => setYearFilter(e.target.value)}
-          className="px-3 py-2 rounded-md text-[12px] font-semibold text-[#0F172A] border border-[#CBD5E1] outline-none focus:border-[#0F172A] bg-white shrink-0 self-start"
-        >
-          <option value="all">All Years</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <div ref={yearDdRef} className="relative shrink-0 self-start">
+          <div
+            onClick={() => setYearDdOpen((v) => !v)}
+            className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
+              yearDdOpen ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+            }`}
+          >
+            <span className="font-medium flex-1 min-w-0 truncate">{activeYearOption.label}</span>
+            <ChevronDown
+              size={13}
+              strokeWidth={2.25}
+              className={`text-[#64748B] shrink-0 transition-transform duration-150 ${yearDdOpen ? 'rotate-180' : ''}`}
+            />
+          </div>
+
+          {yearDdOpen && (
+            <div className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[140px] animate-[modalIn_0.12s_ease]">
+              {yearOptions.map((o) => {
+                const selected = o.id === yearFilter
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => { setYearFilter(o.id); setYearDdOpen(false) }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
+                      selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <span className="font-medium">{o.label}</span>
+                    {selected && <Check size={13} strokeWidth={2.5} />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-end gap-2 mb-4">
