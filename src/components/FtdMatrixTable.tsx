@@ -67,7 +67,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
     const set = new Set<string>()
     records.forEach((r) => set.add(r.yearMonth))
     totals.forEach((t) => set.add(t.yearMonth))
-    return Array.from(set).sort()
+    return Array.from(set).sort().reverse()
   }, [records, totals])
 
   const border = `1px solid ${TABLE_BORDER}`
