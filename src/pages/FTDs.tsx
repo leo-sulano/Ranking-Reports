@@ -237,7 +237,7 @@ export function FTDs() {
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col px-3 sm:px-7 pt-5">
+    <div className="flex-1 min-h-0 min-w-0 flex flex-col px-3 sm:px-7 pt-5">
       <div className="flex justify-end mb-3 shrink-0">
         <div ref={periodDdRef} className="relative shrink-0">
           <div
@@ -318,7 +318,7 @@ export function FTDs() {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pb-7">
+      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto pb-7">
         <FtdMatrixTable
           records={filteredRecords}
           totals={filteredTotals}
