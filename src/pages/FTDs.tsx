@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { FtdMatrixTable } from '../components/FtdMatrixTable'
+import { FtdMatrixTable, blendedPct } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import { parseFtdXlsx } from '../lib/ftdParser'
@@ -41,6 +41,12 @@ export function FTDs() {
     () => (yearFilter === 'all' ? totals : totals.filter((t) => t.yearMonth.startsWith(yearFilter))),
     [totals, yearFilter],
   )
+
+  const cardStats = useMemo(() => {
+    const totalReg = filteredRecords.reduce((s, r) => s + r.reg, 0)
+    const totalFtd = filteredRecords.reduce((s, r) => s + r.ftd, 0)
+    return { totalReg, totalFtd, conversionPct: blendedPct(totalReg, totalFtd) }
+  }, [filteredRecords])
 
   useEffect(() => {
     let cancelled = false
@@ -155,6 +161,23 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl">
+        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
+          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Total REG</div>
+          <div className="text-[22px] font-bold text-[#0F172A] font-mono">{cardStats.totalReg.toLocaleString()}</div>
+        </div>
+        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
+          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Total FTD</div>
+          <div className="text-[22px] font-bold text-[#0F172A] font-mono">{cardStats.totalFtd.toLocaleString()}</div>
+        </div>
+        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
+          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Conversion %</div>
+          <div className="text-[22px] font-bold text-[#0F172A] font-mono">
+            {cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-2 mb-4">
         <select
           value={yearFilter}
@@ -205,7 +228,6 @@ export function FTDs() {
         totals={filteredTotals}
         stags={stags}
         onEditRecord={handleEditRecord}
-        onEditTotals={handleEditTotals}
         onEditStags={handleEditStags}
         summaryLabel={yearFilter === 'all' ? 'ALL-TIME' : `${yearFilter} TOTAL`}
       />

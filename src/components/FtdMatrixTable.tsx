@@ -3,12 +3,10 @@ import { BRANDS } from '../lib/brands'
 import { EditableCell } from './EditableCell'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags } from '../types'
 
-const TABLE_BORDER   = '#B0B7BD'
-const STICKY_BG      = '#FFFFFF'
-const TOTALS_HEAD_BG = '#0F172A'
-const STAGS_BG       = '#F1F5F9'
-const SUBHEAD_BG     = '#F8FAFC'
-const TOTALS_CELL_BG = '#F8FAFC'
+const TABLE_BORDER = '#B0B7BD'
+const STICKY_BG    = '#FFFFFF'
+const STAGS_BG     = '#F1F5F9'
+const SUBHEAD_BG   = '#F8FAFC'
 
 const SUB_COLS = ['REG', 'FTD', 'CONV%'] as const
 
@@ -35,7 +33,7 @@ function formatPct(v: number | null): string {
   return v == null ? '' : `${v}%`
 }
 
-function blendedPct(reg: number, ftd: number): number | null {
+export function blendedPct(reg: number, ftd: number): number | null {
   return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
 }
 
@@ -44,23 +42,16 @@ interface Props {
   totals:  FtdTotals[]
   stags:   BrandStags[]
   onEditRecord: (brand: string, yearMonth: string, patch: FtdRecordPatch) => Promise<void>
-  onEditTotals: (yearMonth: string, conversionPct: number | null) => Promise<void>
   onEditStags:  (brand: string, stags: string) => Promise<void>
   summaryLabel?: string
 }
 
-export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTotals, onEditStags, summaryLabel = 'ALL-TIME' }: Props) {
+export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'ALL-TIME' }: Props) {
   const recordMap = useMemo(() => {
     const map = new Map<string, FtdRecord>()
     for (const r of records) map.set(`${r.brand}|${r.yearMonth}`, r)
     return map
   }, [records])
-
-  const totalsMap = useMemo(() => {
-    const map = new Map<string, FtdTotals>()
-    for (const t of totals) map.set(t.yearMonth, t)
-    return map
-  }, [totals])
 
   const stagsMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -82,13 +73,11 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
       perBrand[r.brand].reg += r.reg
       perBrand[r.brand].ftd += r.ftd
     }
-    const totalReg = Object.values(perBrand).reduce((s, v) => s + v.reg, 0)
-    const totalFtd = Object.values(perBrand).reduce((s, v) => s + v.ftd, 0)
-    return { perBrand, totalReg, totalFtd }
+    return { perBrand }
   }, [records])
 
   const border = `1px solid ${TABLE_BORDER}`
-  const totalCols = 4 + BRANDS.length * 3 // month + totals(3) + brands(3 each)
+  const totalCols = 1 + BRANDS.length * 3 // month + brands(3 each)
 
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
@@ -101,13 +90,6 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
               style={{ background: STICKY_BG, borderRight: border, borderBottom: border, minWidth: 90 }}
             >
               MONTH
-            </th>
-            <th
-              colSpan={3}
-              className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white"
-              style={{ background: TOTALS_HEAD_BG, borderLeft: border, borderRight: border }}
-            >
-              TOTALS
             </th>
             {BRANDS.map((b) => (
               <th
@@ -122,13 +104,6 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
           </tr>
 
           <tr>
-            <th
-              colSpan={3}
-              className="sticky top-[29px] z-[6] px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-[#64748B]"
-              style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border }}
-            >
-              STAGS
-            </th>
             {BRANDS.map((b) => (
               <th
                 key={b.name}
@@ -147,15 +122,6 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
           </tr>
 
           <tr>
-            {SUB_COLS.map((label) => (
-              <th
-                key={`totals-${label}`}
-                className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
-                style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
-              >
-                {label}
-              </th>
-            ))}
             {BRANDS.map((b) => (
               <Fragment key={b.name}>
                 {SUB_COLS.map((label) => (
@@ -190,16 +156,6 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
                 {summaryLabel}
               </td>
 
-              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                {summary.totalReg}
-              </td>
-              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                {summary.totalFtd}
-              </td>
-              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                {formatPct(blendedPct(summary.totalReg, summary.totalFtd))}
-              </td>
-
               {BRANDS.map((b) => {
                 const bt = summary.perBrand[b.name]
                 return (
@@ -219,70 +175,48 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
             </tr>
           )}
 
-          {months.map((ym) => {
-            const brandRecs = BRANDS.map((b) => recordMap.get(`${b.name}|${ym}`))
-            const sumReg = brandRecs.reduce((s, r) => s + (r?.reg ?? 0), 0)
-            const sumFtd = brandRecs.reduce((s, r) => s + (r?.ftd ?? 0), 0)
-            const totalsRow = totalsMap.get(ym)
+          {months.map((ym) => (
+            <tr key={ym}>
+              <td
+                className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
+                style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
+              >
+                {formatMonthLabel(ym)}
+              </td>
 
-            return (
-              <tr key={ym}>
-                <td
-                  className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
-                  style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
-                >
-                  {formatMonthLabel(ym)}
-                </td>
-
-                <td className="px-2 py-1.5 text-center font-mono" style={{ background: TOTALS_CELL_BG, borderLeft: border, borderRight: border, borderBottom: border }}>
-                  {sumReg}
-                </td>
-                <td className="px-2 py-1.5 text-center font-mono" style={{ background: TOTALS_CELL_BG, borderRight: border, borderBottom: border }}>
-                  {sumFtd}
-                </td>
-                <td className="px-2 py-1.5 text-center" style={{ background: TOTALS_CELL_BG, borderRight: border, borderBottom: border }}>
-                  <EditableCell
-                    value={formatPct(totalsRow?.conversionPct ?? null)}
-                    onSave={(next) => onEditTotals(ym, parsePctSafe(next))}
-                    placeholder="—"
-                    title="Edit Totals Conversion %"
-                  />
-                </td>
-
-                {BRANDS.map((b) => {
-                  const rec = recordMap.get(`${b.name}|${ym}`)
-                  return (
-                    <Fragment key={b.name}>
-                      <td className="px-2 py-1.5 text-center" style={{ borderLeft: border, borderRight: border, borderBottom: border }}>
-                        <EditableCell
-                          value={rec?.reg != null ? String(rec.reg) : ''}
-                          onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
-                          placeholder="—"
-                          title={`Edit ${b.name} REG`}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
-                        <EditableCell
-                          value={rec?.ftd != null ? String(rec.ftd) : ''}
-                          onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
-                          placeholder="—"
-                          title={`Edit ${b.name} FTD`}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
-                        <EditableCell
-                          value={formatPct(rec?.conversionPct ?? null)}
-                          onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
-                          placeholder="—"
-                          title={`Edit ${b.name} Conversion %`}
-                        />
-                      </td>
-                    </Fragment>
-                  )
-                })}
-              </tr>
-            )
-          })}
+              {BRANDS.map((b) => {
+                const rec = recordMap.get(`${b.name}|${ym}`)
+                return (
+                  <Fragment key={b.name}>
+                    <td className="px-2 py-1.5 text-center" style={{ borderLeft: border, borderRight: border, borderBottom: border }}>
+                      <EditableCell
+                        value={rec?.reg != null ? String(rec.reg) : ''}
+                        onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
+                        placeholder="—"
+                        title={`Edit ${b.name} REG`}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
+                      <EditableCell
+                        value={rec?.ftd != null ? String(rec.ftd) : ''}
+                        onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
+                        placeholder="—"
+                        title={`Edit ${b.name} FTD`}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
+                      <EditableCell
+                        value={formatPct(rec?.conversionPct ?? null)}
+                        onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
+                        placeholder="—"
+                        title={`Edit ${b.name} Conversion %`}
+                      />
+                    </td>
+                  </Fragment>
+                )
+              })}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
