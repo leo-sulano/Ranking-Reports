@@ -1,16 +1,29 @@
 import { useState, type FormEvent } from 'react'
 import { Lock, LogIn, X } from 'lucide-react'
-import { signIn, signInWithGoogle } from '../lib/auth'
+import { signIn, signInWithGoogle, signUp } from '../lib/auth'
+
+type Mode = 'signin' | 'signup'
 
 /**
- * Shared login overlay opened by useAuth() whenever a signed-out user
- * triggers a gated action, or clicks "Sign in" in the Topbar. On successful
- * email/password sign-in, useAuth's onAuthChange listener closes this and
- * resumes whatever action was pending — no logic needed here beyond calling
- * signIn(). Google sign-in redirects the whole page away, so nothing after
- * that call runs.
+ * Shared login/sign-up overlay opened by useAuth() whenever a signed-out
+ * user triggers a gated action, or clicks "Sign in" in the Topbar. On
+ * successful email/password sign-in, useAuth's onAuthChange listener closes
+ * this and resumes whatever action was pending — no logic needed here beyond
+ * calling signIn(). Google sign-in redirects the whole page away, so nothing
+ * after that call runs. Signing up always closes the modal immediately
+ * (via onClose, which useAuth wires to cancelAuth) — a brand-new account is
+ * never approved yet, so there's nothing to resume.
  */
-export function LoginModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LoginModal({
+  open,
+  onClose,
+  onSignedUp,
+}: {
+  open: boolean
+  onClose: () => void
+  onSignedUp?: () => void
+}) {
+  const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,14 +31,26 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
 
   if (!open) return null
 
+  function toggleMode() {
+    setMode((m) => (m === 'signin' ? 'signup' : 'signin'))
+    setError(null)
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      await signIn(email.trim(), password)
+      if (mode === 'signup') {
+        await signUp(email.trim(), password)
+        onSignedUp?.()
+        onClose()
+      } else {
+        await signIn(email.trim(), password)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+      const fallback = mode === 'signup' ? 'Sign-up failed' : 'Sign-in failed'
+      setError(err instanceof Error ? err.message : fallback)
       setBusy(false)
     }
   }
@@ -62,11 +87,13 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             <Lock size={15} />
           </span>
           <span className="font-display text-[20px] tracking-wider text-[#0F172A]">
-            Sign in
+            {mode === 'signup' ? 'Create account' : 'Sign in'}
           </span>
         </div>
         <p className="text-[12px] font-mono text-[#64748B] mb-6">
-          Sign in to make changes to the dashboard
+          {mode === 'signup'
+            ? 'Create an account — an admin will approve it before you can make changes'
+            : 'Sign in to make changes to the dashboard'}
         </p>
 
         <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
@@ -87,7 +114,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
         </label>
         <input
           type="password"
-          autoComplete="current-password"
+          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -107,7 +134,17 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
           className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#1E293B] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           <LogIn size={15} />
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy
+            ? (mode === 'signup' ? 'Creating account…' : 'Signing in…')
+            : (mode === 'signup' ? 'Create account' : 'Sign in')}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleMode}
+          className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+        >
+          {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
 
         <div className="flex items-center gap-3 my-4">
