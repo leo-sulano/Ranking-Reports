@@ -16,14 +16,16 @@ function formatError(err: unknown): string {
 }
 
 // Same visual pattern as StatsRow.tsx's StatCard (accent bar, uppercase
-// label, font-display value, sub text, active/click-to-filter state).
+// label, font-display value, sub text, active/click-to-filter state) —
+// plus a small formula line showing exactly how the value is calculated.
 function FtdStatCard({
-  label, value, accent, sub, active, onClick,
+  label, value, accent, sub, formula, active, onClick,
 }: {
   label: string
   value: number | string
   accent: string
   sub: string
+  formula: string
   active?: boolean
   onClick?: () => void
 }) {
@@ -48,6 +50,9 @@ function FtdStatCard({
       </div>
       <div className="text-[9px] sm:text-[10px] text-[#64748B] truncate">
         {active ? <span style={{ color: accent }}>● filtering</span> : sub}
+      </div>
+      <div className="text-[8px] font-mono text-[#94A3B8] truncate" title={formula}>
+        {formula}
       </div>
     </div>
   )
@@ -280,6 +285,7 @@ export function FTDs() {
           value={cardStats.totalReg}
           accent="#0F172A"
           sub="registrations"
+          formula="Σ REG — every brand"
           active={activeMetric === 'reg'}
           onClick={() => toggleMetric('reg')}
         />
@@ -288,6 +294,7 @@ export function FTDs() {
           value={cardStats.totalFtd}
           accent="#10B981"
           sub="deposits"
+          formula="Σ FTD — every brand"
           active={activeMetric === 'ftd'}
           onClick={() => toggleMetric('ftd')}
         />
@@ -296,6 +303,7 @@ export function FTDs() {
           value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
           accent="#8B5CF6"
           sub={periodFilter.length === 7 ? 'this month' : 'monthly average'}
+          formula={periodFilter.length === 7 ? 'FTD ÷ REG × 100' : 'AVG(FTD ÷ REG × 100 per month)'}
           active={activeMetric === 'conv'}
           onClick={() => toggleMetric('conv')}
         />
