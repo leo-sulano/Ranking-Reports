@@ -1,4 +1,5 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { BRANDS, BRAND_LOGO_COLORS } from '../lib/brands'
 import { EditableCell } from './EditableCell'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags } from '../types'
@@ -44,6 +45,16 @@ function brandTint(color: string): string {
   return `${color}14`
 }
 
+function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd: number }> {
+  const perBrand: Record<string, { reg: number; ftd: number }> = {}
+  for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0 }
+  for (const r of recs) {
+    perBrand[r.brand].reg += r.reg
+    perBrand[r.brand].ftd += r.ftd
+  }
+  return perBrand
+}
+
 interface Props {
   records: FtdRecord[]
   totals:  FtdTotals[]
@@ -53,7 +64,7 @@ interface Props {
   summaryLabel?: string
 }
 
-export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'ALL-TIME' }: Props) {
+export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL' }: Props) {
   const recordMap = useMemo(() => {
     const map = new Map<string, FtdRecord>()
     for (const r of records) map.set(`${r.brand}|${r.yearMonth}`, r)
@@ -73,18 +84,57 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
     return Array.from(set).sort().reverse()
   }, [records, totals])
 
-  const summary = useMemo(() => {
-    const perBrand: Record<string, { reg: number; ftd: number }> = {}
-    for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0 }
-    for (const r of records) {
-      perBrand[r.brand].reg += r.reg
-      perBrand[r.brand].ftd += r.ftd
+  const summary = useMemo(() => ({ perBrand: aggregateByBrand(records) }), [records])
+
+  // Months grouped by year, in the same descending order as `months` —
+  // Map preserves insertion order, and `months` is already sorted newest
+  // first, so years come out newest first too.
+  const monthsByYear = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const m of months) {
+      const y = m.slice(0, 4)
+      if (!map.has(y)) map.set(y, [])
+      map.get(y)!.push(m)
     }
-    return { perBrand }
-  }, [records])
+    return map
+  }, [months])
+
+  const yearAggregates = useMemo(() => {
+    const map = new Map<string, Record<string, { reg: number; ftd: number }>>()
+    for (const [year, yearMonths] of monthsByYear) {
+      const yearSet = new Set(yearMonths)
+      map.set(year, aggregateByBrand(records.filter((r) => yearSet.has(r.yearMonth))))
+    }
+    return map
+  }, [monthsByYear, records])
+
+  const yearsList = useMemo(() => Array.from(monthsByYear.keys()), [monthsByYear])
+
+  // Collapsed by default, except the most recent year — re-expands the
+  // newest year whenever the visible year set changes in a way that drops
+  // whatever was expanded (e.g. the period filter jumps to a different
+  // year), but otherwise leaves the user's manual expand/collapse choices
+  // alone.
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(() => new Set(yearsList[0] ? [yearsList[0]] : []))
+  useEffect(() => {
+    setExpandedYears((prev) => {
+      if (yearsList.some((y) => prev.has(y))) return prev
+      return new Set(yearsList[0] ? [yearsList[0]] : [])
+    })
+  }, [yearsList])
+
+  const toggleYear = (year: string) => {
+    setExpandedYears((prev) => {
+      const next = new Set(prev)
+      if (next.has(year)) next.delete(year)
+      else next.add(year)
+      return next
+    })
+  }
 
   const border = `1px solid ${TABLE_BORDER}`
   const totalCols = 1 + BRANDS.length * 3 // month + brands(3 each)
+  const YEAR_ROW_BG = '#EDF0F4'
 
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
@@ -183,49 +233,91 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
             </tr>
           )}
 
-          {months.map((ym) => (
-            <tr key={ym}>
-              <td
-                className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
-                style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
-              >
-                {formatMonthLabel(ym)}
-              </td>
+          {Array.from(monthsByYear.entries()).map(([year, yearMonths]) => {
+            const expanded = expandedYears.has(year)
+            const yearAgg = yearAggregates.get(year)!
+            return (
+              <Fragment key={year}>
+                <tr onClick={() => toggleYear(year)} className="cursor-pointer">
+                  <td
+                    className="sticky left-0 z-[5] px-3 py-2 font-bold whitespace-nowrap"
+                    style={{ background: YEAR_ROW_BG, borderRight: border, borderBottom: border }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <ChevronRight
+                        size={12}
+                        strokeWidth={2.5}
+                        className={`text-[#64748B] transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+                      />
+                      {year}
+                    </div>
+                  </td>
 
-              {BRANDS.map((b) => {
-                const rec = recordMap.get(`${b.name}|${ym}`)
-                const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
-                return (
-                  <Fragment key={b.name}>
-                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                      <EditableCell
-                        value={rec?.reg != null ? String(rec.reg) : ''}
-                        onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
-                        placeholder="—"
-                        title={`Edit ${b.name} REG`}
-                      />
+                  {BRANDS.map((b) => {
+                    const bt = yearAgg[b.name]
+                    const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
+                    return (
+                      <Fragment key={b.name}>
+                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                          {bt.reg}
+                        </td>
+                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                          {bt.ftd}
+                        </td>
+                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                          {formatPct(blendedPct(bt.reg, bt.ftd))}
+                        </td>
+                      </Fragment>
+                    )
+                  })}
+                </tr>
+
+                {expanded && yearMonths.map((ym) => (
+                  <tr key={ym}>
+                    <td
+                      className="sticky left-0 z-[5] px-3 py-2 pl-7 font-semibold whitespace-nowrap"
+                      style={{ background: STICKY_BG, borderRight: border, borderBottom: border }}
+                    >
+                      {formatMonthLabel(ym)}
                     </td>
-                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                      <EditableCell
-                        value={rec?.ftd != null ? String(rec.ftd) : ''}
-                        onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
-                        placeholder="—"
-                        title={`Edit ${b.name} FTD`}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                      <EditableCell
-                        value={formatPct(rec?.conversionPct ?? null)}
-                        onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
-                        placeholder="—"
-                        title={`Edit ${b.name} Conversion %`}
-                      />
-                    </td>
-                  </Fragment>
-                )
-              })}
-            </tr>
-          ))}
+
+                    {BRANDS.map((b) => {
+                      const rec = recordMap.get(`${b.name}|${ym}`)
+                      const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
+                      return (
+                        <Fragment key={b.name}>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            <EditableCell
+                              value={rec?.reg != null ? String(rec.reg) : ''}
+                              onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
+                              placeholder="—"
+                              title={`Edit ${b.name} REG`}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                            <EditableCell
+                              value={rec?.ftd != null ? String(rec.ftd) : ''}
+                              onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
+                              placeholder="—"
+                              title={`Edit ${b.name} FTD`}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
+                            <EditableCell
+                              value={formatPct(rec?.conversionPct ?? null)}
+                              onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
+                              placeholder="—"
+                              title={`Edit ${b.name} Conversion %`}
+                            />
+                          </td>
+                        </Fragment>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>

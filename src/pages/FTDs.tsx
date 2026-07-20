@@ -189,19 +189,8 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <div className="flex items-stretch gap-3 mb-4">
-        <div className="grid grid-cols-3 gap-[5px] flex-1">
-          <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
-          <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
-          <FtdStatCard
-            label="Conversion %"
-            value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
-            accent="#8B5CF6"
-            sub="blended rate"
-          />
-        </div>
-
-        <div ref={periodDdRef} className="relative shrink-0 self-start">
+      <div className="flex justify-end mb-3">
+        <div ref={periodDdRef} className="relative shrink-0">
           <div
             onClick={() => setPeriodDdOpen((v) => !v)}
             className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
@@ -241,6 +230,17 @@ export function FTDs() {
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-[5px] mb-4">
+        <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
+        <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
+        <FtdStatCard
+          label="Conversion %"
+          value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
+          accent="#8B5CF6"
+          sub="blended rate"
+        />
+      </div>
+
       <div className="flex items-center justify-end gap-2 mb-4">
         <button
           onClick={() => setShowEntryForm(true)}
@@ -258,7 +258,7 @@ export function FTDs() {
         onEditStags={handleEditStags}
         summaryLabel={
           periodFilter === 'all'
-            ? 'ALL-TIME'
+            ? 'TOTAL'
             : periodFilter.length === 4
               ? `${periodFilter} TOTAL`
               : `${formatMonthLabel(periodFilter)} TOTAL`
