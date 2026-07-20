@@ -237,8 +237,8 @@ export function FTDs() {
   }
 
   return (
-    <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <div className="flex justify-end mb-3">
+    <div className="flex-1 min-h-0 flex flex-col px-3 sm:px-7 pt-5">
+      <div className="flex justify-end mb-3 shrink-0">
         <div ref={periodDdRef} className="relative shrink-0">
           <div
             onClick={() => setPeriodDdOpen((v) => !v)}
@@ -279,7 +279,7 @@ export function FTDs() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-[5px] mb-4">
+      <div className="grid grid-cols-3 gap-[5px] mb-4 shrink-0">
         <FtdStatCard
           label="Total REG"
           value={cardStats.totalReg}
@@ -309,7 +309,7 @@ export function FTDs() {
         />
       </div>
 
-      <div className="flex items-center justify-end gap-2 mb-4">
+      <div className="flex items-center justify-end gap-2 mb-4 shrink-0">
         <button
           onClick={() => setShowEntryForm(true)}
           className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
@@ -318,21 +318,23 @@ export function FTDs() {
         </button>
       </div>
 
-      <FtdMatrixTable
-        records={filteredRecords}
-        totals={filteredTotals}
-        stags={stags}
-        onEditRecord={handleEditRecord}
-        onEditStags={handleEditStags}
-        visibleMetric={activeMetric}
-        summaryLabel={
-          periodFilter === 'all'
-            ? 'TOTAL'
-            : periodFilter.length === 4
-              ? `${periodFilter} TOTAL`
-              : `${formatMonthLabel(periodFilter)} TOTAL`
-        }
-      />
+      <div className="flex-1 min-h-0 overflow-y-auto pb-7">
+        <FtdMatrixTable
+          records={filteredRecords}
+          totals={filteredTotals}
+          stags={stags}
+          onEditRecord={handleEditRecord}
+          onEditStags={handleEditStags}
+          visibleMetric={activeMetric}
+          summaryLabel={
+            periodFilter === 'all'
+              ? 'TOTAL'
+              : periodFilter.length === 4
+                ? `${periodFilter} TOTAL`
+                : `${formatMonthLabel(periodFilter)} TOTAL`
+          }
+        />
+      </div>
 
       {showEntryForm && (
         <FtdEntryForm

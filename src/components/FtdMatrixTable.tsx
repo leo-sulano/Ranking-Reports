@@ -165,7 +165,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '100%' }}>
+      <table className="w-max min-w-full" style={{ borderCollapse: 'collapse', fontSize: '12px' }}>
         <thead>
           <tr>
             <th
