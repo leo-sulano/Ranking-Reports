@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from 'react'
-import { BRANDS } from '../lib/brands'
+import { BRANDS, BRAND_LOGO_COLORS } from '../lib/brands'
 import { EditableCell } from './EditableCell'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags } from '../types'
 
@@ -96,7 +96,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 key={b.name}
                 colSpan={3}
                 className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
-                style={{ background: b.color, borderLeft: border, borderRight: border }}
+                style={{ background: BRAND_LOGO_COLORS[b.name] ?? b.color, borderLeft: border, borderRight: border }}
               >
                 {b.abbr}
               </th>

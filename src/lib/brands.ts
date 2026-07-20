@@ -213,6 +213,22 @@ BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()
 export const LP_DOMAIN_TO_BRAND: Record<string, string> = {}
 BRANDS.forEach((b) => b.lpDomains.forEach((d) => { LP_DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
 
+// Logo-accurate brand colors — sampled from each brand's actual logo, distinct
+// from Brand.color (the generic value used for Home stats/badges app-wide).
+// Used wherever a brand needs to visually match its real identity: BP/LP
+// Sites' brand grid cards, FTDs' brand column headers.
+export const BRAND_LOGO_COLORS: Record<string, string> = {
+  'Lucky 7even': '#C026D3',
+  'RoosterBet':  '#DC2626',
+  'LuckyVibe':   '#0F766E',
+  'SpinsUp':     '#EC4899',
+  'Spinjo':      '#1E40AF',
+  'FortunePLay': '#CA8A04',
+  'RocketSpin':  '#1F2937',
+  'PlayMojo':    '#38BDF8',
+  'Rollero':     '#B8860B',
+}
+
 export const COUNTRY_LABELS: Record<string, string> = {
   Australia: 'AU',
   Canada: 'CA',

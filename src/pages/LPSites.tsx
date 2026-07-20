@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange } from '../lib/parser'
@@ -28,19 +28,6 @@ const DATE_BAND_FG = '#FFFFFF'
 const HEADER_FG    = '#000000'
 const TABLE_BORDER = '#B0B7BD'
 const STICKY_KW_BG = '#FFFFFF'
-
-// Grid-only color overrides — same identity palette BP Sites uses.
-const GRID_BRAND_COLORS: Record<string, string> = {
-  'Lucky 7even': '#C026D3',
-  'RoosterBet':  '#DC2626',
-  'LuckyVibe':   '#0F766E',
-  'SpinsUp':     '#EC4899',
-  'Spinjo':      '#1E40AF',
-  'FortunePLay': '#CA8A04',
-  'RocketSpin':  '#1F2937',
-  'PlayMojo':    '#38BDF8',
-  'Rollero':     '#B8860B',
-}
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, import('../types').RankingRecord>>>
@@ -91,7 +78,7 @@ function BrandGrid({
           const hasData = snapshots.some((s) =>
             s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
           )
-          const c = GRID_BRAND_COLORS[brand.name] ?? brand.color
+          const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
             <button

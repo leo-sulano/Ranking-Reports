@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
@@ -31,21 +31,6 @@ const DATE_BAND_FG  = '#FFFFFF'
 const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
-
-// Grid-only color overrides — sampled from each brand's logo so the cards on
-// the BP Sites overview match brand identity. Scoped here intentionally; the
-// global brand.color (used by Home stats, badges, etc.) is unchanged.
-const GRID_BRAND_COLORS: Record<string, string> = {
-  'Lucky 7even': '#C026D3', // magenta from "Lucky" lettering
-  'RoosterBet':  '#DC2626', // red accent
-  'LuckyVibe':   '#0F766E', // dark teal gradient
-  'SpinsUp':     '#EC4899', // neon pink
-  'Spinjo':      '#1E40AF', // royal blue
-  'FortunePLay': '#CA8A04', // gold on dark
-  'RocketSpin':  '#1F2937', // black w/ red star (using the black)
-  'PlayMojo':    '#38BDF8', // light sky blue
-  'Rollero':     '#B8860B', // dark gold/crown
-}
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
@@ -111,7 +96,7 @@ function BrandGrid({
           const hasData = snapshots.some((s) =>
             s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
           )
-          const c = GRID_BRAND_COLORS[brand.name] ?? brand.color
+          const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
             <button
