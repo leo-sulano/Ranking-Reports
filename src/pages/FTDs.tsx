@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Check, ChevronDown } from 'lucide-react'
-import { FtdMatrixTable, blendedPct } from '../components/FtdMatrixTable'
+import { FtdMatrixTable, blendedPct, formatMonthLabel } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
-import { parseFtdXlsx } from '../lib/ftdParser'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
 function formatError(err: unknown): string {
@@ -43,51 +42,62 @@ export function FTDs() {
   const [stags,   setStags]   = useState<BrandStags[]>([])
   const [loading, setLoading] = useState(true)
   const [showEntryForm, setShowEntryForm] = useState(false)
-  const [importing,      setImporting]      = useState(false)
-  const [importSkipped,  setImportSkipped]  = useState<string[]>([])
-  const [yearFilter, setYearFilter] = useState('all')
-  const [yearDdOpen, setYearDdOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const yearDdRef = useRef<HTMLDivElement>(null)
+  const [periodFilter, setPeriodFilter] = useState('all') // 'all' | 'YYYY' | 'YYYY-MM'
+  const [periodDdOpen, setPeriodDdOpen] = useState(false)
+  const periodDdRef = useRef<HTMLDivElement>(null)
 
-  const years = useMemo(() => {
+  const allMonths = useMemo(() => {
     const set = new Set<string>()
-    records.forEach((r) => set.add(r.yearMonth.slice(0, 4)))
-    totals.forEach((t) => set.add(t.yearMonth.slice(0, 4)))
+    records.forEach((r) => set.add(r.yearMonth))
+    totals.forEach((t) => set.add(t.yearMonth))
     return Array.from(set).sort().reverse()
   }, [records, totals])
 
-  const yearOptions = useMemo(
-    () => [{ id: 'all', label: 'All Years' }, ...years.map((y) => ({ id: y, label: y }))],
-    [years],
-  )
-  const activeYearOption = yearOptions.find((o) => o.id === yearFilter) ?? yearOptions[0]
+  const years = useMemo(() => {
+    const set = new Set<string>()
+    allMonths.forEach((m) => set.add(m.slice(0, 4)))
+    return Array.from(set).sort().reverse()
+  }, [allMonths])
+
+  // Flat, grouped list: "All Years", then each year followed by its own
+  // months (indented) — lets the one dropdown filter by year OR by a
+  // single month.
+  const periodOptions = useMemo(() => {
+    const opts: Array<{ id: string; label: string; indent?: boolean }> = [{ id: 'all', label: 'All Years' }]
+    for (const y of years) {
+      opts.push({ id: y, label: y })
+      for (const m of allMonths.filter((mm) => mm.startsWith(y))) {
+        opts.push({ id: m, label: formatMonthLabel(m), indent: true })
+      }
+    }
+    return opts
+  }, [years, allMonths])
+  const activePeriodOption = periodOptions.find((o) => o.id === periodFilter) ?? periodOptions[0]
 
   // Outside-click + Escape-to-close — same pattern as every other custom
   // dropdown in this app (UploadModal's category selector, BPSites'/LPSites'
   // filter dropdowns).
   useEffect(() => {
-    if (!yearDdOpen) return
+    if (!periodDdOpen) return
     const onDown = (e: MouseEvent) => {
-      if (yearDdRef.current && !yearDdRef.current.contains(e.target as Node)) setYearDdOpen(false)
+      if (periodDdRef.current && !periodDdRef.current.contains(e.target as Node)) setPeriodDdOpen(false)
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setYearDdOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPeriodDdOpen(false) }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [yearDdOpen])
+  }, [periodDdOpen])
 
-  const filteredRecords = useMemo(
-    () => (yearFilter === 'all' ? records : records.filter((r) => r.yearMonth.startsWith(yearFilter))),
-    [records, yearFilter],
-  )
-  const filteredTotals = useMemo(
-    () => (yearFilter === 'all' ? totals : totals.filter((t) => t.yearMonth.startsWith(yearFilter))),
-    [totals, yearFilter],
-  )
+  const matchesPeriod = useCallback((yearMonth: string) => {
+    if (periodFilter === 'all') return true
+    return periodFilter.length === 4 ? yearMonth.startsWith(periodFilter) : yearMonth === periodFilter
+  }, [periodFilter])
+
+  const filteredRecords = useMemo(() => records.filter((r) => matchesPeriod(r.yearMonth)), [records, matchesPeriod])
+  const filteredTotals  = useMemo(() => totals.filter((t) => matchesPeriod(t.yearMonth)),  [totals, matchesPeriod])
 
   const cardStats = useMemo(() => {
     const totalReg = filteredRecords.reduce((s, r) => s + r.reg, 0)
@@ -169,35 +179,6 @@ export function FTDs() {
     })
   }, [addToast])
 
-  const handleImportFile = useCallback(async (file: File) => {
-    setImporting(true)
-    setImportSkipped([])
-    try {
-      const buf = await file.arrayBuffer()
-      const { records: parsedRecords, totals: parsedTotals, stags: parsedStags, skipped } = parseFtdXlsx(buf)
-
-      for (const r of parsedRecords) {
-        await upsertFtdRecord(r.brand, r.yearMonth, { reg: r.reg, ftd: r.ftd, conversionPct: r.conversionPct })
-      }
-      for (const t of parsedTotals) {
-        await upsertFtdTotals(t.yearMonth, t.conversionPct)
-      }
-      for (const s of parsedStags) {
-        await upsertBrandStags(s.brand, s.stags)
-      }
-
-      const fresh = await loadFtdData()
-      setRecords(fresh.records)
-      setTotals(fresh.totals)
-      setStags(fresh.stags)
-      setImportSkipped(skipped)
-    } catch (err) {
-      addToast(`Import failed: ${formatError(err)}`, 'error')
-    } finally {
-      setImporting(false)
-    }
-  }, [addToast])
-
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
@@ -220,37 +201,37 @@ export function FTDs() {
           />
         </div>
 
-        <div ref={yearDdRef} className="relative shrink-0 self-start">
+        <div ref={periodDdRef} className="relative shrink-0 self-start">
           <div
-            onClick={() => setYearDdOpen((v) => !v)}
+            onClick={() => setPeriodDdOpen((v) => !v)}
             className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
-              yearDdOpen ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+              periodDdOpen ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
             }`}
           >
-            <span className="font-medium flex-1 min-w-0 truncate">{activeYearOption.label}</span>
+            <span className="font-medium flex-1 min-w-0 truncate">{activePeriodOption.label}</span>
             <ChevronDown
               size={13}
               strokeWidth={2.25}
-              className={`text-[#64748B] shrink-0 transition-transform duration-150 ${yearDdOpen ? 'rotate-180' : ''}`}
+              className={`text-[#64748B] shrink-0 transition-transform duration-150 ${periodDdOpen ? 'rotate-180' : ''}`}
             />
           </div>
 
-          {yearDdOpen && (
-            <div className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[140px] animate-[modalIn_0.12s_ease]">
-              {yearOptions.map((o) => {
-                const selected = o.id === yearFilter
+          {periodDdOpen && (
+            <div className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[160px] max-h-[320px] overflow-y-auto animate-[modalIn_0.12s_ease]">
+              {periodOptions.map((o) => {
+                const selected = o.id === periodFilter
                 return (
                   <button
                     key={o.id}
                     type="button"
                     role="option"
                     aria-selected={selected}
-                    onClick={() => { setYearFilter(o.id); setYearDdOpen(false) }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-                      selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
-                    }`}
+                    onClick={() => { setPeriodFilter(o.id); setPeriodDdOpen(false) }}
+                    className={`w-full flex items-center justify-between text-left transition-colors ${
+                      o.indent ? 'pl-6 pr-3 py-1.5 text-[11px]' : 'px-3 py-2 text-[12px]'
+                    } ${selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'}`}
                   >
-                    <span className="font-medium">{o.label}</span>
+                    <span className={o.indent ? 'font-normal' : 'font-medium'}>{o.label}</span>
                     {selected && <Check size={13} strokeWidth={2.5} />}
                   </button>
                 )
@@ -261,20 +242,6 @@ export function FTDs() {
       </div>
 
       <div className="flex items-center justify-end gap-2 mb-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={importing}
-          className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
-        >
-          {importing ? 'Importing…' : 'Import History'}
-        </button>
         <button
           onClick={() => setShowEntryForm(true)}
           className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
@@ -283,22 +250,19 @@ export function FTDs() {
         </button>
       </div>
 
-      {importSkipped.length > 0 && (
-        <div className="mb-4 px-4 py-2.5 rounded-md bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.3)] text-[12px] text-[#F43F5E]">
-          Skipped {importSkipped.length} row{importSkipped.length !== 1 ? 's' : ''} during import:
-          <ul className="list-disc list-inside mt-1">
-            {importSkipped.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
-        </div>
-      )}
-
       <FtdMatrixTable
         records={filteredRecords}
         totals={filteredTotals}
         stags={stags}
         onEditRecord={handleEditRecord}
         onEditStags={handleEditStags}
-        summaryLabel={yearFilter === 'all' ? 'ALL-TIME' : `${yearFilter} TOTAL`}
+        summaryLabel={
+          periodFilter === 'all'
+            ? 'ALL-TIME'
+            : periodFilter.length === 4
+              ? `${periodFilter} TOTAL`
+              : `${formatMonthLabel(periodFilter)} TOTAL`
+        }
       />
 
       {showEntryForm && (

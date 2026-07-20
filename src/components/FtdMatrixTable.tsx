@@ -10,7 +10,7 @@ const SUBHEAD_BG   = '#F8FAFC'
 
 const SUB_COLS = ['REG', 'FTD', 'CONV%'] as const
 
-function formatMonthLabel(yearMonth: string): string {
+export function formatMonthLabel(yearMonth: string): string {
   const [y, m] = yearMonth.split('-').map(Number)
   const date = new Date(y, m - 1, 1)
   const month = date.toLocaleDateString('en-US', { month: 'short' })
@@ -147,7 +147,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
             </tr>
           )}
 
-          {months.length > 0 && (
+          {months.length > 1 && (
             <tr style={{ background: SUBHEAD_BG }}>
               <td
                 className="sticky left-0 z-[5] px-3 py-2 font-bold whitespace-nowrap"
