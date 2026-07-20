@@ -42,8 +42,12 @@ export function useAuth() {
   }, [])
 
   const requireAuth = useCallback(<T,>(fn: () => T | Promise<T>): Promise<T> => {
-    if (session) return Promise.resolve(fn())
+    if (session) return Promise.resolve().then(fn)
     return new Promise<T>((resolve, reject) => {
+      // Reject any existing pending auth to prevent orphaning
+      if (pending.current) {
+        pending.current.reject(new Error('Superseded by a newer sign-in request'))
+      }
       pending.current = { run: fn, resolve: resolve as (value: unknown) => void, reject }
       setModalOpen(true)
     })
