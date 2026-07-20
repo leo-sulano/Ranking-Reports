@@ -34,8 +34,14 @@ function formatPct(v: number | null): string {
   return v == null ? '' : `${v}%`
 }
 
-export function blendedPct(reg: number, ftd: number): number | null {
-  return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
+// Matches the source sheet's own aggregate formula — a plain average of
+// each included month's Conversion % value (e.g. =AVERAGE(D4:D38)), not a
+// blended FTD÷REG calculation. Blank/null months are skipped, same as
+// Sheets' AVERAGE ignoring empty cells.
+export function averagePct(values: Array<number | null | undefined>): number | null {
+  const nums = values.filter((v): v is number => v != null)
+  if (nums.length === 0) return null
+  return Math.round((nums.reduce((s, v) => s + v, 0) / nums.length) * 10) / 10
 }
 
 // Same hex+alpha tint pattern BPSites uses for its domain quick-link
@@ -45,12 +51,13 @@ function brandTint(color: string): string {
   return `${color}14`
 }
 
-function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd: number }> {
-  const perBrand: Record<string, { reg: number; ftd: number }> = {}
-  for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0 }
+function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd: number; convValues: number[] }> {
+  const perBrand: Record<string, { reg: number; ftd: number; convValues: number[] }> = {}
+  for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0, convValues: [] }
   for (const r of recs) {
     perBrand[r.brand].reg += r.reg
     perBrand[r.brand].ftd += r.ftd
+    if (r.conversionPct != null) perBrand[r.brand].convValues.push(r.conversionPct)
   }
   return perBrand
 }
@@ -100,7 +107,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   }, [months])
 
   const yearAggregates = useMemo(() => {
-    const map = new Map<string, Record<string, { reg: number; ftd: number }>>()
+    const map = new Map<string, Record<string, { reg: number; ftd: number; convValues: number[] }>>()
     for (const [year, yearMonths] of monthsByYear) {
       const yearSet = new Set(yearMonths)
       map.set(year, aggregateByBrand(records.filter((r) => yearSet.has(r.yearMonth))))
@@ -225,7 +232,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       {bt.ftd}
                     </td>
                     <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                      {formatPct(blendedPct(bt.reg, bt.ftd))}
+                      {formatPct(averagePct(bt.convValues))}
                     </td>
                   </Fragment>
                 )
@@ -265,7 +272,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                           {expanded ? '' : bt.ftd}
                         </td>
                         <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                          {expanded ? '' : formatPct(blendedPct(bt.reg, bt.ftd))}
+                          {expanded ? '' : formatPct(averagePct(bt.convValues))}
                         </td>
                       </Fragment>
                     )

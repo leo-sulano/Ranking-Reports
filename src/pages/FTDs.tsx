@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Check, ChevronDown } from 'lucide-react'
-import { FtdMatrixTable, blendedPct, formatMonthLabel } from '../components/FtdMatrixTable'
+import { FtdMatrixTable, averagePct, formatMonthLabel } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
@@ -102,8 +102,12 @@ export function FTDs() {
   const cardStats = useMemo(() => {
     const totalReg = filteredRecords.reduce((s, r) => s + r.reg, 0)
     const totalFtd = filteredRecords.reduce((s, r) => s + r.ftd, 0)
-    return { totalReg, totalFtd, conversionPct: blendedPct(totalReg, totalFtd) }
-  }, [filteredRecords])
+    // Matches the source sheet's Totals row: =AVERAGE() of each included
+    // month's own Totals Conversion % (ftd_totals.conversion_pct), not a
+    // blended FTD÷REG calculation.
+    const conversionPct = averagePct(filteredTotals.map((t) => t.conversionPct))
+    return { totalReg, totalFtd, conversionPct }
+  }, [filteredRecords, filteredTotals])
 
   useEffect(() => {
     let cancelled = false
@@ -237,7 +241,7 @@ export function FTDs() {
           label="Conversion %"
           value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
           accent="#8B5CF6"
-          sub="blended rate"
+          sub="monthly average"
         />
       </div>
 
