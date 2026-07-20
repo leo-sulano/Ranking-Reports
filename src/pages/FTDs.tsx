@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Check, ChevronDown } from 'lucide-react'
-import { FtdMatrixTable, averagePct, ratioPct, formatMonthLabel } from '../components/FtdMatrixTable'
+import { FtdMatrixTable, averagePct, ratioPct, rawRatio, formatMonthLabel } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
@@ -102,16 +102,31 @@ export function FTDs() {
   const cardStats = useMemo(() => {
     const totalReg = filteredRecords.reduce((s, r) => s + r.reg, 0)
     const totalFtd = filteredRecords.reduce((s, r) => s + r.ftd, 0)
-    // Filtered to one exact month ('YYYY-MM'): just FTD ÷ REG × 100 for
-    // that month, same as every per-brand monthly cell — there's nothing
-    // to average across. Filtered to a year or "All Years": matches the
-    // source sheet's Totals row, =AVERAGE() of each included month's own
-    // Totals Conversion % (ftd_totals.conversion_pct).
-    const conversionPct = periodFilter.length === 7
-      ? ratioPct(totalReg, totalFtd)
-      : averagePct(filteredTotals.map((t) => t.conversionPct))
+
+    let conversionPct: number | null
+    if (periodFilter.length === 7) {
+      // Filtered to one exact month: just FTD ÷ REG × 100 for that month,
+      // same as every per-brand monthly cell — nothing to average across.
+      conversionPct = ratioPct(totalReg, totalFtd)
+    } else {
+      // Filtered to a year or "All Years": matches the source sheet's
+      // Totals row — AVERAGE() of each included month's own blended ratio
+      // (that month's REG/FTD summed across every brand), computed fresh
+      // rather than read from the separately-stored ftd_totals field,
+      // which isn't guaranteed to be populated for every month.
+      const monthTotals = new Map<string, { reg: number; ftd: number }>()
+      for (const r of filteredRecords) {
+        const t = monthTotals.get(r.yearMonth) ?? { reg: 0, ftd: 0 }
+        t.reg += r.reg
+        t.ftd += r.ftd
+        monthTotals.set(r.yearMonth, t)
+      }
+      const monthlyRatios = Array.from(monthTotals.values()).map((t) => rawRatio(t.reg, t.ftd))
+      conversionPct = averagePct(monthlyRatios)
+    }
+
     return { totalReg, totalFtd, conversionPct }
-  }, [filteredRecords, filteredTotals, periodFilter])
+  }, [filteredRecords, periodFilter])
 
   useEffect(() => {
     let cancelled = false

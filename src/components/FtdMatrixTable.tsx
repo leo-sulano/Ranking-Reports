@@ -37,10 +37,19 @@ export function averagePct(values: Array<number | null | undefined>): number | n
   return Math.round(nums.reduce((s, v) => s + v, 0) / nums.length)
 }
 
-// A single month's Conversion % is always FTD ÷ REG × 100 — never a
-// manually entered value.
+// Unrounded FTD ÷ REG × 100 — feed this into averagePct() so rounding only
+// happens once, at final display, instead of compounding across an
+// average-of-already-rounded-values (which can drift a point or two off
+// the sheet's own arithmetic).
+export function rawRatio(reg: number, ftd: number): number | null {
+  return reg > 0 ? (ftd / reg) * 100 : null
+}
+
+// A single month's displayed Conversion % is always FTD ÷ REG × 100 —
+// never a manually entered value.
 export function ratioPct(reg: number, ftd: number): number | null {
-  return reg > 0 ? Math.round((ftd / reg) * 100) : null
+  const r = rawRatio(reg, ftd)
+  return r == null ? null : Math.round(r)
 }
 
 // Same hex+alpha tint pattern BPSites uses for its domain quick-link
@@ -56,7 +65,7 @@ function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd:
   for (const r of recs) {
     perBrand[r.brand].reg += r.reg
     perBrand[r.brand].ftd += r.ftd
-    const pct = ratioPct(r.reg, r.ftd)
+    const pct = rawRatio(r.reg, r.ftd)
     if (pct != null) perBrand[r.brand].convValues.push(pct)
   }
   return perBrand
