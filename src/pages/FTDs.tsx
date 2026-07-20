@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { FtdMatrixTable, averagePct, ratioPct, rawRatio, formatMonthLabel } from '../components/FtdMatrixTable'
+import type { FtdMetric } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
@@ -15,13 +16,28 @@ function formatError(err: unknown): string {
 }
 
 // Same visual pattern as StatsRow.tsx's StatCard (accent bar, uppercase
-// label, font-display value, sub text) — these aren't click-to-filter,
-// just a static summary, so there's no active/onClick state.
-function FtdStatCard({ label, value, accent, sub }: { label: string; value: number | string; accent: string; sub: string }) {
+// label, font-display value, sub text, active/click-to-filter state).
+function FtdStatCard({
+  label, value, accent, sub, active, onClick,
+}: {
+  label: string
+  value: number | string
+  accent: string
+  sub: string
+  active?: boolean
+  onClick?: () => void
+}) {
   return (
     <div
-      className="rounded-[10px] px-3 sm:px-4 py-2.5 flex flex-col gap-1 relative overflow-hidden"
-      style={{ background: 'white', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      onClick={onClick}
+      className={`rounded-[10px] px-3 sm:px-4 py-2.5 flex flex-col gap-1 relative overflow-hidden ${onClick ? 'cursor-pointer select-none transition-all' : ''}`}
+      style={{
+        background: active ? `${accent}10` : 'white',
+        border: active ? `2px solid ${accent}` : '1px solid #E2E8F0',
+        boxShadow: active
+          ? `0 0 0 3px ${accent}22, 0 2px 8px rgba(0,0,0,0.08)`
+          : '0 1px 2px rgba(0,0,0,0.04)',
+      }}
     >
       <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-[10px]" style={{ background: accent }} />
       <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] truncate">
@@ -30,7 +46,9 @@ function FtdStatCard({ label, value, accent, sub }: { label: string; value: numb
       <div className="font-display text-[22px] sm:text-[32px] leading-none" style={{ color: accent }}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
-      <div className="text-[9px] sm:text-[10px] text-[#64748B] truncate">{sub}</div>
+      <div className="text-[9px] sm:text-[10px] text-[#64748B] truncate">
+        {active ? <span style={{ color: accent }}>● filtering</span> : sub}
+      </div>
     </div>
   )
 }
@@ -44,7 +62,10 @@ export function FTDs() {
   const [showEntryForm, setShowEntryForm] = useState(false)
   const [periodFilter, setPeriodFilter] = useState('all') // 'all' | 'YYYY' | 'YYYY-MM'
   const [periodDdOpen, setPeriodDdOpen] = useState(false)
+  const [activeMetric, setActiveMetric] = useState<FtdMetric | null>(null)
   const periodDdRef = useRef<HTMLDivElement>(null)
+
+  const toggleMetric = (m: FtdMetric) => setActiveMetric((prev) => (prev === m ? null : m))
 
   const allMonths = useMemo(() => {
     const set = new Set<string>()
@@ -254,13 +275,29 @@ export function FTDs() {
       </div>
 
       <div className="grid grid-cols-3 gap-[5px] mb-4">
-        <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
-        <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
+        <FtdStatCard
+          label="Total REG"
+          value={cardStats.totalReg}
+          accent="#0F172A"
+          sub="registrations"
+          active={activeMetric === 'reg'}
+          onClick={() => toggleMetric('reg')}
+        />
+        <FtdStatCard
+          label="Total FTD"
+          value={cardStats.totalFtd}
+          accent="#10B981"
+          sub="deposits"
+          active={activeMetric === 'ftd'}
+          onClick={() => toggleMetric('ftd')}
+        />
         <FtdStatCard
           label="Conversion %"
           value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
           accent="#8B5CF6"
           sub={periodFilter.length === 7 ? 'this month' : 'monthly average'}
+          active={activeMetric === 'conv'}
+          onClick={() => toggleMetric('conv')}
         />
       </div>
 
@@ -279,6 +316,7 @@ export function FTDs() {
         stags={stags}
         onEditRecord={handleEditRecord}
         onEditStags={handleEditStags}
+        visibleMetric={activeMetric}
         summaryLabel={
           periodFilter === 'all'
             ? 'TOTAL'

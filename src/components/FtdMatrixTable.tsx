@@ -9,7 +9,13 @@ const STICKY_BG    = '#FFFFFF'
 const STAGS_BG     = '#F1F5F9'
 const SUBHEAD_BG   = '#F8FAFC'
 
-const SUB_COLS = ['REG', 'FTD', 'CONV%'] as const
+export type FtdMetric = 'reg' | 'ftd' | 'conv'
+
+const ALL_METRICS: Array<{ key: FtdMetric; label: string }> = [
+  { key: 'reg',  label: 'REG' },
+  { key: 'ftd',  label: 'FTD' },
+  { key: 'conv', label: 'CONV%' },
+]
 
 export function formatMonthLabel(yearMonth: string): string {
   const [y, m] = yearMonth.split('-').map(Number)
@@ -78,9 +84,10 @@ interface Props {
   onEditRecord: (brand: string, yearMonth: string, patch: FtdRecordPatch) => Promise<void>
   onEditStags:  (brand: string, stags: string) => Promise<void>
   summaryLabel?: string
+  visibleMetric?: FtdMetric | null
 }
 
-export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL' }: Props) {
+export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL', visibleMetric = null }: Props) {
   const recordMap = useMemo(() => {
     const map = new Map<string, FtdRecord>()
     for (const r of records) map.set(`${r.brand}|${r.yearMonth}`, r)
@@ -148,8 +155,12 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
     })
   }
 
+  const activeMetrics = visibleMetric ? ALL_METRICS.filter((m) => m.key === visibleMetric) : ALL_METRICS
+  const activeKeys = new Set(activeMetrics.map((m) => m.key))
+  const colsPerBrand = activeMetrics.length
+
   const border = `1px solid ${TABLE_BORDER}`
-  const totalCols = 1 + BRANDS.length * 3 // month + brands(3 each)
+  const totalCols = 1 + BRANDS.length * colsPerBrand // month + brands(colsPerBrand each)
   const YEAR_ROW_BG = '#EDF0F4'
 
   return (
@@ -167,7 +178,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
             {BRANDS.map((b) => (
               <th
                 key={b.name}
-                colSpan={3}
+                colSpan={colsPerBrand}
                 className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
                 style={{ background: BRAND_LOGO_COLORS[b.name] ?? b.color, borderLeft: border, borderRight: border }}
               >
@@ -180,7 +191,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
             {BRANDS.map((b) => (
               <th
                 key={b.name}
-                colSpan={3}
+                colSpan={colsPerBrand}
                 className="sticky top-[29px] z-[6] px-2 py-1 text-center text-[10px] font-mono"
                 style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border }}
               >
@@ -197,9 +208,9 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
           <tr>
             {BRANDS.map((b) => (
               <Fragment key={b.name}>
-                {SUB_COLS.map((label) => (
+                {activeMetrics.map(({ key, label }) => (
                   <th
-                    key={`${b.name}-${label}`}
+                    key={`${b.name}-${key}`}
                     className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[12px] font-bold whitespace-nowrap"
                     style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
                   >
@@ -234,15 +245,21 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                 return (
                   <Fragment key={b.name}>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                      {bt.reg}
-                    </td>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                      {bt.ftd}
-                    </td>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                      {formatPct(averagePct(bt.convValues))}
-                    </td>
+                    {activeKeys.has('reg') && (
+                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                        {bt.reg}
+                      </td>
+                    )}
+                    {activeKeys.has('ftd') && (
+                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                        {bt.ftd}
+                      </td>
+                    )}
+                    {activeKeys.has('conv') && (
+                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                        {formatPct(averagePct(bt.convValues))}
+                      </td>
+                    )}
                   </Fragment>
                 )
               })}
@@ -274,15 +291,21 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                     const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                     return (
                       <Fragment key={b.name}>
-                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                          {expanded ? '' : bt.reg}
-                        </td>
-                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                          {expanded ? '' : bt.ftd}
-                        </td>
-                        <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                          {expanded ? '' : formatPct(averagePct(bt.convValues))}
-                        </td>
+                        {activeKeys.has('reg') && (
+                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            {expanded ? '' : bt.reg}
+                          </td>
+                        )}
+                        {activeKeys.has('ftd') && (
+                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            {expanded ? '' : bt.ftd}
+                          </td>
+                        )}
+                        {activeKeys.has('conv') && (
+                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            {expanded ? '' : formatPct(averagePct(bt.convValues))}
+                          </td>
+                        )}
                       </Fragment>
                     )
                   })}
@@ -302,35 +325,41 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                       return (
                         <Fragment key={b.name}>
-                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                            <EditableCell
-                              value={rec?.reg != null ? String(rec.reg) : ''}
-                              onSave={(next) => {
-                                const reg = parseIntSafe(next)
-                                return onEditRecord(b.name, ym, { reg, conversionPct: ratioPct(reg, rec?.ftd ?? 0) })
-                              }}
-                              placeholder="—"
-                              title={`Edit ${b.name} REG`}
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
-                            <EditableCell
-                              value={rec?.ftd != null ? String(rec.ftd) : ''}
-                              onSave={(next) => {
-                                const ftd = parseIntSafe(next)
-                                return onEditRecord(b.name, ym, { ftd, conversionPct: ratioPct(rec?.reg ?? 0, ftd) })
-                              }}
-                              placeholder="—"
-                              title={`Edit ${b.name} FTD`}
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }} title="Conversion % = FTD ÷ REG × 100, calculated automatically">
-                            {rec ? (
-                              formatPct(ratioPct(rec.reg, rec.ftd)) || <span className="opacity-30">—</span>
-                            ) : (
-                              <span className="opacity-30">—</span>
-                            )}
-                          </td>
+                          {activeKeys.has('reg') && (
+                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                              <EditableCell
+                                value={rec?.reg != null ? String(rec.reg) : ''}
+                                onSave={(next) => {
+                                  const reg = parseIntSafe(next)
+                                  return onEditRecord(b.name, ym, { reg, conversionPct: ratioPct(reg, rec?.ftd ?? 0) })
+                                }}
+                                placeholder="—"
+                                title={`Edit ${b.name} REG`}
+                              />
+                            </td>
+                          )}
+                          {activeKeys.has('ftd') && (
+                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                              <EditableCell
+                                value={rec?.ftd != null ? String(rec.ftd) : ''}
+                                onSave={(next) => {
+                                  const ftd = parseIntSafe(next)
+                                  return onEditRecord(b.name, ym, { ftd, conversionPct: ratioPct(rec?.reg ?? 0, ftd) })
+                                }}
+                                placeholder="—"
+                                title={`Edit ${b.name} FTD`}
+                              />
+                            </td>
+                          )}
+                          {activeKeys.has('conv') && (
+                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }} title="Conversion % = FTD ÷ REG × 100, calculated automatically">
+                              {rec ? (
+                                formatPct(ratioPct(rec.reg, rec.ftd)) || <span className="opacity-30">—</span>
+                              ) : (
+                                <span className="opacity-30">—</span>
+                              )}
+                            </td>
+                          )}
                         </Fragment>
                       )
                     })}
