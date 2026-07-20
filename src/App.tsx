@@ -28,6 +28,7 @@ import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
 import { AskAI }        from './pages/AskAI'
 import { HowItWorks }   from './pages/HowItWorks'
+import { AdminUsers }   from './pages/AdminUsers'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function Layout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
-  const { session, modalOpen, requireAuth, openLogin, cancelAuth } = useAuth()
+  const { session, modalOpen, requireAuth, openLogin, cancelAuth, isAdmin } = useAuth()
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -357,6 +358,7 @@ function Layout() {
         onSelectBPBrand={setBPFilterBrand}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
+        isAdmin={isAdmin}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
@@ -409,7 +411,11 @@ function Layout() {
         </div>
       )}
 
-      <LoginModal open={modalOpen} onClose={cancelAuth} />
+      <LoginModal
+        open={modalOpen}
+        onClose={cancelAuth}
+        onSignedUp={() => addToast('Account created — an admin will approve your access shortly.')}
+      />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
@@ -437,6 +443,7 @@ export function App() {
           <Route path="/ftds"             element={<FTDs />} />
           <Route path="/ask-ai"           element={<AskAI />} />
           <Route path="/how-it-works"     element={<HowItWorks />} />
+          <Route path="/admin/users"      element={<AdminUsers />} />
         </Route>
       </Routes>
     </AuthGate>

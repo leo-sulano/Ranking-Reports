@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp, DollarSign } from 'lucide-react'
+import { CircleHelp, DollarSign, ShieldCheck } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: string }> = [
@@ -35,6 +35,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
   )},
 ]
 
+const ADMIN_PAGE: { path: string; label: string; icon: ReactNode; activePath?: string } =
+  { path: '/admin/users', label: 'Admin', icon: <ShieldCheck size={18} /> }
+
 interface Props {
   uploadDate: string | null
   onOpenUpload: () => void
@@ -42,6 +45,7 @@ interface Props {
   onSelectBPBrand: (name: string | null) => void
   mobileOpen?: boolean
   onMobileClose?: () => void
+  isAdmin: boolean
 }
 
 export function Sidebar({
@@ -51,12 +55,14 @@ export function Sidebar({
   onSelectBPBrand,
   mobileOpen = false,
   onMobileClose,
+  isAdmin,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
   const isLPSitesRoute = location.pathname.startsWith('/lp-sites')
   const hasBrandList   = isBPSitesRoute || isLPSitesRoute
+  const pages = isAdmin ? [...PAGES, ADMIN_PAGE] : PAGES
 
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
@@ -100,7 +106,7 @@ export function Sidebar({
 
         {/* Nav */}
         <nav className="px-2 pt-3 pb-3 border-b border-[#EEEEE9] space-y-0.5 shrink-0">
-          {PAGES.map((p) => {
+          {pages.map((p) => {
             const active = isActivePath(p.activePath ?? p.path)
             return (
               <button
