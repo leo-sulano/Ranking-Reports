@@ -37,6 +37,13 @@ export function blendedPct(reg: number, ftd: number): number | null {
   return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
 }
 
+// Same hex+alpha tint pattern BPSites uses for its domain quick-link
+// buttons (e.g. background:"#C026D314") — a light, near-white wash of the
+// brand's own color, not a hardcoded gray.
+function brandTint(color: string): string {
+  return `${color}14`
+}
+
 interface Props {
   records: FtdRecord[]
   totals:  FtdTotals[]
@@ -158,15 +165,16 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
               {BRANDS.map((b) => {
                 const bt = summary.perBrand[b.name]
+                const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                 return (
                   <Fragment key={b.name}>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
                       {bt.reg}
                     </td>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
                       {bt.ftd}
                     </td>
-                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
                       {formatPct(blendedPct(bt.reg, bt.ftd))}
                     </td>
                   </Fragment>
@@ -186,9 +194,10 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
               {BRANDS.map((b) => {
                 const rec = recordMap.get(`${b.name}|${ym}`)
+                const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                 return (
                   <Fragment key={b.name}>
-                    <td className="px-2 py-1.5 text-center" style={{ borderLeft: border, borderRight: border, borderBottom: border }}>
+                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
                       <EditableCell
                         value={rec?.reg != null ? String(rec.reg) : ''}
                         onSave={(next) => onEditRecord(b.name, ym, { reg: parseIntSafe(next) })}
@@ -196,7 +205,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                         title={`Edit ${b.name} REG`}
                       />
                     </td>
-                    <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
+                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
                       <EditableCell
                         value={rec?.ftd != null ? String(rec.ftd) : ''}
                         onSave={(next) => onEditRecord(b.name, ym, { ftd: parseIntSafe(next) })}
@@ -204,7 +213,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                         title={`Edit ${b.name} FTD`}
                       />
                     </td>
-                    <td className="px-2 py-1.5 text-center" style={{ borderRight: border, borderBottom: border }}>
+                    <td className="px-2 py-1.5 text-center" style={{ background: tint, borderRight: border, borderBottom: border }}>
                       <EditableCell
                         value={formatPct(rec?.conversionPct ?? null)}
                         onSave={(next) => onEditRecord(b.name, ym, { conversionPct: parsePctSafe(next) })}
