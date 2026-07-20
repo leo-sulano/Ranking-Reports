@@ -14,6 +14,27 @@ function formatError(err: unknown): string {
   return String(err)
 }
 
+// Same visual pattern as StatsRow.tsx's StatCard (accent bar, uppercase
+// label, font-display value, sub text) — these aren't click-to-filter,
+// just a static summary, so there's no active/onClick state.
+function FtdStatCard({ label, value, accent, sub }: { label: string; value: number | string; accent: string; sub: string }) {
+  return (
+    <div
+      className="rounded-[10px] px-3 sm:px-4 py-2.5 flex flex-col gap-1 relative overflow-hidden"
+      style={{ background: 'white', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-[10px]" style={{ background: accent }} />
+      <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] truncate">
+        {label}
+      </div>
+      <div className="font-display text-[22px] sm:text-[32px] leading-none" style={{ color: accent }}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </div>
+      <div className="text-[9px] sm:text-[10px] text-[#64748B] truncate">{sub}</div>
+    </div>
+  )
+}
+
 export function FTDs() {
   const { addToast } = useOutletContext<RROutletContext>()
   const [records, setRecords] = useState<FtdRecord[]>([])
@@ -161,21 +182,15 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl">
-        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
-          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Total REG</div>
-          <div className="text-[22px] font-bold text-[#0F172A] font-mono">{cardStats.totalReg.toLocaleString()}</div>
-        </div>
-        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
-          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Total FTD</div>
-          <div className="text-[22px] font-bold text-[#0F172A] font-mono">{cardStats.totalFtd.toLocaleString()}</div>
-        </div>
-        <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-4">
-          <div className="text-[10px] uppercase tracking-wide text-[#64748B] font-semibold mb-1">Conversion %</div>
-          <div className="text-[22px] font-bold text-[#0F172A] font-mono">
-            {cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
-          </div>
-        </div>
+      <div className="grid grid-cols-3 gap-[5px] max-w-xl mb-4">
+        <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
+        <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
+        <FtdStatCard
+          label="Conversion %"
+          value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
+          accent="#8B5CF6"
+          sub="blended rate"
+        />
       </div>
 
       <div className="flex items-center justify-between gap-2 mb-4">
