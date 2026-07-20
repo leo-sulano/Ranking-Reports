@@ -182,51 +182,51 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <div className="grid grid-cols-3 gap-[5px] max-w-xl mb-4">
-        <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
-        <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
-        <FtdStatCard
-          label="Conversion %"
-          value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
-          accent="#8B5CF6"
-          sub="blended rate"
-        />
-      </div>
+      <div className="flex items-stretch gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-[5px] flex-1">
+          <FtdStatCard label="Total REG"   value={cardStats.totalReg}   accent="#0F172A" sub="registrations" />
+          <FtdStatCard label="Total FTD"   value={cardStats.totalFtd}   accent="#10B981" sub="deposits" />
+          <FtdStatCard
+            label="Conversion %"
+            value={cardStats.conversionPct == null ? '—' : `${cardStats.conversionPct}%`}
+            accent="#8B5CF6"
+            sub="blended rate"
+          />
+        </div>
 
-      <div className="flex items-center justify-between gap-2 mb-4">
         <select
           value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
-          className="px-3 py-2 rounded-md text-[12px] font-semibold text-[#0F172A] border border-[#CBD5E1] outline-none focus:border-[#0F172A] bg-white"
+          className="px-3 py-2 rounded-md text-[12px] font-semibold text-[#0F172A] border border-[#CBD5E1] outline-none focus:border-[#0F172A] bg-white shrink-0 self-start"
         >
           <option value="all">All Years</option>
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
-          >
-            {importing ? 'Importing…' : 'Import History'}
-          </button>
-          <button
-            onClick={() => setShowEntryForm(true)}
-            className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
-          >
-            + Add / Edit Month
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={importing}
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
+        >
+          {importing ? 'Importing…' : 'Import History'}
+        </button>
+        <button
+          onClick={() => setShowEntryForm(true)}
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
+        >
+          + Add / Edit Month
+        </button>
       </div>
 
       {importSkipped.length > 0 && (
