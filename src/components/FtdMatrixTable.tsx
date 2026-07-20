@@ -184,7 +184,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 {SUB_COLS.map((label) => (
                   <th
                     key={`${b.name}-${label}`}
-                    className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[10px] font-semibold whitespace-nowrap"
+                    className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[10px] font-bold whitespace-nowrap"
                     style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
                   >
                     {label}
