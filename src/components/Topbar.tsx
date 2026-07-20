@@ -1,13 +1,16 @@
-import { LogOut } from 'lucide-react'
-import { REQUIRE_AUTH, signOut } from '../lib/auth'
+import { LogIn, LogOut } from 'lucide-react'
+import type { Session } from '@supabase/supabase-js'
+import { signOut } from '../lib/auth'
 
 interface Props {
   brandName: string
   domain: string
+  session: Session | null
+  onSignIn: () => void
   onMenuToggle?: () => void
 }
 
-export function Topbar({ brandName, domain, onMenuToggle }: Props) {
+export function Topbar({ brandName, domain, session, onSignIn, onMenuToggle }: Props) {
   return (
     <header className="h-16 min-h-[64px] shrink-0 flex flex-col bg-white border-b border-[#E5E4DF]">
       {/* German flag accent strip — black / red / gold */}
@@ -37,7 +40,7 @@ export function Topbar({ brandName, domain, onMenuToggle }: Props) {
           )}
         </div>
 
-        {REQUIRE_AUTH && (
+        {session ? (
           <button
             type="button"
             onClick={() => { void signOut() }}
@@ -46,6 +49,16 @@ export function Topbar({ brandName, domain, onMenuToggle }: Props) {
           >
             <LogOut size={14} />
             Sign out
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSignIn}
+            title="Sign in"
+            className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[#E5E4DF] text-[12px] font-mono text-[#8A8A85] hover:text-[#0A0A0A] hover:border-[#ABABAA] transition-colors"
+          >
+            <LogIn size={14} />
+            Sign in
           </button>
         )}
       </div>
