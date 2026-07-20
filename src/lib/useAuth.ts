@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSession, onAuthChange } from './auth'
+import { getUserAccess } from './userAccess'
 
 interface PendingAuth {
   run: () => unknown
@@ -10,23 +11,57 @@ interface PendingAuth {
 
 /**
  * Session state + a gate for mutating actions. `requireAuth(fn)` runs `fn`
- * immediately if a session exists; otherwise it opens the shared login modal
- * and resumes `fn` automatically once sign-in succeeds (email/password only —
- * Google's OAuth redirect reloads the page, so a pending `fn` from that path
- * is simply lost; the user re-clicks the action after returning).
+ * only once the caller is BOTH signed in AND approved (see user_access);
+ * otherwise it opens the shared login modal (if signed out) or rejects
+ * immediately with a friendly message (if signed in but still pending).
  *
- * `requireAuth` reads session state from a ref (not the `session` state
- * variable) and has a stable identity (empty dep array) so that a reference
+ * `requireAuth` has a stable identity (empty dep array) and reads session /
+ * approval state from refs, not React state variables, so that a reference
  * to it captured by an already-running async function — e.g. a second
  * `requireAuth` call inside a multi-write operation that started before
- * sign-in completed — still sees the CURRENT session when it runs, instead
- * of the stale pre-sign-in value its enclosing closure was created with.
+ * sign-in completed — still sees the CURRENT state when it runs, instead of
+ * whatever was true when its enclosing closure was created. (This exact
+ * failure mode was a real, fixed bug in the write-gated-auth feature — do
+ * not reintroduce a `[session]`-style dependency on `requireAuth` itself.)
+ *
+ * Email/password sign-in resumes a pending action automatically (no page
+ * reload). Google's OAuth redirect reloads the page, so a pending `fn` from
+ * that path is simply lost; the user re-clicks the action after returning.
  */
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
   const sessionRef = useRef<Session | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const pending = useRef<PendingAuth | null>(null)
+  const [isApproved, setIsApproved] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const approvedRef = useRef(false)
+  // Resolves once the most recent approval check (for the current session)
+  // has finished updating approvedRef/isAdmin. requireAuth and the
+  // post-sign-in resume both wait on this before deciding.
+  const accessCheck = useRef<Promise<void>>(Promise.resolve())
+
+  const refreshAccess = useCallback((userId: string | undefined) => {
+    if (!userId) {
+      approvedRef.current = false
+      setIsApproved(false)
+      setIsAdmin(false)
+      accessCheck.current = Promise.resolve()
+      return
+    }
+    accessCheck.current = getUserAccess(userId).then((access) => {
+      approvedRef.current = access?.status === 'approved'
+      setIsApproved(approvedRef.current)
+      setIsAdmin(access?.isAdmin ?? false)
+    })
+  }, [])
+
+  const runGated = useCallback(<T,>(fn: () => T | Promise<T>): Promise<T> => {
+    return accessCheck.current.then(() => {
+      if (!approvedRef.current) throw new Error('Your account is awaiting admin approval')
+      return fn()
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -35,27 +70,29 @@ export function useAuth() {
       if (cancelled) return
       sessionRef.current = s
       setSession(s)
+      refreshAccess(s?.user.id)
     })
 
     const unsub = onAuthChange((s) => {
       if (cancelled) return
       sessionRef.current = s
       setSession(s)
+      refreshAccess(s?.user.id)
       if (s) {
         setModalOpen(false)
         if (pending.current) {
           const { run, resolve, reject } = pending.current
           pending.current = null
-          Promise.resolve().then(run).then(resolve, reject)
+          runGated(run).then(resolve, reject)
         }
       }
     })
 
     return () => { cancelled = true; unsub() }
-  }, [])
+  }, [refreshAccess, runGated])
 
   const requireAuth = useCallback(<T,>(fn: () => T | Promise<T>): Promise<T> => {
-    if (sessionRef.current) return Promise.resolve().then(fn)
+    if (sessionRef.current) return runGated(fn)
     return new Promise<T>((resolve, reject) => {
       // Reject any existing pending auth to prevent orphaning
       if (pending.current) {
@@ -64,7 +101,7 @@ export function useAuth() {
       pending.current = { run: fn, resolve: resolve as (value: unknown) => void, reject }
       setModalOpen(true)
     })
-  }, [])
+  }, [runGated])
 
   const openLogin = useCallback(() => setModalOpen(true), [])
 
@@ -76,5 +113,5 @@ export function useAuth() {
     setModalOpen(false)
   }, [])
 
-  return { session, modalOpen, requireAuth, openLogin, cancelAuth }
+  return { session, modalOpen, requireAuth, openLogin, cancelAuth, isApproved, isAdmin }
 }
