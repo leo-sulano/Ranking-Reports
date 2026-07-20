@@ -68,7 +68,7 @@ This mirrors the existing `supabase/auth-lockdown.sql` pattern (drop-then-create
 2. User clicks "Upload", edits a cell, or saves an FTD entry → the handler calls `requireAuth(actualMutation)`.
 3. No session → `LoginModal` opens. User signs in (email/password resumes the mutation automatically; Google requires one re-click after the redirect).
 4. Session exists → Supabase JS SDK attaches the user's JWT to the request automatically → RLS policy `to authenticated` passes → write succeeds.
-5. If the session expired mid-action (edge case), the write is rejected by RLS, and the existing toast error path (`addToast(msg, 'error')`) surfaces it — same as any other save failure today.
+5. If the session expired mid-action (edge case): for INSERT, the write is rejected by RLS with a clear error, and the existing toast error path (`addToast(msg, 'error')`) surfaces it — same as any other save failure today. For UPDATE/DELETE, Postgres RLS can instead return success with 0 rows affected (no error thrown) if the row-level check fails but the request otherwise passes through, so a mid-action session expiry during an edit or delete could silently no-op instead of surfacing a toast, leaving the client's optimistic local-state update out of sync until the next reload. This edge case is narrow (session must be present but functionally invalid past `requireAuth`'s presence-only check) and fixing it would require row-count verification code, which is out of scope here.
 
 ## Setup work (manual, outside this codebase)
 
@@ -76,9 +76,9 @@ This mirrors the existing `supabase/auth-lockdown.sql` pattern (drop-then-create
 2. **Supabase → Authentication → Providers → Google**: paste the Client ID/Secret, enable the provider.
 3. **Supabase → Authentication → Users**: manually add each teammate who needs write access (email/password), OR ensure their email is pre-registered so Google sign-in can match/link to it.
 4. Run `auth-write-lockdown.sql` in the Supabase SQL editor.
-5. Set the Google OAuth redirect URL in both Google Cloud Console and Supabase to match the deployed app URL (and localhost for dev).
+5. In Google Cloud Console, set the OAuth client's Authorized redirect URI to the Supabase auth callback (`https://<project-ref>.supabase.co/auth/v1/callback`). In Supabase's own Authentication → URL Configuration, add the deployed app URL and `http://localhost:5173` (for dev) as Redirect URLs — this is what `redirectTo` in signInWithOAuth is checked against.
 
 ## Risks / things to verify during implementation
 
 - **Google auto-linking behavior**: whether Supabase creates a brand-new user on first Google sign-in (effectively open self-signup) or only succeeds if a matching email already has a user record depends on the "Allow new user signups" project setting, which is currently undetermined for this project. Must be checked against the live Supabase project settings before considering this "admin-created only" in practice — if signups are enabled, any Google account could self-provision write access, undermining that goal.
-- **OAuth redirect in local dev**: `redirectTo: window.location.href` needs `localhost` (and its port) allow-listed in both Google Cloud Console and Supabase's redirect URL settings, or the dev flow will fail after Google's consent screen.
+- **OAuth redirect in local dev**: `redirectTo: window.location.href` needs `localhost` (and its port) allow-listed in Supabase's own Redirect URLs setting, or the dev flow will fail after Google's consent screen. Google Cloud Console's redirect URI is always the fixed Supabase callback URL regardless of environment — it does not need localhost added.

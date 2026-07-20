@@ -14,10 +14,14 @@
 --      paste the Client ID/Secret from a Google Cloud OAuth client you create.
 --   2. Supabase Dashboard → Authentication → Users → "Add user" for each
 --      teammate who needs write access (set "Auto Confirm User").
---   3. Supabase Dashboard → Authentication → URL Configuration: add your
+--   3. (Recommended) Disable public signups so randoms can't self-provision
+--      via Google: Authentication → Providers → Email → turn OFF "Allow new
+--      users to sign up" — this setting also blocks new-user creation via
+--      OAuth providers, not just email/password.
+--   4. Supabase Dashboard → Authentication → URL Configuration: add your
 --      deployed app URL (and http://localhost:5173 for local dev) as a
 --      Redirect URL, so signInWithOAuth's redirectTo is accepted.
---   4. Run THIS file: Supabase Dashboard → SQL Editor → New query → paste → Run.
+--   5. Run THIS file: Supabase Dashboard → SQL Editor → New query → paste → Run.
 --
 -- Safe to re-run: every statement is idempotent.
 -- To ROLL BACK (re-open writes to anon), re-run the policy section of schema.sql.
