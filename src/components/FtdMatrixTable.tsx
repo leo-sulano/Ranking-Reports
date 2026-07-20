@@ -35,6 +35,10 @@ function formatPct(v: number | null): string {
   return v == null ? '' : `${v}%`
 }
 
+function blendedPct(reg: number, ftd: number): number | null {
+  return reg > 0 ? Math.round((ftd / reg) * 1000) / 10 : null
+}
+
 interface Props {
   records: FtdRecord[]
   totals:  FtdTotals[]
@@ -42,9 +46,10 @@ interface Props {
   onEditRecord: (brand: string, yearMonth: string, patch: FtdRecordPatch) => Promise<void>
   onEditTotals: (yearMonth: string, conversionPct: number | null) => Promise<void>
   onEditStags:  (brand: string, stags: string) => Promise<void>
+  summaryLabel?: string
 }
 
-export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTotals, onEditStags }: Props) {
+export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTotals, onEditStags, summaryLabel = 'ALL-TIME' }: Props) {
   const recordMap = useMemo(() => {
     const map = new Map<string, FtdRecord>()
     for (const r of records) map.set(`${r.brand}|${r.yearMonth}`, r)
@@ -69,6 +74,18 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
     totals.forEach((t) => set.add(t.yearMonth))
     return Array.from(set).sort().reverse()
   }, [records, totals])
+
+  const summary = useMemo(() => {
+    const perBrand: Record<string, { reg: number; ftd: number }> = {}
+    for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0 }
+    for (const r of records) {
+      perBrand[r.brand].reg += r.reg
+      perBrand[r.brand].ftd += r.ftd
+    }
+    const totalReg = Object.values(perBrand).reduce((s, v) => s + v.reg, 0)
+    const totalFtd = Object.values(perBrand).reduce((s, v) => s + v.ftd, 0)
+    return { perBrand, totalReg, totalFtd }
+  }, [records])
 
   const border = `1px solid ${TABLE_BORDER}`
   const totalCols = 4 + BRANDS.length * 3 // month + totals(3) + brands(3 each)
@@ -161,6 +178,44 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditTot
               <td colSpan={totalCols} className="px-4 py-10 text-center text-[#94A3B8]">
                 No months tracked yet.
               </td>
+            </tr>
+          )}
+
+          {months.length > 0 && (
+            <tr style={{ background: SUBHEAD_BG }}>
+              <td
+                className="sticky left-0 z-[5] px-3 py-2 font-bold whitespace-nowrap"
+                style={{ background: SUBHEAD_BG, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}
+              >
+                {summaryLabel}
+              </td>
+
+              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                {summary.totalReg}
+              </td>
+              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                {summary.totalFtd}
+              </td>
+              <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                {formatPct(blendedPct(summary.totalReg, summary.totalFtd))}
+              </td>
+
+              {BRANDS.map((b) => {
+                const bt = summary.perBrand[b.name]
+                return (
+                  <Fragment key={b.name}>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                      {bt.reg}
+                    </td>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                      {bt.ftd}
+                    </td>
+                    <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
+                      {formatPct(blendedPct(bt.reg, bt.ftd))}
+                    </td>
+                  </Fragment>
+                )
+              })}
             </tr>
           )}
 

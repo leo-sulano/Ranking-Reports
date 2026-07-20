@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FtdMatrixTable } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
@@ -23,7 +23,24 @@ export function FTDs() {
   const [showEntryForm, setShowEntryForm] = useState(false)
   const [importing,      setImporting]      = useState(false)
   const [importSkipped,  setImportSkipped]  = useState<string[]>([])
+  const [yearFilter, setYearFilter] = useState('all')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const years = useMemo(() => {
+    const set = new Set<string>()
+    records.forEach((r) => set.add(r.yearMonth.slice(0, 4)))
+    totals.forEach((t) => set.add(t.yearMonth.slice(0, 4)))
+    return Array.from(set).sort().reverse()
+  }, [records, totals])
+
+  const filteredRecords = useMemo(
+    () => (yearFilter === 'all' ? records : records.filter((r) => r.yearMonth.startsWith(yearFilter))),
+    [records, yearFilter],
+  )
+  const filteredTotals = useMemo(
+    () => (yearFilter === 'all' ? totals : totals.filter((t) => t.yearMonth.startsWith(yearFilter))),
+    [totals, yearFilter],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -138,27 +155,40 @@ export function FTDs() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <div className="flex items-center justify-end gap-2 mb-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={importing}
-          className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className="px-3 py-2 rounded-md text-[12px] font-semibold text-[#0F172A] border border-[#CBD5E1] outline-none focus:border-[#0F172A] bg-white"
         >
-          {importing ? 'Importing…' : 'Import History'}
-        </button>
-        <button
-          onClick={() => setShowEntryForm(true)}
-          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
-        >
-          + Add / Edit Month
-        </button>
+          <option value="all">All Years</option>
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = '' }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="px-4 py-2 rounded-md text-[12px] font-bold text-[#0F172A] border border-[#CBD5E1] hover:border-[#0F172A] disabled:opacity-50 transition-colors"
+          >
+            {importing ? 'Importing…' : 'Import History'}
+          </button>
+          <button
+            onClick={() => setShowEntryForm(true)}
+            className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
+          >
+            + Add / Edit Month
+          </button>
+        </div>
       </div>
 
       {importSkipped.length > 0 && (
@@ -171,12 +201,13 @@ export function FTDs() {
       )}
 
       <FtdMatrixTable
-        records={records}
-        totals={totals}
+        records={filteredRecords}
+        totals={filteredTotals}
         stags={stags}
         onEditRecord={handleEditRecord}
         onEditTotals={handleEditTotals}
         onEditStags={handleEditStags}
+        summaryLabel={yearFilter === 'all' ? 'ALL-TIME' : `${yearFilter} TOTAL`}
       />
 
       {showEntryForm && (
