@@ -102,4 +102,14 @@ export interface BrandStags {
   stags: string
 }
 
+export type UserAccessStatus = 'pending' | 'approved'
+
+export interface UserAccessRow {
+  userId: string
+  email: string
+  status: UserAccessStatus
+  isAdmin: boolean
+  createdAt: string
+}
+
 export type ParsedPosition = number | 'NR' | null
