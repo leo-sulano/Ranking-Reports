@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp, DollarSign, ShieldCheck } from 'lucide-react'
+import { CircleHelp, DollarSign, Users } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 import type { WriteGate } from '../types'
 
@@ -37,7 +37,7 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
 ]
 
 const ADMIN_PAGE: { path: string; label: string; icon: ReactNode; activePath?: string } =
-  { path: '/admin/users', label: 'Admin', icon: <ShieldCheck size={18} /> }
+  { path: '/admin/users', label: 'Users', icon: <Users size={18} /> }
 
 interface Props {
   uploadDate: string | null
