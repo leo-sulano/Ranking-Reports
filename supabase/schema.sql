@@ -196,6 +196,20 @@ select id, email, 'approved' from auth.users
 on conflict (user_id) do nothing;
 
 -- RLS: user_access --------------------------------------------------------------
+-- is_admin() is SECURITY DEFINER so it bypasses RLS internally; a plain
+-- `exists (select ... from user_access ...)` subquery directly inside a
+-- user_access policy re-triggers that same policy for every row it scans,
+-- which Postgres reports as "infinite recursion detected in policy" (42P17).
+create or replace function public.user_is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(is_admin, false) from public.user_access where user_id = auth.uid();
+$$;
+
 drop policy if exists "self or admin read user_access" on public.user_access;
 drop policy if exists "admin update user_access" on public.user_access;
 
@@ -203,13 +217,13 @@ create policy "self or admin read user_access" on public.user_access
   for select
   using (
     user_id = auth.uid()
-    or exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin)
+    or public.user_is_admin()
   );
 
 create policy "admin update user_access" on public.user_access
   for update
-  using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin))
-  with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.is_admin));
+  using (public.user_is_admin())
+  with check (public.user_is_admin());
 
 -- RLS: tighten the 5 app tables' write policies to require APPROVAL -----------
 -- (not just authentication — replaces the `using (true)` / `with check (true)`
