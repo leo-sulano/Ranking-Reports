@@ -19,14 +19,15 @@ export interface ActivityLogEntry {
  */
 export async function logActivity(action: LogAction, section: LogSection, summary: string): Promise<void> {
   try {
-    const { data, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !data.user) {
-      console.error('logActivity: no signed-in user, skipping', userErr)
+    const { data, error: sessionErr } = await supabase.auth.getSession()
+    const user = data.session?.user
+    if (sessionErr || !user) {
+      console.error('logActivity: no signed-in user, skipping', sessionErr)
       return
     }
     const { error } = await supabase.from('activity_log').insert({
-      user_id: data.user.id,
-      email:   data.user.email ?? 'unknown',
+      user_id: user.id,
+      email:   user.email ?? 'unknown',
       action,
       section,
       summary,
@@ -42,6 +43,7 @@ export async function loadActivityLog(limit = 200): Promise<ActivityLogEntry[]> 
     .from('activity_log')
     .select('id, created_at, email, action, section, summary')
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit)
   if (error) throw error
   return (data ?? []).map((r) => ({
