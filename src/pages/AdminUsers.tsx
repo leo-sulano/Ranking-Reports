@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { Navigate, useOutletContext } from 'react-router-dom'
 import { Check, RotateCcw } from 'lucide-react'
 import { listUserAccess, updateUserStatus } from '../lib/userAccess'
 import type { RROutletContext, UserAccessRow, UserAccessStatus } from '../types'
@@ -18,7 +18,7 @@ function formatDate(iso: string): string {
 }
 
 export function AdminUsers() {
-  const { addToast, requireAuth, currentUserId } = useOutletContext<RROutletContext>()
+  const { addToast, requireAuth, currentUserId, isAdmin, accessLoading } = useOutletContext<RROutletContext>()
   const [rows, setRows] = useState<UserAccessRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
@@ -56,12 +56,16 @@ export function AdminUsers() {
   const pending  = rows.filter((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
 
-  if (loading) {
+  if (accessLoading || loading) {
     return (
       <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
         Loading users…
       </div>
     )
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />
   }
 
   return (
