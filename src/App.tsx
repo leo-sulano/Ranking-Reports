@@ -415,7 +415,7 @@ function Layout() {
                 className="h-full rounded-full transition-[width] duration-150"
                 style={{
                   width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%`,
-                  background: 'linear-gradient(90deg, #0A0A0A 0%, #CC0000 50%, #FFCC00 100%)',
+                  background: 'linear-gradient(90deg, #1e2a6e 0%, #1c9fe0 100%)',
                 }}
               />
             </div>

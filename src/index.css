@@ -19,6 +19,22 @@ body { font-family: var(--font-body); background: #F7F7F5; color: #0A0A0A; }
 .font-display { font-family: var(--font-display); }
 .font-mono    { font-family: var(--font-mono); }
 .font-sans    { font-family: var(--font-body); }
+.font-public-sans { font-family: 'Public Sans', system-ui, Arial, sans-serif; }
+
+/* Text hover-glow — interactive text lights up in brand blue when hovered,
+   staying within the blue/navy scheme. Use on dark text over light surfaces. */
+.text-glow { transition: color .18s ease, text-shadow .18s ease; }
+.text-glow:hover {
+  color: #1c9fe0;
+  text-shadow: 0 0 6px rgba(28, 159, 224, .55), 0 0 2px rgba(28, 159, 224, .45);
+}
+
+/* Glow variant for light text over navy/blue surfaces — keeps text white and
+   adds a bright halo instead of recolouring. */
+.text-glow-light { transition: text-shadow .18s ease; }
+.text-glow-light:hover {
+  text-shadow: 0 0 8px rgba(127, 212, 245, .85), 0 0 3px rgba(255, 255, 255, .6);
+}
 
 /* Background grid texture */
 .bg-grid::before {
