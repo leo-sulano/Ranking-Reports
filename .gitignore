@@ -31,3 +31,6 @@ npm-debug.log*
 .gitnexus/
 .superpowers/
 .playwright-mcp/
+
+# Supabase CLI local cache
+supabase/.temp/
