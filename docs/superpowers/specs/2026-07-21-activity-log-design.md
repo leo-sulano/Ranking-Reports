@@ -31,7 +31,7 @@ create table if not exists public.activity_log (
   email       text not null,
   action      text not null,   -- 'upload' | 'edit' | 'delete'
   section     text not null,   -- 'bp-sites' | 'lp-sites' | 'ftds'
-  summary     text not null    -- human-readable description, e.g. "Edited SV for lucky7even.com / \"casino bonus\" (UK): '1200' → '1500'"
+  summary     text not null    -- human-readable description, e.g. "Edited lucky7even.com / \"casino bonus\" (UK): SV '1200' → '1500'"
 );
 
 create index if not exists activity_log_created_at_idx
@@ -96,13 +96,13 @@ Each handler captures the "before" value from its existing in-memory state *befo
 | `handleDeleteSnapshot` | `delete` | `snap.category` | `` `Deleted snapshot — ${snap.displayDate} (${snap.records.length} records)` `` |
 | `handleEditCell` | `edit` | snapshot's `category` | see below |
 
-`handleEditCell` before/after: before calling `updateRecordFields`, find the first record in `state.snapshots` matching `snapshotId` + the `matcher` (same matching logic already used in the `setState` updater a few lines below — domain/keyword/country, each field only compared when present on the matcher). For each field present in `patch` (`searchVolume`, `affiliateUrl`, `globalSearchVolume`), if the old value differs from the new one, append `` `${FieldLabel} ${old || '(empty)'} → ${new || '(empty)'}` `` to a list; join with `, `. Prefix with a context string built from the matched record and matcher, e.g.:
+`handleEditCell` before/after: before calling `updateRecordFields`, find the first record in `state.snapshots` matching `snapshotId` + the `matcher` (same matching logic already used in the `setState` updater a few lines below — domain/keyword/country, each field only compared when present on the matcher). For each field present in `patch` (`searchVolume`, `affiliateUrl`, `globalSearchVolume`), if the old value differs from the new one, append `` `${FieldLabel} '${old || '(empty)'}' → '${new || '(empty)'}'` `` to a list; join with `, `. Prefix with a context string built from the matched record and matcher, e.g.:
 
 ```
-Edited SV for lucky7even.com / "casino bonus" (UK): '1200' → '1500'
+Edited lucky7even.com / "casino bonus" (UK): SV '1200' → '1500'
 ```
 
-For GSV edits (matcher = `{ keyword }` only, matching many records), the context string omits domain/country: `` `Edited GSV for "casino bonus": '5.2K' → '6.1K'` ``. If `patch` touches multiple fields at once (shouldn't currently happen via `EditableCell`, but the type allows it), join multiple change fragments with `; `.
+For GSV edits (matcher = `{ keyword }` only, matching many records), the context string omits domain/country: `` `Edited "casino bonus": GSV '5.2K' → '6.1K'` ``. If `patch` touches multiple fields at once (shouldn't currently happen via `EditableCell`, but the type allows it), join multiple change fragments with `, `.
 
 **`src/pages/FTDs.tsx`** (all `section: 'ftds'`):
 
