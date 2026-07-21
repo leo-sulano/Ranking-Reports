@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useOutletContext } from 'react-router-dom'
-import { Check, RotateCcw } from 'lucide-react'
-import { listUserAccess, updateUserStatus } from '../lib/userAccess'
+import { Check, RotateCcw, ShieldPlus, ShieldMinus } from 'lucide-react'
+import { listUserAccess, updateUserStatus, updateUserAdmin } from '../lib/userAccess'
 import type { RROutletContext, UserAccessRow, UserAccessStatus } from '../types'
 
 function formatError(err: unknown): string {
@@ -56,6 +56,20 @@ export function AdminUsers() {
     setRows((prev) => prev.map((r) => (r.userId === userId ? { ...r, status } : r)))
     setBusyUserId(null)
     addToast(status === 'approved' ? '✓ User approved' : '✓ User access revoked')
+  }, [addToast, requireAuth])
+
+  const handleSetAdmin = useCallback(async (userId: string, isAdmin: boolean) => {
+    setBusyUserId(userId)
+    try {
+      await requireAuth(() => updateUserAdmin(userId, isAdmin))
+    } catch (err) {
+      addToast(`Update failed: ${formatError(err)}`, 'error')
+      setBusyUserId(null)
+      return
+    }
+    setRows((prev) => prev.map((r) => (r.userId === userId ? { ...r, isAdmin } : r)))
+    setBusyUserId(null)
+    addToast(isAdmin ? '✓ Made admin' : '✓ Admin removed')
   }, [addToast, requireAuth])
 
   const pending  = rows.filter((r) => r.status === 'pending')
@@ -128,14 +142,24 @@ export function AdminUsers() {
                   <div className="text-[11px] font-mono text-[#94A3B8]">Signed up {formatDate(r.createdAt)}</div>
                 </div>
                 {r.userId !== currentUserId && (
-                  <button
-                    onClick={() => handleSetStatus(r.userId, 'pending')}
-                    disabled={busyUserId === r.userId}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
-                  >
-                    <RotateCcw size={13} strokeWidth={2.25} />
-                    Revoke
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSetAdmin(r.userId, !r.isAdmin)}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
+                    >
+                      {r.isAdmin ? <ShieldMinus size={13} strokeWidth={2.25} /> : <ShieldPlus size={13} strokeWidth={2.25} />}
+                      {r.isAdmin ? 'Remove admin' : 'Make admin'}
+                    </button>
+                    <button
+                      onClick={() => handleSetStatus(r.userId, 'pending')}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
+                    >
+                      <RotateCcw size={13} strokeWidth={2.25} />
+                      Revoke
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

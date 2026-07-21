@@ -43,3 +43,9 @@ export async function updateUserStatus(userId: string, status: UserAccessStatus)
   const { error } = await supabase.from('user_access').update({ status }).eq('user_id', userId)
   if (error) throw error
 }
+
+/** Promote or demote a user's admin flag. RLS only allows this for an admin caller. */
+export async function updateUserAdmin(userId: string, isAdmin: boolean): Promise<void> {
+  const { error } = await supabase.from('user_access').update({ is_admin: isAdmin }).eq('user_id', userId)
+  if (error) throw error
+}
