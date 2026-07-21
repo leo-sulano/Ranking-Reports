@@ -62,13 +62,20 @@ export interface ToastItem {
   type: 'success' | 'warning' | 'error'
 }
 
-// Presentational-only gate for write-triggering buttons (Import, Save,
-// Add, inline edits, Delete) — disables the button with an explanatory
-// tooltip when a signed-in user is awaiting admin approval. Does NOT
-// replace requireAuth/RLS as the actual enforcement boundary; see
+// Presentational-only gate for write-triggering buttons and inline edits.
+// Does NOT replace requireAuth/RLS as the actual enforcement boundary; see
 // getWriteGate() in lib/useAuth.ts for how it's derived.
 export interface WriteGate {
+  // For entry-point buttons (Import, Add/Edit Month) whose onClick already
+  // routes through requireAuth: true ONLY when signed in but still pending,
+  // since re-clicking can't fix that. Stays false while signed out so the
+  // button remains clickable — clicking is what triggers the sign-in modal.
   disabled: boolean
+  // For inline edits (EditableCell) that have no requireAuth step of their
+  // own to fall back on: true whenever the user isn't an approved, signed-in
+  // user — signed-out OR pending — since there's no "click to sign in"
+  // recovery from inside an already-open cell.
+  editDisabled: boolean
   title?: string
 }
 

@@ -301,6 +301,14 @@ function Layout() {
     })
   }, [])
 
+  // Signed-out users must sign in (or create an account) before the upload
+  // dialog even opens — requireAuth shows the login modal first and only
+  // runs setShowUpload(true) once they're signed in. A cancelled/superseded
+  // sign-in just means the dialog never opens; nothing to surface as an error.
+  const openUpload = useCallback(() => {
+    requireAuth(() => setShowUpload(true)).catch(() => {})
+  }, [requireAuth])
+
   // ── Topbar title ──────────────────────────────────────────────────────────
 
   const location = useLocation()
@@ -325,7 +333,7 @@ function Layout() {
     snapshots:         viewSnapshots,
     activeSnapshotId:  state.activeSnapshotId,
     onSelectSnapshot:  selectSnapshot,
-    onOpenUpload:      () => setShowUpload(true),
+    onOpenUpload:      openUpload,
     onDeleteSnapshot:  handleDeleteSnapshot,
     onEditCell:        handleEditCell,
     addToast,
@@ -356,7 +364,7 @@ function Layout() {
 
       <Sidebar
         uploadDate={activeSnapshot?.displayDate ?? null}
-        onOpenUpload={() => setShowUpload(true)}
+        onOpenUpload={openUpload}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
         mobileOpen={mobileNavOpen}

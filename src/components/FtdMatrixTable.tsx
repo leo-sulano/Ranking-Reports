@@ -252,7 +252,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                   onSave={(next) => onEditStags(b.name, next)}
                   placeholder="—"
                   title={writeGate.title ?? `Edit ${b.name} Stags`}
-                  disabled={writeGate.disabled}
+                  disabled={writeGate.editDisabled}
                 />
               </th>
             ))}
@@ -403,7 +403,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                 }}
                                 placeholder="—"
                                 title={writeGate.title ?? `Edit ${b.name} REG`}
-                                disabled={writeGate.disabled}
+                                disabled={writeGate.editDisabled}
                               />
                             </td>
                           )}
@@ -417,7 +417,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                 }}
                                 placeholder="—"
                                 title={writeGate.title ?? `Edit ${b.name} FTD`}
-                                disabled={writeGate.disabled}
+                                disabled={writeGate.editDisabled}
                               />
                             </td>
                           )}

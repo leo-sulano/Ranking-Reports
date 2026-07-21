@@ -133,8 +133,8 @@ export function useAuth() {
 }
 
 export function getWriteGate(session: Session | null, isApproved: boolean, accessLoading: boolean): WriteGate {
-  if (!session) return { disabled: false, title: 'Sign in to make changes' }
-  if (accessLoading) return { disabled: false }
-  if (!isApproved) return { disabled: true, title: 'Awaiting admin approval' }
-  return { disabled: false }
+  if (!session) return { disabled: false, editDisabled: true, title: 'Sign in to make changes' }
+  if (accessLoading) return { disabled: false, editDisabled: false }
+  if (!isApproved) return { disabled: true, editDisabled: true, title: 'Awaiting admin approval' }
+  return { disabled: false, editDisabled: false }
 }

@@ -311,7 +311,7 @@ export function FTDs() {
 
       <div className="flex items-center justify-end gap-2 mb-4 shrink-0">
         <button
-          onClick={() => setShowEntryForm(true)}
+          onClick={() => requireAuth(() => setShowEntryForm(true)).catch(() => {})}
           disabled={writeGate.disabled}
           title={writeGate.title}
           className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
