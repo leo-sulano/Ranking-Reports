@@ -96,6 +96,13 @@ export interface RROutletContext {
   // avoid showing destructive self-actions (like revoking your own access).
   currentUserId: string | null
   writeGate: WriteGate
+  // Whether the signed-in user is an admin — used by AdminUsers to redirect
+  // non-admins away from /admin/users if they navigate there directly.
+  isAdmin: boolean
+  // True until the current session's isAdmin/isApproved check has resolved.
+  // Consumers must not make an admin-gated redirect decision while this is
+  // true, to avoid a false redirect flash for a real admin on page load.
+  accessLoading: boolean
 }
 
 // FTD tracking — brand+month shaped, independent of the Snapshot model above.

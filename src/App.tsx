@@ -340,6 +340,8 @@ function Layout() {
     requireAuth,
     currentUserId:     session?.user.id ?? null,
     writeGate,
+    isAdmin,
+    accessLoading,
   }
 
   if (loading) {
