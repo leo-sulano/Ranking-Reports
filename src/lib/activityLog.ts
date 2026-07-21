@@ -18,19 +18,23 @@ export interface ActivityLogEntry {
  * this without awaiting: `void logActivity(...)`.
  */
 export async function logActivity(action: LogAction, section: LogSection, summary: string): Promise<void> {
-  const { data, error: userErr } = await supabase.auth.getUser()
-  if (userErr || !data.user) {
-    console.error('logActivity: no signed-in user, skipping', userErr)
-    return
+  try {
+    const { data, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !data.user) {
+      console.error('logActivity: no signed-in user, skipping', userErr)
+      return
+    }
+    const { error } = await supabase.from('activity_log').insert({
+      user_id: data.user.id,
+      email:   data.user.email ?? 'unknown',
+      action,
+      section,
+      summary,
+    })
+    if (error) console.error('Failed to write activity log:', error)
+  } catch (err) {
+    console.error('logActivity: unexpected error, skipping', err)
   }
-  const { error } = await supabase.from('activity_log').insert({
-    user_id: data.user.id,
-    email:   data.user.email ?? 'unknown',
-    action,
-    section,
-    summary,
-  })
-  if (error) console.error('Failed to write activity log:', error)
 }
 
 export async function loadActivityLog(limit = 200): Promise<ActivityLogEntry[]> {
