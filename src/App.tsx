@@ -390,6 +390,7 @@ function Layout() {
           data={{ existing: duplicateWarning.existing }}
           onClose={() => setDuplicateWarning(null)}
           onDelete={handleReplaceDuplicate}
+          writeGate={writeGate}
         />
       )}
 

@@ -1,4 +1,4 @@
-import type { Snapshot } from '../types'
+import type { Snapshot, WriteGate } from '../types'
 
 export interface DuplicateWarningData {
   existing: Snapshot
@@ -8,9 +8,10 @@ interface Props {
   data: DuplicateWarningData
   onClose: () => void
   onDelete: () => void
+  writeGate: WriteGate
 }
 
-export function DuplicateWarning({ data, onClose, onDelete }: Props) {
+export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) {
   const { existing } = data
 
   return (
@@ -71,7 +72,9 @@ export function DuplicateWarning({ data, onClose, onDelete }: Props) {
           </button>
           <button
             onClick={onDelete}
-            className="px-4 py-1.5 bg-[#F43F5E] text-white rounded-md text-[12px] font-bold hover:bg-[#E11D48] transition-colors"
+            disabled={writeGate.disabled}
+            title={writeGate.title}
+            className="px-4 py-1.5 bg-[#F43F5E] text-white rounded-md text-[12px] font-bold hover:bg-[#E11D48] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Delete &amp; replace
           </button>
