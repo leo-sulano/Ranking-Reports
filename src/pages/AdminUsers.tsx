@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useOutletContext } from 'react-router-dom'
-import { Check, RotateCcw, ShieldPlus, ShieldMinus } from 'lucide-react'
-import { listUserAccess, updateUserStatus, updateUserAdmin } from '../lib/userAccess'
+import { Check, RotateCcw, ShieldPlus, ShieldMinus, Trash2 } from 'lucide-react'
+import { listUserAccess, updateUserStatus, updateUserAdmin, deleteUser } from '../lib/userAccess'
 import type { RROutletContext, UserAccessRow, UserAccessStatus } from '../types'
 
 function formatError(err: unknown): string {
@@ -72,6 +72,21 @@ export function AdminUsers() {
     addToast(isAdmin ? '✓ Made admin' : '✓ Admin removed')
   }, [addToast, requireAuth])
 
+  const handleDeleteUser = useCallback(async (userId: string, email: string) => {
+    if (!window.confirm(`Delete ${email}? This cannot be undone.`)) return
+    setBusyUserId(userId)
+    try {
+      await requireAuth(() => deleteUser(userId))
+    } catch (err) {
+      addToast(`Delete failed: ${formatError(err)}`, 'error')
+      setBusyUserId(null)
+      return
+    }
+    setRows((prev) => prev.filter((r) => r.userId !== userId))
+    setBusyUserId(null)
+    addToast('✓ User deleted')
+  }, [addToast, requireAuth])
+
   const pending  = rows.filter((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
 
@@ -101,14 +116,26 @@ export function AdminUsers() {
                   <div className="text-[13px] font-semibold text-[#0F172A]">{r.email}</div>
                   <div className="text-[11px] font-mono text-[#94A3B8]">Signed up {formatDate(r.createdAt)}</div>
                 </div>
-                <button
-                  onClick={() => handleSetStatus(r.userId, 'approved')}
-                  disabled={busyUserId === r.userId}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
-                >
-                  <Check size={13} strokeWidth={2.5} />
-                  Approve
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleSetStatus(r.userId, 'approved')}
+                    disabled={busyUserId === r.userId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
+                  >
+                    <Check size={13} strokeWidth={2.5} />
+                    Approve
+                  </button>
+                  {r.userId !== currentUserId && (
+                    <button
+                      onClick={() => handleDeleteUser(r.userId, r.email)}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#EF4444] border border-[#FECACA] hover:bg-[#FEF2F2] disabled:opacity-50 transition-colors"
+                    >
+                      <Trash2 size={13} strokeWidth={2.25} />
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -158,6 +185,14 @@ export function AdminUsers() {
                     >
                       <RotateCcw size={13} strokeWidth={2.25} />
                       Revoke
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(r.userId, r.email)}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#EF4444] border border-[#FECACA] hover:bg-[#FEF2F2] disabled:opacity-50 transition-colors"
+                    >
+                      <Trash2 size={13} strokeWidth={2.25} />
+                      Delete
                     </button>
                   </div>
                 )}

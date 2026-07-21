@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import type { UserAccessRow, UserAccessStatus } from '../types'
 
@@ -48,4 +49,16 @@ export async function updateUserStatus(userId: string, status: UserAccessStatus)
 export async function updateUserAdmin(userId: string, isAdmin: boolean): Promise<void> {
   const { error } = await supabase.from('user_access').update({ is_admin: isAdmin }).eq('user_id', userId)
   if (error) throw error
+}
+
+/** Permanently delete a user's account via the delete-user Edge Function. RLS is bypassed server-side; the function itself only allows an admin caller. */
+export async function deleteUser(userId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('delete-user', { body: { userId } })
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null)
+      if (body?.error) throw new Error(body.error)
+    }
+    throw error
+  }
 }
