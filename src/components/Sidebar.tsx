@@ -185,7 +185,7 @@ export function Sidebar({
         <div className="p-2 border-t border-[#EEEEE9] shrink-0">
           <button
             onClick={onOpenUpload}
-            title={writeGate.disabled ? writeGate.title : 'Import Data'}
+            title={writeGate.title ?? 'Import Data'}
             disabled={writeGate.disabled}
             className="w-full flex items-center gap-3 px-3 py-2 bg-[#CC0000] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#AA0000] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
