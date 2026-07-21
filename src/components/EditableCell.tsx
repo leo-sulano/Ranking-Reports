@@ -22,6 +22,7 @@ export function EditableCell({
   inputClassName = '',
   title       = 'Click to edit',
   disabled    = false,
+  dimWhenDisabled = true,
 }: {
   value: string
   onSave: (next: string) => Promise<void> | void
@@ -31,6 +32,7 @@ export function EditableCell({
   inputClassName?: string
   title?: string
   disabled?: boolean
+  dimWhenDisabled?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(value)
@@ -84,7 +86,7 @@ export function EditableCell({
       onClick={() => setEditing(true)}
       title={title}
       disabled={disabled}
-      className={`w-full text-center rounded-[2px] transition-colors cursor-text hover:bg-[rgba(15,23,42,0.06)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${className}`}
+      className={`w-full text-center rounded-[2px] transition-colors cursor-text hover:bg-[rgba(15,23,42,0.06)] ${dimWhenDisabled ? 'disabled:opacity-40' : ''} disabled:cursor-not-allowed disabled:hover:bg-transparent ${className}`}
     >
       {value
         ? (renderDisplay ? renderDisplay(value) : value)

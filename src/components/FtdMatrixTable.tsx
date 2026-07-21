@@ -404,6 +404,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                 placeholder="—"
                                 title={writeGate.title ?? `Edit ${b.name} REG`}
                                 disabled={writeGate.editDisabled}
+                                dimWhenDisabled={false}
                               />
                             </td>
                           )}
@@ -418,6 +419,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                 placeholder="—"
                                 title={writeGate.title ?? `Edit ${b.name} FTD`}
                                 disabled={writeGate.editDisabled}
+                                dimWhenDisabled={false}
                               />
                             </td>
                           )}
