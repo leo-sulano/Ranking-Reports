@@ -62,6 +62,16 @@ export interface ToastItem {
   type: 'success' | 'warning' | 'error'
 }
 
+// Presentational-only gate for write-triggering buttons (Import, Save,
+// Add, inline edits, Delete) — disables the button with an explanatory
+// tooltip when a signed-in user is awaiting admin approval. Does NOT
+// replace requireAuth/RLS as the actual enforcement boundary; see
+// getWriteGate() in lib/useAuth.ts for how it's derived.
+export interface WriteGate {
+  disabled: boolean
+  title?: string
+}
+
 export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
@@ -78,6 +88,7 @@ export interface RROutletContext {
   // The signed-in user's id (null if signed out) — used e.g. by AdminUsers to
   // avoid showing destructive self-actions (like revoking your own access).
   currentUserId: string | null
+  writeGate: WriteGate
 }
 
 // FTD tracking — brand+month shaped, independent of the Snapshot model above.

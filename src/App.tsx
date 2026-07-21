@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
-import { useAuth } from './lib/useAuth'
+import { useAuth, getWriteGate } from './lib/useAuth'
 import { LoginModal } from './components/LoginModal'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
@@ -50,7 +50,8 @@ function Layout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
-  const { session, modalOpen, requireAuth, openLogin, cancelAuth, isAdmin } = useAuth()
+  const { session, modalOpen, requireAuth, openLogin, cancelAuth, isAdmin, isApproved, accessLoading } = useAuth()
+  const writeGate = getWriteGate(session, isApproved, accessLoading)
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -330,6 +331,7 @@ function Layout() {
     addToast,
     requireAuth,
     currentUserId:     session?.user.id ?? null,
+    writeGate,
   }
 
   if (loading) {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSession, onAuthChange } from './auth'
 import { getUserAccess } from './userAccess'
+import type { WriteGate } from '../types'
 
 interface PendingAuth {
   run: () => unknown
@@ -35,6 +36,7 @@ export function useAuth() {
   const pending = useRef<PendingAuth | null>(null)
   const [isApproved, setIsApproved] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [accessLoading, setAccessLoading] = useState(true)
   const approvedRef = useRef(false)
   // Resolves once the most recent approval check (for the current session)
   // has finished updating approvedRef/isAdmin. requireAuth and the
@@ -48,21 +50,25 @@ export function useAuth() {
       approvedRef.current = false
       setIsApproved(false)
       setIsAdmin(false)
+      setAccessLoading(false)
       accessCheck.current = Promise.resolve()
       return
     }
+    setAccessLoading(true)
     accessCheck.current = getUserAccess(userId)
       .then((access) => {
         if (gen !== accessGen.current) return
         approvedRef.current = access?.status === 'approved'
         setIsApproved(approvedRef.current)
         setIsAdmin(access?.isAdmin ?? false)
+        setAccessLoading(false)
       })
       .catch(() => {
         if (gen !== accessGen.current) return
         approvedRef.current = false
         setIsApproved(false)
         setIsAdmin(false)
+        setAccessLoading(false)
       })
   }, [])
 
@@ -123,5 +129,12 @@ export function useAuth() {
     setModalOpen(false)
   }, [])
 
-  return { session, modalOpen, requireAuth, openLogin, cancelAuth, isApproved, isAdmin }
+  return { session, modalOpen, requireAuth, openLogin, cancelAuth, isApproved, isAdmin, accessLoading }
+}
+
+export function getWriteGate(session: Session | null, isApproved: boolean, accessLoading: boolean): WriteGate {
+  if (!session) return { disabled: false, title: 'Sign in to make changes' }
+  if (accessLoading) return { disabled: false }
+  if (!isApproved) return { disabled: true, title: 'Awaiting admin approval' }
+  return { disabled: false }
 }
