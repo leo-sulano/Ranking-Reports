@@ -201,7 +201,9 @@ export function Home() {
           <p className="text-[13px] text-[#ABABAA] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
           <button
             onClick={ctx.onOpenUpload}
-            className="px-5 py-1.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95"
+            disabled={ctx.writeGate.disabled}
+            title={ctx.writeGate.title}
+            className="px-5 py-1.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Import data
           </button>
@@ -376,7 +378,15 @@ export function Home() {
           <div className="grid grid-cols-2 gap-3 p-5">
             <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#FFFBCC" borderColor="#FFCC00" />
             <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#F5F5F3" borderColor="#0A0A0A" />
-            <NavCard label="Import Data" hint="Upload an XLSX snapshot"       onClick={ctx.onOpenUpload} bgColor="#FFF0F0" borderColor="#CC0000" />
+            <NavCard
+              label="Import Data"
+              hint="Upload an XLSX snapshot"
+              onClick={ctx.onOpenUpload}
+              bgColor="#FFF0F0"
+              borderColor="#CC0000"
+              disabled={ctx.writeGate.disabled}
+              title={ctx.writeGate.title}
+            />
           </div>
         </section>
 
@@ -500,12 +510,14 @@ function MoverGroup({
 }
 
 function NavCard({
-  label, hint, onClick, highlight, bgColor, borderColor,
-}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string }) {
+  label, hint, onClick, highlight, bgColor, borderColor, disabled = false, title,
+}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string; disabled?: boolean; title?: string }) {
   return (
     <button
       onClick={onClick}
-      className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
+      disabled={disabled}
+      title={title}
+      className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
       style={{
         background:  bgColor ?? (highlight ? '#FFFDE6' : '#FAFAF7'),
         borderColor: borderColor ?? (highlight ? '#FFCC00' : '#E5E4DF'),
