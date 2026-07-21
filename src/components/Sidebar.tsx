@@ -25,7 +25,7 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
       <line x1="9" y1="21" x2="9" y2="9"/>
     </svg>
   )},
-  { path: '/ftds', label: 'FTDs', icon: (
+  { path: '/ftds', label: 'Reg & FTD Metrics', icon: (
     <DollarSign size={18} />
   )},
   { path: '/ask-ai', label: 'Ask AI', icon: (

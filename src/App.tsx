@@ -318,7 +318,7 @@ function Layout() {
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':      ['BP Sites', 'Brand website ranking report'],
     '/lp-sites':      ['LP Sites', 'Landing page ranking report'],
-    '/ftds':          ['FTDs', 'First-time depositors'],
+    '/ftds':          ['Reg & FTD Metrics', 'First-time depositors'],
     '/how-it-works':  ['How It Works', 'A quick guide to using the dashboard'],
   }
   const currentPath =
