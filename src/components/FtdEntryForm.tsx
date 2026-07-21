@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { BRANDS } from '../lib/brands'
 import { ratioPct } from './FtdMatrixTable'
-import type { FtdRecord, FtdRecordPatch, FtdTotals } from '../types'
+import type { FtdRecord, FtdRecordPatch, FtdTotals, WriteGate } from '../types'
 
 interface BrandInputs {
   reg: string
@@ -39,9 +39,10 @@ interface Props {
   onEditRecord: (brand: string, yearMonth: string, patch: FtdRecordPatch) => Promise<void>
   onEditTotals: (yearMonth: string, conversionPct: number | null) => Promise<void>
   onClose: () => void
+  writeGate: WriteGate
 }
 
-export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onClose }: Props) {
+export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onClose, writeGate }: Props) {
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
   const [values, setValues] = useState<Record<string, BrandInputs>>(() => {
     const init: Record<string, BrandInputs> = {}
@@ -178,7 +179,8 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || writeGate.disabled}
+            title={writeGate.title}
             className="px-4 py-2 rounded-md text-[13px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving…' : 'Save Month'}

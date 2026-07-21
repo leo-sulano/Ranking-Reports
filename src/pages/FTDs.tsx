@@ -59,7 +59,7 @@ function FtdStatCard({
 }
 
 export function FTDs() {
-  const { addToast, requireAuth } = useOutletContext<RROutletContext>()
+  const { addToast, requireAuth, writeGate } = useOutletContext<RROutletContext>()
   const [records, setRecords] = useState<FtdRecord[]>([])
   const [totals,  setTotals]  = useState<FtdTotals[]>([])
   const [stags,   setStags]   = useState<BrandStags[]>([])
@@ -312,7 +312,9 @@ export function FTDs() {
       <div className="flex items-center justify-end gap-2 mb-4 shrink-0">
         <button
           onClick={() => setShowEntryForm(true)}
-          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors"
+          disabled={writeGate.disabled}
+          title={writeGate.title}
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Add / Edit Month
         </button>
@@ -333,6 +335,7 @@ export function FTDs() {
                 ? `${periodFilter} TOTAL`
                 : `${formatMonthLabel(periodFilter)} TOTAL`
           }
+          writeGate={writeGate}
         />
       </div>
 
@@ -343,6 +346,7 @@ export function FTDs() {
           onEditRecord={handleEditRecord}
           onEditTotals={handleEditTotals}
           onClose={() => setShowEntryForm(false)}
+          writeGate={writeGate}
         />
       )}
     </div>

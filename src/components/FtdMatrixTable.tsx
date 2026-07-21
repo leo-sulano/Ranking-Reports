@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { BRANDS, BRAND_LOGO_COLORS } from '../lib/brands'
 import { EditableCell } from './EditableCell'
-import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags } from '../types'
+import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, WriteGate } from '../types'
 
 const TABLE_BORDER = '#B0B7BD'
 const STICKY_BG    = '#FFFFFF'
@@ -85,9 +85,10 @@ interface Props {
   onEditStags:  (brand: string, stags: string) => Promise<void>
   summaryLabel?: string
   visibleMetric?: FtdMetric | null
+  writeGate: WriteGate
 }
 
-export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL', visibleMetric = null }: Props) {
+export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditStags, summaryLabel = 'TOTAL', visibleMetric = null, writeGate }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const monthColRef = useRef<HTMLTableCellElement>(null)
   const [scrolled, setScrolled] = useState(false)
@@ -250,7 +251,8 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                   value={stagsMap.get(b.name) ?? ''}
                   onSave={(next) => onEditStags(b.name, next)}
                   placeholder="—"
-                  title={`Edit ${b.name} Stags`}
+                  title={writeGate.title ?? `Edit ${b.name} Stags`}
+                  disabled={writeGate.disabled}
                 />
               </th>
             ))}
@@ -400,7 +402,8 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                   return onEditRecord(b.name, ym, { reg, conversionPct: ratioPct(reg, rec?.ftd ?? 0) })
                                 }}
                                 placeholder="—"
-                                title={`Edit ${b.name} REG`}
+                                title={writeGate.title ?? `Edit ${b.name} REG`}
+                                disabled={writeGate.disabled}
                               />
                             </td>
                           )}
@@ -413,7 +416,8 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                                   return onEditRecord(b.name, ym, { ftd, conversionPct: ratioPct(rec?.reg ?? 0, ftd) })
                                 }}
                                 placeholder="—"
-                                title={`Edit ${b.name} FTD`}
+                                title={writeGate.title ?? `Edit ${b.name} FTD`}
+                                disabled={writeGate.disabled}
                               />
                             </td>
                           )}
