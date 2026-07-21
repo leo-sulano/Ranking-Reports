@@ -14,7 +14,8 @@
 - The actual security enforcement stays exactly as-is (Postgres RLS + `requireAuth`'s reactive throw) — this feature is presentational only.
 - Signed-out users must NOT be blocked by this change: their buttons stay enabled (existing `requireAuth` → login-modal → resume-on-sign-in flow is unaffected). Only "signed in but pending" disables a button.
 - No flash of "disabled" for approved users on page load — buttons must render as enabled while `accessLoading` is `true`.
-- Type name: `WriteGate` (in `src/types/index.ts`). Helper name: `getWriteGate` (in `src/lib/useAuth.ts`). Prop name on every gated button-owning component: `writeGate`. `EditableCell`'s new props: `disabled` / `disabledTitle`.
+- Type name: `WriteGate` (in `src/types/index.ts`). Helper name: `getWriteGate` (in `src/lib/useAuth.ts`). Prop name on every gated button-owning component: `writeGate`. `EditableCell`'s new prop: `disabled`.
+- **Tooltip rule:** every gated button's `title` is `writeGate.title ?? <original default text (often undefined)>` — NEVER `writeGate.disabled ? writeGate.title : <default>`. `writeGate.title` is already set for both the signed-out case ("Sign in to make changes") and the pending case ("Awaiting admin approval"), and `undefined` otherwise — a ternary keyed on `disabled` alone silently drops the signed-out tooltip, since `disabled` is `false` in that case too.
 - Verification command after each task: `npm run build` (runs `tsc -b && vite build`) — must exit 0 with no type errors.
 
 ---
@@ -232,7 +233,7 @@ Replace the footer "Import Data" button:
 ```tsx
           <button
             onClick={onOpenUpload}
-            title={writeGate.disabled ? writeGate.title : 'Import Data'}
+            title={writeGate.title ?? 'Import Data'}
             disabled={writeGate.disabled}
             className="w-full flex items-center gap-3 px-3 py-2 bg-[#CC0000] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#AA0000] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -275,16 +276,16 @@ git commit -m "feat: gate Sidebar's Import Data button on approval status"
 
 ---
 
-### Task 3: Add `disabled`/`disabledTitle` support to `EditableCell`
+### Task 3: Add `disabled` support to `EditableCell`
 
 **Files:**
 - Modify: `src/components/EditableCell.tsx`
 - Test: manual — `npm run build`
 
 **Interfaces:**
-- Produces: `EditableCell` gains two new optional props, `disabled?: boolean` (default `false`) and `disabledTitle?: string` (default `'Awaiting admin approval'`). When `disabled`, the resting-state button is a native disabled `<button>` (click is a no-op) and shows `disabledTitle` instead of `title`.
+- Produces: `EditableCell` gains one new optional prop, `disabled?: boolean` (default `false`). When `disabled`, the resting-state button is a native disabled `<button>` (click is a no-op). No new title-related prop — per the plan's tooltip rule, the caller is responsible for passing the fully-correct `title` string itself (e.g. `writeGate.title ?? 'Edit X REG'`), since `EditableCell` doesn't have access to `writeGate` and can't decide between a gate message and a default on its own.
 
-- [ ] **Step 1: Add the new props**
+- [ ] **Step 1: Add the new prop**
 
 Replace the function signature:
 
@@ -298,7 +299,6 @@ export function EditableCell({
   inputClassName = '',
   title       = 'Click to edit',
   disabled    = false,
-  disabledTitle = 'Awaiting admin approval',
 }: {
   value: string
   onSave: (next: string) => Promise<void> | void
@@ -308,11 +308,10 @@ export function EditableCell({
   inputClassName?: string
   title?: string
   disabled?: boolean
-  disabledTitle?: string
 }) {
 ```
 
-- [ ] **Step 2: Apply `disabled`/`disabledTitle` to the resting-state button**
+- [ ] **Step 2: Apply `disabled` to the resting-state button**
 
 Replace the final `return` block (the non-editing button):
 
@@ -321,7 +320,7 @@ Replace the final `return` block (the non-editing button):
     <button
       type="button"
       onClick={() => setEditing(true)}
-      title={disabled ? disabledTitle : title}
+      title={title}
       disabled={disabled}
       className={`w-full text-center rounded-[2px] transition-colors cursor-text hover:bg-[rgba(15,23,42,0.06)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${className}`}
     >
@@ -364,7 +363,7 @@ Replace (lines 202-207):
           <button
             onClick={ctx.onOpenUpload}
             disabled={ctx.writeGate.disabled}
-            title={ctx.writeGate.disabled ? ctx.writeGate.title : undefined}
+            title={ctx.writeGate.title}
             className="px-5 py-1.5 bg-[#CC0000] text-white text-[13px] font-semibold rounded-xl hover:bg-[#AA0000] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Import data
@@ -412,7 +411,7 @@ Replace the `NavCard` usage on line 379:
               bgColor="#FFF0F0"
               borderColor="#CC0000"
               disabled={ctx.writeGate.disabled}
-              title={ctx.writeGate.disabled ? ctx.writeGate.title : undefined}
+              title={ctx.writeGate.title}
             />
 ```
 
@@ -474,7 +473,7 @@ Replace the "Delete & replace" button:
           <button
             onClick={onDelete}
             disabled={writeGate.disabled}
-            title={writeGate.disabled ? writeGate.title : undefined}
+            title={writeGate.title}
             className="px-4 py-1.5 bg-[#F43F5E] text-white rounded-md text-[12px] font-bold hover:bg-[#E11D48] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Delete &amp; replace
@@ -519,7 +518,7 @@ git commit -m "feat: gate DuplicateWarning's Delete & replace on approval status
 - Test: manual — `npm run build` + dev server check
 
 **Interfaces:**
-- Consumes: `WriteGate` (Task 1), `writeGate` from `RROutletContext` (Task 1), `EditableCell`'s `disabled`/`disabledTitle` props (Task 3).
+- Consumes: `WriteGate` (Task 1), `writeGate` from `RROutletContext` (Task 1), `EditableCell`'s `disabled` prop (Task 3).
 - Produces: `FtdMatrixTable`'s and `FtdEntryForm`'s `Props` both gain `writeGate: WriteGate`.
 
 - [ ] **Step 1: Read `writeGate` from context and gate the "+ Add/Edit Month" button in `FTDs.tsx`**
@@ -536,7 +535,7 @@ Replace the "+ Add/Edit Month" button (lines 313-318):
         <button
           onClick={() => setShowEntryForm(true)}
           disabled={writeGate.disabled}
-          title={writeGate.disabled ? writeGate.title : undefined}
+          title={writeGate.title}
           className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Add / Edit Month
@@ -615,9 +614,8 @@ Update the Stags `EditableCell` (lines 249-254) to add the two new props:
                   value={stagsMap.get(b.name) ?? ''}
                   onSave={(next) => onEditStags(b.name, next)}
                   placeholder="—"
-                  title={`Edit ${b.name} Stags`}
+                  title={writeGate.title ?? `Edit ${b.name} Stags`}
                   disabled={writeGate.disabled}
-                  disabledTitle={writeGate.title}
                 />
 ```
 
@@ -631,9 +629,8 @@ Update the REG `EditableCell` (lines 396-404):
                                   return onEditRecord(b.name, ym, { reg, conversionPct: ratioPct(reg, rec?.ftd ?? 0) })
                                 }}
                                 placeholder="—"
-                                title={`Edit ${b.name} REG`}
+                                title={writeGate.title ?? `Edit ${b.name} REG`}
                                 disabled={writeGate.disabled}
-                                disabledTitle={writeGate.title}
                               />
 ```
 
@@ -647,9 +644,8 @@ Update the FTD `EditableCell` (lines 409-417):
                                   return onEditRecord(b.name, ym, { ftd, conversionPct: ratioPct(rec?.reg ?? 0, ftd) })
                                 }}
                                 placeholder="—"
-                                title={`Edit ${b.name} FTD`}
+                                title={writeGate.title ?? `Edit ${b.name} FTD`}
                                 disabled={writeGate.disabled}
-                                disabledTitle={writeGate.title}
                               />
 ```
 
@@ -686,7 +682,7 @@ Replace the "Save Month" button (lines 179-185):
           <button
             onClick={handleSubmit}
             disabled={saving || writeGate.disabled}
-            title={writeGate.disabled ? writeGate.title : undefined}
+            title={writeGate.title}
             className="px-4 py-2 rounded-md text-[13px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving…' : 'Save Month'}
