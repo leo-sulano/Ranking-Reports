@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
@@ -31,21 +31,6 @@ const DATE_BAND_FG  = '#FFFFFF'
 const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
-
-// Grid-only color overrides — sampled from each brand's logo so the cards on
-// the BP Sites overview match brand identity. Scoped here intentionally; the
-// global brand.color (used by Home stats, badges, etc.) is unchanged.
-const GRID_BRAND_COLORS: Record<string, string> = {
-  'Lucky 7even': '#C026D3', // magenta from "Lucky" lettering
-  'RoosterBet':  '#DC2626', // red accent
-  'LuckyVibe':   '#0F766E', // dark teal gradient
-  'SpinsUp':     '#EC4899', // neon pink
-  'Spinjo':      '#1E40AF', // royal blue
-  'FortunePLay': '#CA8A04', // gold on dark
-  'RocketSpin':  '#1F2937', // black w/ red star (using the black)
-  'PlayMojo':    '#38BDF8', // light sky blue
-  'Rollero':     '#B8860B', // dark gold/crown
-}
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
@@ -111,7 +96,7 @@ function BrandGrid({
           const hasData = snapshots.some((s) =>
             s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
           )
-          const c = GRID_BRAND_COLORS[brand.name] ?? brand.color
+          const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
             <button
@@ -242,28 +227,27 @@ function BrandView({
     return 'all'
   })
 
-  // Site filter — prefer ?site= query param, fall back to domainFilter path param
-  const [siteMode, setSiteMode] = useState<'all' | 'bp' | 'custom'>(() => {
+  // Site filter — a set of checked domains (Main + any BP domains). Prefer the
+  // ?site= query param, fall back to the :domainFilter path param used by
+  // brand-grid domain links. 'all' = full set, 'none' = empty set, 'bp' =
+  // legacy default (kept for old bookmarked URLs), a comma list = explicit
+  // domains, missing = default (BP domains only, no Main).
+  const [visibleDomains, setVisibleDomains] = useState<string[]>(() => {
+    const bpLower = bpDomains.map((d) => d.toLowerCase())
     const src = searchParams.get('site') ?? domainFilter
-    if (!src || src === 'bp') return 'bp'
-    if (src === 'all') return 'all'
-    if (src.split(',').some((s) => bpDomains.some((d) => d.toLowerCase() === s.trim().toLowerCase()))) return 'custom'
-    return 'bp'
-  })
-  const [customDomains, setCustomDomains] = useState<string[]>(() => {
-    const src = searchParams.get('site') ?? domainFilter
-    if (!src || src === 'all' || src === 'bp') return []
+    if (!src || src === 'bp') return bpLower
+    if (src === 'all') return [mainDomain, ...bpLower]
+    if (src === 'none') return []
     const parts = src.split(',').map((s) => s.trim().toLowerCase())
-    return bpDomains.filter((d) => parts.includes(d.toLowerCase()))
+    const matched = [mainDomain, ...bpLower].filter((d) => parts.includes(d))
+    return matched.length > 0 ? matched : bpLower
   })
 
-  const showMain = siteMode === 'all'
-  const visibleBpDomains = useMemo(() => {
-    if (siteMode === 'all' || siteMode === 'bp') return bpDomains
-    return bpDomains.filter((d) =>
-      customDomains.some((cd) => cd.toLowerCase() === d.toLowerCase()),
-    )
-  }, [siteMode, customDomains, bpDomains])
+  const showMain = visibleDomains.includes(mainDomain)
+  const visibleBpDomains = useMemo(
+    () => bpDomains.filter((d) => visibleDomains.includes(d.toLowerCase())),
+    [visibleDomains, bpDomains],
+  )
 
   // Snapshots that actually have data for this brand
   const brandSnapshots = useMemo(
@@ -334,6 +318,11 @@ function BrandView({
       { replace: true },
     )
   }
+  const [monthly, setMonthly] = useState(() => statsFilter.startsWith('month:'))
+  const setMonthlyMode = (next: boolean) => {
+    setMonthly(next)
+    if (next || statsFilter.startsWith('month:')) handleStatsFilterChange('all')
+  }
   const monthKey = statsFilter.startsWith('month:') ? statsFilter.slice(6) : null
   const statsSnap = useMemo(() => {
     if (monthKey) return brandSnapshots.find((s) => snapMonthKey(s) === monthKey) ?? latestSnap
@@ -355,32 +344,31 @@ function BrandView({
     })
   }
 
-  const handleSiteAll = () => {
-    setSiteMode('all')
-    setCustomDomains([])
-    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set('site', 'all'); return p }, { replace: true })
+  const serializeVisibleDomains = (domains: string[]): string | null => {
+    const bpLower = bpDomains.map((d) => d.toLowerCase())
+    const fullSet = [mainDomain, ...bpLower]
+    if (domains.length === fullSet.length && fullSet.every((d) => domains.includes(d))) return 'all'
+    if (domains.length === bpLower.length && bpLower.every((d) => domains.includes(d)) && !domains.includes(mainDomain)) return null
+    if (domains.length === 0) return 'none'
+    return domains.join(',')
   }
-  const handleSiteBP = () => {
-    setSiteMode('bp')
-    setCustomDomains([])
-    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('site'); return p }, { replace: true })
+  const updateVisibleDomains = (next: string[]) => {
+    setVisibleDomains(next)
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      const serialized = serializeVisibleDomains(next)
+      if (serialized === null) p.delete('site')
+      else p.set('site', serialized)
+      return p
+    }, { replace: true })
+  }
+  const handleSelectAll = () => {
+    updateVisibleDomains([mainDomain, ...bpDomains.map((d) => d.toLowerCase())])
   }
   const handleToggleDomain = (domain: string) => {
-    setCustomDomains((prev) => {
-      const already = prev.some((d) => d.toLowerCase() === domain.toLowerCase())
-      const next = already
-        ? prev.filter((d) => d.toLowerCase() !== domain.toLowerCase())
-        : [...prev, domain]
-      const newMode = next.length === 0 ? 'bp' : 'custom'
-      setSiteMode(newMode)
-      setSearchParams((sp) => {
-        const p = new URLSearchParams(sp)
-        if (next.length === 0) p.delete('site')
-        else p.set('site', next.join(','))
-        return p
-      }, { replace: true })
-      return next
-    })
+    const dl = domain.toLowerCase()
+    const already = visibleDomains.includes(dl)
+    updateVisibleDomains(already ? visibleDomains.filter((d) => d !== dl) : [...visibleDomains, dl])
   }
 
   // Filtered records for the stats snapshot — reused by both computeStats and the modal.
@@ -478,6 +466,7 @@ function BrandView({
               value={statsFilter}
               snapshots={brandSnapshots}
               onChange={handleStatsFilterChange}
+              monthly={monthly}
             />
           </div>
         )}
@@ -508,11 +497,10 @@ function BrandView({
               Sites
             </span>
             <SiteFilter
-              siteMode={siteMode}
-              customDomains={customDomains}
+              visibleDomains={visibleDomains}
+              mainDomain={mainDomain}
               bpDomains={bpDomains}
-              onSelectAll={handleSiteAll}
-              onSelectBP={handleSiteBP}
+              onSelectAll={handleSelectAll}
               onToggleDomain={handleToggleDomain}
             />
 
@@ -567,6 +555,27 @@ function BrandView({
                 placeholder="Search keywords…"
                 className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />
+            </div>
+
+            <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-[#E2E8F0] bg-[#F1F5F9]">
+              <button
+                type="button"
+                onClick={() => setMonthlyMode(false)}
+                className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
+                  !monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                }`}
+              >
+                Weekly
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthlyMode(true)}
+                className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
+                  monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                }`}
+              >
+                Monthly
+              </button>
             </div>
 
             {posFilter !== 'all' && (
@@ -693,14 +702,15 @@ function StatsDateFilter({
   value,
   snapshots,
   onChange,
+  monthly,
 }: {
   value: string                 // 'all' or snapshot id
   snapshots: Snapshot[]         // already filtered to brand snapshots (newest first)
   onChange: (next: string) => void
+  monthly: boolean              // weekly/monthly mode, owned by the parent's toolbar toggle
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [monthly, setMonthly] = useState(() => value.startsWith('month:'))
   const ref = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -758,14 +768,6 @@ function StatsDateFilter({
     : snapshots
   const showAllOption = !q || 'all (latest)'.includes(q) || 'latest'.includes(q)
 
-  const handleToggleMonthly = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    const next = !monthly
-    setMonthly(next)
-    if (next || value.startsWith('month:')) onChange('all')
-    setQuery('')
-  }
-
   return (
     <div ref={ref} className="relative">
       <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
@@ -814,12 +816,6 @@ function StatsDateFilter({
           role="listbox"
           className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
-          <button type="button" onClick={handleToggleMonthly} className="w-full flex items-center justify-between px-3 py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Monthly</span>
-            <div className={`w-7 h-4 rounded-full transition-colors relative shrink-0 ${monthly ? 'bg-[#0F172A]' : 'bg-[#CBD5E1]'}`}>
-              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all duration-150 ${monthly ? 'left-3.5' : 'left-0.5'}`} />
-            </div>
-          </button>
           <div className="max-h-[240px] overflow-y-auto">
             {monthly ? (
               <>
@@ -883,21 +879,19 @@ function DateOption({
   )
 }
 
-// ─── SiteFilter — custom dropdown with multi-select for individual BP domains ──
+// ─── SiteFilter — flat checkbox list: All shortcut + Main + each BP domain ────
 
 function SiteFilter({
-  siteMode,
-  customDomains,
+  visibleDomains,
+  mainDomain,
   bpDomains,
   onSelectAll,
-  onSelectBP,
   onToggleDomain,
 }: {
-  siteMode: 'all' | 'bp' | 'custom'
-  customDomains: string[]
+  visibleDomains: string[]
+  mainDomain: string
   bpDomains: string[]
   onSelectAll: () => void
-  onSelectBP: () => void
   onToggleDomain: (domain: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -917,14 +911,16 @@ function SiteFilter({
     }
   }, [open])
 
-  const label =
-    siteMode === 'all'
-      ? `All · ${bpDomains.length + 1} sites`
-      : siteMode === 'bp'
-        ? `BP Sites · ${bpDomains.length}`
-        : customDomains.length === 1
-          ? customDomains[0]
-          : `${customDomains.length} sites`
+  const totalCount = bpDomains.length + 1
+  const isFull = visibleDomains.length === totalCount
+
+  const label = isFull
+    ? `All · ${totalCount} sites`
+    : visibleDomains.length === 1
+      ? visibleDomains[0]
+      : visibleDomains.length === 0
+        ? '0 sites'
+        : `${visibleDomains.length} sites`
 
   return (
     <div ref={ref} className="relative">
@@ -944,38 +940,23 @@ function SiteFilter({
 
       {open && (
         <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[210px] animate-[modalIn_0.12s_ease]">
-          {/* All */}
-          <SiteOption
-            label="All"
-            selected={siteMode === 'all'}
-            onClick={() => { onSelectAll(); setOpen(false) }}
-          />
+          {/* All — select-all shortcut, checked when every site is visible */}
+          <SiteOption label="All" selected={isFull} onClick={onSelectAll} />
           <div className="border-t border-[#E2E8F0]" />
-          {/* BP Sites */}
+          {/* Main + each BP domain — independent checkbox toggles */}
           <SiteOption
-            label="BP Sites"
-            selected={siteMode === 'bp'}
-            onClick={() => { onSelectBP(); setOpen(false) }}
+            label={mainDomain}
+            selected={visibleDomains.includes(mainDomain)}
+            onClick={() => onToggleDomain(mainDomain)}
           />
-          {/* Individual BP domains — checkbox multi-select, stays open */}
-          {bpDomains.length > 0 && (
-            <>
-              <div className="border-t border-[#E2E8F0]" />
-              {bpDomains.map((d) => {
-                const checked = customDomains.some((cd) => cd.toLowerCase() === d.toLowerCase())
-                return (
-                  <SiteOption
-                    key={d}
-                    label={d}
-                    selected={checked}
-                    multiSelect
-                    onClick={() => onToggleDomain(d)}
-                    indent
-                  />
-                )
-              })}
-            </>
-          )}
+          {bpDomains.map((d) => (
+            <SiteOption
+              key={d}
+              label={d}
+              selected={visibleDomains.includes(d.toLowerCase())}
+              onClick={() => onToggleDomain(d)}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -986,43 +967,27 @@ function SiteOption({
   label,
   selected,
   onClick,
-  indent = false,
-  multiSelect = false,
 }: {
   label: string
   selected: boolean
   onClick: () => void
-  indent?: boolean
-  multiSelect?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center justify-between text-[12px] text-left transition-colors ${
-        indent ? 'px-5' : 'px-3'
-      } py-2 ${
-        multiSelect
-          ? selected
-            ? 'bg-[#F0F9FF] text-[#0F172A]'
-            : 'text-[#0F172A] hover:bg-[#F1F5F9]'
-          : selected
-            ? 'bg-[#0F172A] text-white'
-            : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+      className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
+        selected ? 'bg-[#F0F9FF] text-[#0F172A]' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
       }`}
     >
       <span className="font-medium truncate mr-2">{label}</span>
-      {multiSelect ? (
-        <div
-          className={`w-[13px] h-[13px] shrink-0 rounded-[3px] border flex items-center justify-center ${
-            selected ? 'bg-[#0F172A] border-[#0F172A]' : 'border-[#CBD5E1] bg-white'
-          }`}
-        >
-          {selected && <Check size={9} strokeWidth={3} className="text-white" />}
-        </div>
-      ) : (
-        selected && <Check size={13} strokeWidth={2.5} className="shrink-0" />
-      )}
+      <div
+        className={`w-[13px] h-[13px] shrink-0 rounded-[3px] border flex items-center justify-center ${
+          selected ? 'bg-[#0F172A] border-[#0F172A]' : 'border-[#CBD5E1] bg-white'
+        }`}
+      >
+        {selected && <Check size={9} strokeWidth={3} className="text-white" />}
+      </div>
     </button>
   )
 }

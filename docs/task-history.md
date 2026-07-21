@@ -529,3 +529,87 @@ Fixed a series of navigation bugs when clicking through to BP Sites from home pa
 Added a new "How It Works" help page (routed at `/how-it-works`, linked from a new sidebar nav entry) that walks users through the core dashboard workflow: uploading a ranking export, picking a brand, reading the ranking table, filtering, and tracking changes over time. The upload step notes that imported files contain Rooster BP Sites ranking data extracted from a ranking-tracking system/software.
 
 ---
+
+## Task 47: Sync schema.sql with Live Schema Drift
+
+**Date:** 2026-07-17
+**PMS Task ID:** cmrp0fkh6000704l4j3krmai2
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Backported the `category` column ALTER on `snapshots` and the anon UPDATE policies on both `snapshots` and `ranking_records` into the checked-in `supabase/schema.sql`. Both changes already existed on the live DB (applied ad hoc) but were never captured in the file — without the anon UPDATE policy on `ranking_records`, inline GSV/SV/AFF edits would silently fail under RLS if this file were ever used to provision a fresh environment.
+
+---
+
+## Task 48: FTD Summary Cards, Year Grouping & Styling
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdqu1h000504l473qepw8n
+**Column:** Review/QA
+**Label:** Feature, UI
+**Assignee:** Leo Sulano
+
+Replaced the FTD Totals column with summary cards matching the app's StatsRow style; added an all-time summary row and year filter matched to the app's custom dropdown; stretched cards full-width. Removed the one-time FTD history import in favor of a month-by-month workflow. Grouped FTD months by year with expand/collapse, showing year-group totals only when collapsed. Refactored to share logo-accurate brand colors between BP and FTD tables, tinting FTD body cells with each brand's own light color. Styling pass on REG/FTD/CONV% sub-headers (bold, 12px). Added click-to-filter summary cards (filter to a single month) and calculation-formula tooltips on each card, with sub-label wording refined per filter context. Also sorted the FTD matrix newest-month-first.
+
+---
+
+## Task 49: FTD Conversion Percent Calculation Fixes
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdquih000704l4xok3f4w6
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Fixed FTD Conversion % to match the source sheet's AVG-based calculation (FTD divided by REG, times 100) at the per-month, single-month-card, and year/all-time levels — the year/all-time figures are now computed fresh from the underlying records rather than averaged from pre-rounded monthly values. Rounded Conversion % display to whole numbers (no decimals).
+
+---
+
+## Task 50: FTD Matrix Table — Scroll and Layout Fixes
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdquyz000904l4hueo1qj0
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Fixed the FTD matrix table to scroll horizontally with the sticky keyword-style column, land flush against the last brand column at max scroll, and stop clipping/gapping when nested inside flex ancestor containers.
+
+---
+
+## Task 51: Write-Gated Authentication (Email + Google OAuth)
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdqvev000b04l4hpf5qy84
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Designed and implemented write-gated auth: design spec + implementation plan, a Google OAuth sign-in helper, a shared `LoginModal` (email + Google), and a `useAuth` hook exposing a `requireAuth` gate. Topbar now reflects real session state (sign in/out). Gated all uploads/edits/deletes app-wide, plus FTD record/totals/stags edits specifically, behind `requireAuth`. Fixed rejection of orphaned pending auth requests for symmetry, and fixed `requireAuth` to read the session from a ref so multi-write operations correctly resume after sign-in instead of stalling mid-flow.
+
+---
+
+## Task 52: Split RLS Policies — Anon Read-Only, Authenticated Write
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdqvtq000d04l4ngghdjmt
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Split Supabase Row Level Security policies so anonymous users are read-only and only authenticated users can write, backing the new write-gated auth flow at the database level.
+
+---
+
+## Task 53: User Approval Workflow — Design Spec
+
+**Date:** 2026-07-20
+**PMS Task ID:** cmrtdqw5h000f04l49y7jgttp
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Wrote a design spec for a user approval workflow (planning only — not yet implemented).
+
+---

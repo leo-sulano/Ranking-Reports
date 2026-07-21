@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
+import { useAuth, getWriteGate } from './lib/useAuth'
+import { LoginModal } from './components/LoginModal'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
@@ -26,6 +28,7 @@ import { LPSites }      from './pages/LPSites'
 import { FTDs }         from './pages/FTDs'
 import { AskAI }        from './pages/AskAI'
 import { HowItWorks }   from './pages/HowItWorks'
+import { AdminUsers }   from './pages/AdminUsers'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -47,6 +50,8 @@ function Layout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+  const { session, modalOpen, requireAuth, openLogin, cancelAuth, isAdmin, isApproved, accessLoading } = useAuth()
+  const writeGate = getWriteGate(session, isApproved, accessLoading)
 
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2)
@@ -109,7 +114,7 @@ function Layout() {
     const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, records }
 
     try {
-      await upsertSnapshot(newSnap)
+      await requireAuth(() => upsertSnapshot(newSnap))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Save failed (${displayDate}): ${msg}`, 'error')
@@ -131,7 +136,7 @@ function Layout() {
     })
 
     return newSnap
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const reportUnknownDomains = useCallback((unknownDomains: UnknownDomain[]) => {
     const skipped = unknownDomains.reduce((s, u) => s + u.count, 0)
@@ -205,7 +210,7 @@ function Layout() {
     const { existing, pendingRecords, unknownDomains } = duplicateWarning
     setDuplicateWarning(null)
     try {
-      await deleteSnapshot(existing.id)
+      await requireAuth(() => deleteSnapshot(existing.id))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Delete failed: ${msg}`, 'error')
@@ -224,7 +229,7 @@ function Layout() {
       `✓ Imported ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
     )
     reportUnknownDomains(unknownDomains)
-  }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains])
+  }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains, requireAuth])
 
   // ── Inline-edit GSV / SV / AFF ────────────────────────────────────────────
   const handleEditCell = useCallback(async (
@@ -233,7 +238,7 @@ function Layout() {
     patch:      EditCellPatch,
   ) => {
     try {
-      await updateRecordFields(snapshotId, matcher, patch)
+      await requireAuth(() => updateRecordFields(snapshotId, matcher, patch))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Edit failed: ${msg}`, 'error')
@@ -259,7 +264,7 @@ function Layout() {
       // view layer.
       return { ...s, snapshots: next }
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
@@ -267,7 +272,7 @@ function Layout() {
     if (!window.confirm(`Delete snapshot for ${snap.displayDate}? This cannot be undone.`)) return
 
     try {
-      await deleteSnapshot(id)
+      await requireAuth(() => deleteSnapshot(id))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Delete failed: ${msg}`, 'error')
@@ -284,7 +289,7 @@ function Layout() {
     })
 
     addToast(`✓ Deleted snapshot for ${snap.displayDate}`)
-  }, [addToast, state.snapshots])
+  }, [addToast, requireAuth, state.snapshots])
 
   // ── Snapshot ──────────────────────────────────────────────────────────────
 
@@ -296,6 +301,14 @@ function Layout() {
     })
   }, [])
 
+  // Signed-out users must sign in (or create an account) before the upload
+  // dialog even opens — requireAuth shows the login modal first and only
+  // runs setShowUpload(true) once they're signed in. A cancelled/superseded
+  // sign-in just means the dialog never opens; nothing to surface as an error.
+  const openUpload = useCallback(() => {
+    requireAuth(() => setShowUpload(true)).catch(() => {})
+  }, [requireAuth])
+
   // ── Topbar title ──────────────────────────────────────────────────────────
 
   const location = useLocation()
@@ -305,7 +318,7 @@ function Layout() {
   const SECTION_TITLES: Record<string, [string, string]> = {
     '/bp-sites':      ['BP Sites', 'Brand website ranking report'],
     '/lp-sites':      ['LP Sites', 'Landing page ranking report'],
-    '/ftds':          ['FTDs', 'First-time depositors'],
+    '/ftds':          ['Reg & FTD Metrics', 'First-time depositors'],
     '/how-it-works':  ['How It Works', 'A quick guide to using the dashboard'],
   }
   const currentPath =
@@ -320,9 +333,13 @@ function Layout() {
     snapshots:         viewSnapshots,
     activeSnapshotId:  state.activeSnapshotId,
     onSelectSnapshot:  selectSnapshot,
-    onOpenUpload:      () => setShowUpload(true),
+    onOpenUpload:      openUpload,
     onDeleteSnapshot:  handleDeleteSnapshot,
     onEditCell:        handleEditCell,
+    addToast,
+    requireAuth,
+    currentUserId:     session?.user.id ?? null,
+    writeGate,
   }
 
   if (loading) {
@@ -347,17 +364,21 @@ function Layout() {
 
       <Sidebar
         uploadDate={activeSnapshot?.displayDate ?? null}
-        onOpenUpload={() => setShowUpload(true)}
+        onOpenUpload={openUpload}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
+        isAdmin={isAdmin}
+        writeGate={writeGate}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
         <Topbar
           brandName={topbarTitle}
           domain={topbarDomain}
+          session={session}
+          onSignIn={openLogin}
           onMenuToggle={() => setMobileNavOpen((v) => !v)}
         />
 
@@ -377,6 +398,7 @@ function Layout() {
           data={{ existing: duplicateWarning.existing }}
           onClose={() => setDuplicateWarning(null)}
           onDelete={handleReplaceDuplicate}
+          writeGate={writeGate}
         />
       )}
 
@@ -401,6 +423,12 @@ function Layout() {
           </div>
         </div>
       )}
+
+      <LoginModal
+        open={modalOpen}
+        onClose={cancelAuth}
+        onSignedUp={() => addToast('Account created — an admin will approve your access shortly.')}
+      />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
@@ -428,6 +456,7 @@ export function App() {
           <Route path="/ftds"             element={<FTDs />} />
           <Route path="/ask-ai"           element={<AskAI />} />
           <Route path="/how-it-works"     element={<HowItWorks />} />
+          <Route path="/admin/users"      element={<AdminUsers />} />
         </Route>
       </Routes>
     </AuthGate>

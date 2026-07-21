@@ -56,6 +56,29 @@ export interface EditCellPatch {
   globalSearchVolume?: string
 }
 
+export interface ToastItem {
+  id: string
+  message: string
+  type: 'success' | 'warning' | 'error'
+}
+
+// Presentational-only gate for write-triggering buttons and inline edits.
+// Does NOT replace requireAuth/RLS as the actual enforcement boundary; see
+// getWriteGate() in lib/useAuth.ts for how it's derived.
+export interface WriteGate {
+  // For entry-point buttons (Import, Add/Edit Month) whose onClick already
+  // routes through requireAuth: true ONLY when signed in but still pending,
+  // since re-clicking can't fix that. Stays false while signed out so the
+  // button remains clickable — clicking is what triggers the sign-in modal.
+  disabled: boolean
+  // For inline edits (EditableCell) that have no requireAuth step of their
+  // own to fall back on: true whenever the user isn't an approved, signed-in
+  // user — signed-out OR pending — since there's no "click to sign in"
+  // recovery from inside an already-open cell.
+  editDisabled: boolean
+  title?: string
+}
+
 export interface RROutletContext {
   snapshots: Snapshot[]
   activeSnapshotId: string | null
@@ -65,12 +88,49 @@ export interface RROutletContext {
   // Inline-edit GSV / SV / AFF on a snapshot's records. The matcher narrows
   // which rows are patched within the snapshot.
   onEditCell: (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
+  addToast: (message: string, type?: ToastItem['type']) => void
+  // Gate for mutating actions — runs fn immediately if signed in, otherwise
+  // opens the shared login modal and resumes fn on success. See useAuth().
+  requireAuth: <T>(fn: () => T | Promise<T>) => Promise<T>
+  // The signed-in user's id (null if signed out) — used e.g. by AdminUsers to
+  // avoid showing destructive self-actions (like revoking your own access).
+  currentUserId: string | null
+  writeGate: WriteGate
 }
 
-export interface ToastItem {
-  id: string
-  message: string
-  type: 'success' | 'warning' | 'error'
+// FTD tracking — brand+month shaped, independent of the Snapshot model above.
+export interface FtdRecord {
+  brand: string
+  yearMonth: string       // 'YYYY-MM', e.g. '2023-08'
+  reg: number
+  ftd: number
+  conversionPct: number | null
+}
+
+export interface FtdRecordPatch {
+  reg?: number
+  ftd?: number
+  conversionPct?: number | null
+}
+
+export interface FtdTotals {
+  yearMonth: string
+  conversionPct: number | null
+}
+
+export interface BrandStags {
+  brand: string
+  stags: string
+}
+
+export type UserAccessStatus = 'pending' | 'approved'
+
+export interface UserAccessRow {
+  userId: string
+  email: string
+  status: UserAccessStatus
+  isAdmin: boolean
+  createdAt: string
 }
 
 export type ParsedPosition = number | 'NR' | null

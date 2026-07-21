@@ -30,6 +30,21 @@ export async function signIn(email: string, password: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+/** Create a new account with email + password. The account starts pending admin approval — see user_access. */
+export async function signUp(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signUp({ email, password })
+  if (error) throw new Error(error.message)
+}
+
+/** Sign in with Google. Redirects the browser to Google's consent screen and back to the current URL. */
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href },
+  })
+  if (error) throw new Error(error.message)
+}
+
 /** Sign out the current user. */
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()

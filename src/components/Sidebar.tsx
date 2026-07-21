@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp } from 'lucide-react'
+import { CircleHelp, DollarSign, Users } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
+import type { WriteGate } from '../types'
 
 const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: string }> = [
   { path: '/', label: 'Home', icon: (
@@ -24,6 +25,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
       <line x1="9" y1="21" x2="9" y2="9"/>
     </svg>
   )},
+  { path: '/ftds', label: 'Reg & FTD Metrics', icon: (
+    <DollarSign size={18} />
+  )},
   { path: '/ask-ai', label: 'Ask AI', icon: (
     <AiIcon size={18} />
   )},
@@ -32,6 +36,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
   )},
 ]
 
+const ADMIN_PAGE: { path: string; label: string; icon: ReactNode; activePath?: string } =
+  { path: '/admin/users', label: 'Users', icon: <Users size={18} /> }
+
 interface Props {
   uploadDate: string | null
   onOpenUpload: () => void
@@ -39,6 +46,8 @@ interface Props {
   onSelectBPBrand: (name: string | null) => void
   mobileOpen?: boolean
   onMobileClose?: () => void
+  isAdmin: boolean
+  writeGate: WriteGate
 }
 
 export function Sidebar({
@@ -48,12 +57,15 @@ export function Sidebar({
   onSelectBPBrand,
   mobileOpen = false,
   onMobileClose,
+  isAdmin,
+  writeGate,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const isBPSitesRoute = location.pathname.startsWith('/bp-sites')
   const isLPSitesRoute = location.pathname.startsWith('/lp-sites')
   const hasBrandList   = isBPSitesRoute || isLPSitesRoute
+  const pages = isAdmin ? [...PAGES, ADMIN_PAGE] : PAGES
 
   const isActivePath = (p: string) =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
@@ -97,7 +109,7 @@ export function Sidebar({
 
         {/* Nav */}
         <nav className="px-2 pt-3 pb-3 border-b border-[#EEEEE9] space-y-0.5 shrink-0">
-          {PAGES.map((p) => {
+          {pages.map((p) => {
             const active = isActivePath(p.activePath ?? p.path)
             return (
               <button
@@ -172,8 +184,9 @@ export function Sidebar({
         <div className="p-2 border-t border-[#EEEEE9] shrink-0">
           <button
             onClick={onOpenUpload}
-            title="Import Data"
-            className="w-full flex items-center gap-3 px-3 py-2 bg-[#1e2a6e] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#136a99] active:scale-95 text-glow-light"
+            title={writeGate.title ?? 'Import Data'}
+            disabled={writeGate.disabled}
+            className="w-full flex items-center gap-3 px-3 py-2 bg-[#1e2a6e] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[#136a99] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-glow-light"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
