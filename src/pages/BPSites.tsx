@@ -318,6 +318,11 @@ function BrandView({
       { replace: true },
     )
   }
+  const [monthly, setMonthly] = useState(() => statsFilter.startsWith('month:'))
+  const setMonthlyMode = (next: boolean) => {
+    setMonthly(next)
+    if (next || statsFilter.startsWith('month:')) handleStatsFilterChange('all')
+  }
   const monthKey = statsFilter.startsWith('month:') ? statsFilter.slice(6) : null
   const statsSnap = useMemo(() => {
     if (monthKey) return brandSnapshots.find((s) => snapMonthKey(s) === monthKey) ?? latestSnap
@@ -461,6 +466,7 @@ function BrandView({
               value={statsFilter}
               snapshots={brandSnapshots}
               onChange={handleStatsFilterChange}
+              monthly={monthly}
             />
           </div>
         )}
@@ -549,6 +555,27 @@ function BrandView({
                 placeholder="Search keywords…"
                 className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
               />
+            </div>
+
+            <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-[#E2E8F0] bg-[#F1F5F9]">
+              <button
+                type="button"
+                onClick={() => setMonthlyMode(false)}
+                className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
+                  !monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                }`}
+              >
+                Weekly
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthlyMode(true)}
+                className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
+                  monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                }`}
+              >
+                Monthly
+              </button>
             </div>
 
             {posFilter !== 'all' && (
@@ -675,14 +702,15 @@ function StatsDateFilter({
   value,
   snapshots,
   onChange,
+  monthly,
 }: {
   value: string                 // 'all' or snapshot id
   snapshots: Snapshot[]         // already filtered to brand snapshots (newest first)
   onChange: (next: string) => void
+  monthly: boolean              // weekly/monthly mode, owned by the parent's toolbar toggle
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [monthly, setMonthly] = useState(() => value.startsWith('month:'))
   const ref = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -740,14 +768,6 @@ function StatsDateFilter({
     : snapshots
   const showAllOption = !q || 'all (latest)'.includes(q) || 'latest'.includes(q)
 
-  const handleToggleMonthly = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    const next = !monthly
-    setMonthly(next)
-    if (next || value.startsWith('month:')) onChange('all')
-    setQuery('')
-  }
-
   return (
     <div ref={ref} className="relative">
       <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
@@ -796,12 +816,6 @@ function StatsDateFilter({
           role="listbox"
           className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
-          <button type="button" onClick={handleToggleMonthly} className="w-full flex items-center justify-between px-3 py-2 border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Monthly</span>
-            <div className={`w-7 h-4 rounded-full transition-colors relative shrink-0 ${monthly ? 'bg-[#0F172A]' : 'bg-[#CBD5E1]'}`}>
-              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all duration-150 ${monthly ? 'left-3.5' : 'left-0.5'}`} />
-            </div>
-          </button>
           <div className="max-h-[240px] overflow-y-auto">
             {monthly ? (
               <>
