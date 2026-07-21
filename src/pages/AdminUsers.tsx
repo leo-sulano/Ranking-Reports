@@ -24,6 +24,11 @@ export function AdminUsers() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
 
   useEffect(() => {
+    // Skip the fetch entirely for non-admins (and while access is still
+    // resolving) — they're redirected away before this data would ever be
+    // shown, so fetching it would be a wasted request that can also flash
+    // a stray "Failed to load users" toast for a signed-out visitor.
+    if (accessLoading || !isAdmin) return
     let cancelled = false
     listUserAccess()
       .then((data) => {
@@ -37,7 +42,7 @@ export function AdminUsers() {
         setLoading(false)
       })
     return () => { cancelled = true }
-  }, [addToast])
+  }, [addToast, accessLoading, isAdmin])
 
   const handleSetStatus = useCallback(async (userId: string, status: UserAccessStatus) => {
     setBusyUserId(userId)
@@ -56,17 +61,15 @@ export function AdminUsers() {
   const pending  = rows.filter((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
 
-  if (accessLoading || loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
-        Loading users…
-      </div>
-    )
-  }
+  const loadingView = (
+    <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
+      Loading users…
+    </div>
+  )
 
-  if (!isAdmin) {
-    return <Navigate to="/" replace />
-  }
+  if (accessLoading) return loadingView
+  if (!isAdmin) return <Navigate to="/" replace />
+  if (loading) return loadingView
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
