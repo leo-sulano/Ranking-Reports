@@ -362,6 +362,7 @@ function Layout() {
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
         isAdmin={isAdmin}
+        writeGate={writeGate}
       />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10 overflow-hidden">
