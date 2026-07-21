@@ -1,26 +1,48 @@
 import { useState, type FormEvent } from 'react'
 import { Lock, LogIn } from 'lucide-react'
-import { signIn } from '../lib/auth'
+import { sendPasswordReset, signIn } from '../lib/auth'
+
+type Mode = 'signin' | 'forgot'
 
 /**
  * Login screen shown by AuthGate when VITE_REQUIRE_AUTH=true and no session
  * exists. On success, AuthGate's auth listener swaps this out for the app.
  */
 export function Login() {
+  const [mode, setMode]         = useState<Mode>('signin')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState<string | null>(null)
   const [busy, setBusy]         = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+
+  function openForgot() {
+    setMode('forgot')
+    setError(null)
+    setResetSent(false)
+  }
+
+  function backToSignIn() {
+    setMode('signin')
+    setError(null)
+    setResetSent(false)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      await signIn(email.trim(), password)
-      // No navigation needed — the onAuthChange listener in AuthGate re-renders.
+      if (mode === 'forgot') {
+        await sendPasswordReset(email.trim())
+        setResetSent(true)
+        setBusy(false)
+      } else {
+        await signIn(email.trim(), password)
+        // No navigation needed — the onAuthChange listener in AuthGate re-renders.
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+      setError(err instanceof Error ? err.message : (mode === 'forgot' ? 'Could not send reset email' : 'Sign-in failed'))
       setBusy(false)
     }
   }
@@ -50,7 +72,7 @@ export function Login() {
           </span>
         </div>
         <p className="text-[12px] font-mono text-[#64748B] mb-6">
-          Sign in to access the dashboard
+          {mode === 'forgot' ? 'Enter your email and we’ll send you a reset link' : 'Sign in to access the dashboard'}
         </p>
 
         <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
@@ -66,18 +88,35 @@ export function Login() {
           placeholder="you@optinetsolutions.com"
         />
 
-        <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
-          Password
-        </label>
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-5 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
-          placeholder="••••••••"
-        />
+        {mode === 'signin' && (
+          <>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={openForgot}
+              className="block ml-auto mb-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+            >
+              Forgot password?
+            </button>
+          </>
+        )}
+
+        {mode === 'forgot' && resetSent && (
+          <p className="mb-4 text-[12px] text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] rounded-[9px] px-3 py-2">
+            If that email is registered, a reset link is on its way — check your inbox.
+          </p>
+        )}
 
         {error && (
           <p className="mb-4 text-[12px] text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[9px] px-3 py-2">
@@ -91,8 +130,20 @@ export function Login() {
           className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#1E293B] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           <LogIn size={15} />
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy
+            ? (mode === 'forgot' ? 'Sending…' : 'Signing in…')
+            : (mode === 'forgot' ? 'Send reset link' : 'Sign in')}
         </button>
+
+        {mode === 'forgot' && (
+          <button
+            type="button"
+            onClick={backToSignIn}
+            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+          >
+            Back to sign in
+          </button>
+        )}
       </form>
     </div>
   )

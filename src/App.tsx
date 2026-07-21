@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
+import { ResetPassword } from './components/ResetPassword'
 import { useAuth, getWriteGate } from './lib/useAuth'
 import { LoginModal } from './components/LoginModal'
 import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
@@ -445,22 +446,23 @@ function Layout() {
 
 export function App() {
   return (
-    <AuthGate>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="/bp-sites"                          element={<BPSites />} />
-          <Route path="/bp-sites/:brandSlug"               element={<BPSites />} />
-          <Route path="/bp-sites/:brandSlug/:domainFilter" element={<BPSites />} />
-          <Route path="/lp-sites"                          element={<LPSites />} />
-          <Route path="/lp-sites/:brandSlug"               element={<LPSites />} />
-          <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
-          <Route path="/ftds"             element={<FTDs />} />
-          <Route path="/ask-ai"           element={<AskAI />} />
-          <Route path="/how-it-works"     element={<HowItWorks />} />
-          <Route path="/admin/users"      element={<AdminUsers />} />
-        </Route>
-      </Routes>
-    </AuthGate>
+    <Routes>
+      {/* Reached via the password-reset email link — must render regardless of
+          AuthGate/session state, so it lives outside AuthGate entirely. */}
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<AuthGate><Layout /></AuthGate>}>
+        <Route index element={<Home />} />
+        <Route path="/bp-sites"                          element={<BPSites />} />
+        <Route path="/bp-sites/:brandSlug"               element={<BPSites />} />
+        <Route path="/bp-sites/:brandSlug/:domainFilter" element={<BPSites />} />
+        <Route path="/lp-sites"                          element={<LPSites />} />
+        <Route path="/lp-sites/:brandSlug"               element={<LPSites />} />
+        <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
+        <Route path="/ftds"             element={<FTDs />} />
+        <Route path="/ask-ai"           element={<AskAI />} />
+        <Route path="/how-it-works"     element={<HowItWorks />} />
+        <Route path="/admin/users"      element={<AdminUsers />} />
+      </Route>
+    </Routes>
   )
 }

@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Lock, LogIn, X } from 'lucide-react'
-import { signIn, signInWithGoogle, signUp } from '../lib/auth'
+import { sendPasswordReset, signIn, signInWithGoogle, signUp } from '../lib/auth'
 
-type Mode = 'signin' | 'signup'
+type Mode = 'signin' | 'signup' | 'forgot'
 
 /**
  * Shared login/sign-up overlay opened by useAuth() whenever a signed-out
@@ -12,7 +12,8 @@ type Mode = 'signin' | 'signup'
  * calling signIn(). Google sign-in redirects the whole page away, so nothing
  * after that call runs. Signing up always closes the modal immediately
  * (via onClose, which useAuth wires to cancelAuth) — a brand-new account is
- * never approved yet, so there's nothing to resume.
+ * never approved yet, so there's nothing to resume. The 'forgot' mode just
+ * sends a reset email and stays open to show a confirmation message.
  */
 export function LoginModal({
   open,
@@ -28,6 +29,7 @@ export function LoginModal({
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   if (!open) return null
 
@@ -36,12 +38,28 @@ export function LoginModal({
     setError(null)
   }
 
+  function openForgot() {
+    setMode('forgot')
+    setError(null)
+    setResetSent(false)
+  }
+
+  function backToSignIn() {
+    setMode('signin')
+    setError(null)
+    setResetSent(false)
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        await sendPasswordReset(email.trim())
+        setResetSent(true)
+        setBusy(false)
+      } else if (mode === 'signup') {
         await signUp(email.trim(), password)
         onSignedUp?.()
         onClose()
@@ -49,7 +67,7 @@ export function LoginModal({
         await signIn(email.trim(), password)
       }
     } catch (err) {
-      const fallback = mode === 'signup' ? 'Sign-up failed' : 'Sign-in failed'
+      const fallback = mode === 'signup' ? 'Sign-up failed' : mode === 'forgot' ? 'Could not send reset email' : 'Sign-in failed'
       setError(err instanceof Error ? err.message : fallback)
       setBusy(false)
     }
@@ -87,12 +105,14 @@ export function LoginModal({
             <Lock size={15} />
           </span>
           <span className="font-display text-[20px] tracking-wider text-[#0F172A]">
-            {mode === 'signup' ? 'Create account' : 'Sign in'}
+            {mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Reset password' : 'Sign in'}
           </span>
         </div>
         <p className="text-[12px] font-mono text-[#64748B] mb-6">
           {mode === 'signup'
             ? 'Create an account — an admin will approve it before you can make changes'
+            : mode === 'forgot'
+            ? 'Enter your email and we’ll send you a reset link'
             : 'Sign in to make changes to the dashboard'}
         </p>
 
@@ -109,18 +129,38 @@ export function LoginModal({
           placeholder="you@optinetsolutions.com"
         />
 
-        <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
-          Password
-        </label>
-        <input
-          type="password"
-          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-5 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
-          placeholder="••••••••"
-        />
+        {mode !== 'forgot' && (
+          <>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              placeholder="••••••••"
+            />
+          </>
+        )}
+
+        {mode === 'signin' && (
+          <button
+            type="button"
+            onClick={openForgot}
+            className="block ml-auto mb-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+          >
+            Forgot password?
+          </button>
+        )}
+
+        {mode === 'forgot' && resetSent && (
+          <p className="mb-4 text-[12px] text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] rounded-[9px] px-3 py-2">
+            If that email is registered, a reset link is on its way — check your inbox.
+          </p>
+        )}
 
         {error && (
           <p className="mb-4 text-[12px] text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[9px] px-3 py-2">
@@ -135,31 +175,45 @@ export function LoginModal({
         >
           <LogIn size={15} />
           {busy
-            ? (mode === 'signup' ? 'Creating account…' : 'Signing in…')
-            : (mode === 'signup' ? 'Create account' : 'Sign in')}
+            ? (mode === 'signup' ? 'Creating account…' : mode === 'forgot' ? 'Sending…' : 'Signing in…')
+            : (mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in')}
         </button>
 
-        <button
-          type="button"
-          onClick={toggleMode}
-          className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
-        >
-          {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
-        </button>
+        {mode === 'forgot' ? (
+          <button
+            type="button"
+            onClick={backToSignIn}
+            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+          >
+            Back to sign in
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={toggleMode}
+            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+          >
+            {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+          </button>
+        )}
 
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-[#E2E8F0]" />
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">or</span>
-          <div className="flex-1 h-px bg-[#E2E8F0]" />
-        </div>
+        {mode !== 'forgot' && (
+          <>
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-[#E2E8F0]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">or</span>
+              <div className="flex-1 h-px bg-[#E2E8F0]" />
+            </div>
 
-        <button
-          type="button"
-          onClick={handleGoogle}
-          className="w-full h-10 rounded-[9px] border border-[#E2E8F0] text-[#0F172A] text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#F8FAFC] transition-colors"
-        >
-          Sign in with Google
-        </button>
+            <button
+              type="button"
+              onClick={handleGoogle}
+              className="w-full h-10 rounded-[9px] border border-[#E2E8F0] text-[#0F172A] text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#F8FAFC] transition-colors"
+            >
+              Sign in with Google
+            </button>
+          </>
+        )}
       </form>
     </div>
   )

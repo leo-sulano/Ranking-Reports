@@ -49,3 +49,20 @@ export async function signInWithGoogle(): Promise<void> {
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
 }
+
+/**
+ * Send a password-reset email. Supabase intentionally does not error when the
+ * address isn't registered, so this never reveals whether an account exists.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/** Set a new password. Requires the recovery session created by the reset-email link. */
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw new Error(error.message)
+}
