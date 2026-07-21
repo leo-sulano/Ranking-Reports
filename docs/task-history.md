@@ -613,3 +613,63 @@ Split Supabase Row Level Security policies so anonymous users are read-only and 
 Wrote a design spec for a user approval workflow (planning only — not yet implemented).
 
 ---
+
+## Task 54: User Approval Workflow — Implementation
+
+**Date:** 2026-07-21
+**PMS Task ID:** cmrutipyf000504jstykbb1s3
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Implemented the user approval workflow designed in Task 53. Wired approval state into `Layout`, added an admin users page (approve/revoke), and computed a presentational write-gate hook (`disabled`/`disabledTitle`) consumed by `Sidebar`, Home page, `DuplicateWarning`, and FTD add/edit/save actions so unapproved and signed-out users are blocked from all write actions app-wide, with matching tooltips.
+
+---
+
+## Task 55: admin/users Route — Access Control & Nav Rename
+
+**Date:** 2026-07-21
+**PMS Task ID:** cmrutjv7w000c04jsk5471olr
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Added the `/admin/users` route with `isAdmin`/`accessLoading` threaded through `useAuth`, redirecting non-admins away and skipping the row fetch entirely for them. Fixed a `user_access` RLS self-recursion bug. Renamed the Admin nav label to "Users" with a matching icon. Also unified the BP Sites site filter into an independent checkbox control and moved the Weekly/Monthly stats filter to the top of the page.
+
+---
+
+## Task 56: Admin Promote/Demote & Delete User Account
+
+**Date:** 2026-07-21
+**PMS Task ID:** cmrutjrrs000904jsqq8nv0ki
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Let admins promote/demote other users' admin status and permanently delete user accounts via a new `delete-user` Edge Function that uses the service-role key and verifies caller admin status against `user_access`. Fixed the CORS preflight to allow the `apikey`/`x-client-info` headers that `supabase.functions.invoke()` attaches automatically (the narrower allowlist copied from the `assistant` function, called via raw `fetch()`, didn't send them and failed preflight).
+
+---
+
+## Task 57: Forgot Password Flow
+
+**Date:** 2026-07-21
+**PMS Task ID:** cmrutjyvr000f04jswshb4onh
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Added a Supabase-backed password reset flow: a "Forgot password?" link in both `LoginModal` and the full-page Login that emails a reset link, and a new `/reset-password` page (outside `AuthGate`) that lets the user set a new password once the recovery session lands.
+
+---
+
+## Task 58: Activity Log / Log Page
+
+**Date:** 2026-07-21
+**PMS Task ID:** cmrutk212000u04js7pdf9jf2
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Added an `activity_log` table with append-only RLS and an `activityLog` client module (`logActivity`, `loadActivityLog`). Wrote a design spec and implementation plan for a new `/log` page that will surface recent write activity, with call sites planned across `App.tsx` and `FTDs.tsx`.
+
+---
