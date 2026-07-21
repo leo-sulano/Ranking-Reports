@@ -12,6 +12,7 @@ import {
   summarizeRecords, formatDisplayDate, applyCarryForward,
 } from './lib/parser'
 import { loadSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields } from './lib/storage'
+import { logActivity } from './lib/activityLog'
 
 import { Sidebar }       from './components/Sidebar'
 import { Topbar }        from './components/Topbar'
@@ -168,6 +169,7 @@ function Layout() {
       }
       const snap = await persistOneSnapshot(parsed, category)
       if (!snap) return
+      void logActivity('upload', category, `Uploaded ${parsed.records.length} records — ${snap.displayDate}`)
       setShowUpload(false)
       setUploadSummary({ displayDate: snap.displayDate, records: parsed.records, unknownDomains })
       const domainMap = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
@@ -198,6 +200,10 @@ function Layout() {
     }
     setBulkProgress(null)
 
+    if (okCount > 0) {
+      void logActivity('upload', category, `Bulk uploaded ${okCount} snapshot(s) · ${totalRecords.toLocaleString()} records total`)
+    }
+
     const domainMap = category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
     const counts = summarizeRecords(aggregateRecords, domainMap)
     addToast(
@@ -223,6 +229,7 @@ function Layout() {
       existing.category,
     )
     if (!snap) return
+    void logActivity('upload', existing.category, `Replaced snapshot — ${snap.displayDate} (${pendingRecords.length} records)`)
     setUploadSummary({ displayDate: snap.displayDate, records: pendingRecords, unknownDomains })
     const domainMap = existing.category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
     const counts = summarizeRecords(pendingRecords, domainMap)
@@ -238,6 +245,18 @@ function Layout() {
     matcher:    EditCellMatcher,
     patch:      EditCellPatch,
   ) => {
+    // Shared by the "find the before value" lookup below and the setState
+    // updater's own row selection, so the logged old value can never drift
+    // from the row that's actually being patched.
+    const matchRecord = (r: RankingRecord) => {
+      if (matcher.keyword && r.keyword !== matcher.keyword) return false
+      if (matcher.domain  && r.domain  !== matcher.domain)  return false
+      if (matcher.country && r.country !== matcher.country) return false
+      return true
+    }
+    const targetSnapshot = state.snapshots.find((s) => s.id === snapshotId)
+    const before = targetSnapshot?.records.find(matchRecord)
+
     try {
       await requireAuth(() => updateRecordFields(snapshotId, matcher, patch))
     } catch (err) {
@@ -245,13 +264,34 @@ function Layout() {
       addToast(`Edit failed: ${msg}`, 'error')
       return
     }
+
+    if (targetSnapshot && before) {
+      const FIELD_LABELS: Record<string, string> = {
+        searchVolume:       'SV',
+        affiliateUrl:       'AFF',
+        globalSearchVolume: 'GSV',
+      }
+      const changes: string[] = []
+      for (const field of ['searchVolume', 'affiliateUrl', 'globalSearchVolume'] as const) {
+        if (!(field in patch)) continue
+        const oldVal = before[field] ?? ''
+        const newVal = patch[field] ?? ''
+        if (oldVal === newVal) continue
+        changes.push(`${FIELD_LABELS[field]} '${oldVal || '(empty)'}' → '${newVal || '(empty)'}'`)
+      }
+      if (changes.length > 0) {
+        const context = matcher.domain
+          ? `${matcher.domain} / "${matcher.keyword ?? before.keyword}" (${matcher.country ?? before.country})`
+          : `"${matcher.keyword ?? before.keyword}"`
+        void logActivity('edit', targetSnapshot.category, `Edited ${context}: ${changes.join(', ')}`)
+      }
+    }
+
     setState((s) => {
       const next = s.snapshots.map((snap) => {
         if (snap.id !== snapshotId) return snap
         const records = snap.records.map((r) => {
-          if (matcher.keyword && r.keyword !== matcher.keyword) return r
-          if (matcher.domain  && r.domain  !== matcher.domain)  return r
-          if (matcher.country && r.country !== matcher.country) return r
+          if (!matchRecord(r)) return r
           const np: RankingRecord = { ...r }
           if ('searchVolume'       in patch) np.searchVolume       = patch.searchVolume       ?? ''
           if ('affiliateUrl'       in patch) np.affiliateUrl       = patch.affiliateUrl       ?? ''
@@ -265,7 +305,7 @@ function Layout() {
       // view layer.
       return { ...s, snapshots: next }
     })
-  }, [addToast, requireAuth])
+  }, [addToast, requireAuth, state.snapshots])
 
   const handleDeleteSnapshot = useCallback(async (id: string) => {
     const snap = state.snapshots.find((s) => s.id === id)
@@ -279,6 +319,8 @@ function Layout() {
       addToast(`Delete failed: ${msg}`, 'error')
       return
     }
+
+    void logActivity('delete', snap.category, `Deleted snapshot — ${snap.displayDate} (${snap.records.length} records)`)
 
     setState((s) => {
       const nextSnapshots = s.snapshots.filter((sn) => sn.id !== id)
