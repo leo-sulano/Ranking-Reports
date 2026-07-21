@@ -263,3 +263,37 @@ drop policy if exists "auth delete brand_stags" on public.brand_stags;
 create policy "auth write brand_stags"  on public.brand_stags for insert to authenticated with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
 create policy "auth update brand_stags" on public.brand_stags for update to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')) with check (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
 create policy "auth delete brand_stags" on public.brand_stags for delete to authenticated using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+-- ============================================================================
+-- Activity log — see activity-log.sql for the full setup checklist. Table/RLS
+-- below are identical; append-only (no update/delete policy for any role).
+-- ============================================================================
+
+create table if not exists public.activity_log (
+  id          bigserial primary key,
+  created_at  timestamptz not null default now(),
+  user_id     uuid references auth.users(id) on delete set null,
+  email       text not null,
+  action      text not null,   -- 'upload' | 'edit' | 'delete'
+  section     text not null,   -- 'bp-sites' | 'lp-sites' | 'ftds'
+  summary     text not null
+);
+
+create index if not exists activity_log_created_at_idx
+  on public.activity_log (created_at desc);
+
+alter table public.activity_log enable row level security;
+
+drop policy if exists "approved read activity_log" on public.activity_log;
+drop policy if exists "approved insert activity_log" on public.activity_log;
+
+create policy "approved read activity_log" on public.activity_log
+  for select
+  using (exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved'));
+
+create policy "approved insert activity_log" on public.activity_log
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and exists (select 1 from public.user_access a where a.user_id = auth.uid() and a.status = 'approved')
+  );
