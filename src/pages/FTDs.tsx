@@ -5,6 +5,7 @@ import { FtdMatrixTable, averagePct, ratioPct, rawRatio, formatMonthLabel } from
 import type { FtdMetric } from '../components/FtdMatrixTable'
 import { FtdEntryForm } from '../components/FtdEntryForm'
 import { loadFtdData, upsertFtdRecord, upsertFtdTotals, upsertBrandStags } from '../lib/ftdStorage'
+import { logActivity } from '../lib/activityLog'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, RROutletContext } from '../types'
 
 function formatError(err: unknown): string {
@@ -173,12 +174,30 @@ export function FTDs() {
   }, [addToast])
 
   const handleEditRecord = useCallback(async (brand: string, yearMonth: string, patch: FtdRecordPatch) => {
+    const before = records.find((r) => r.brand === brand && r.yearMonth === yearMonth)
+      ?? { brand, yearMonth, reg: 0, ftd: 0, conversionPct: null }
+
     try {
       await requireAuth(() => upsertFtdRecord(brand, yearMonth, patch))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
+
+    const changes: string[] = []
+    if ('reg' in patch && patch.reg !== undefined && patch.reg !== before.reg) {
+      changes.push(`REG ${before.reg} → ${patch.reg}`)
+    }
+    if ('ftd' in patch && patch.ftd !== undefined && patch.ftd !== before.ftd) {
+      changes.push(`FTD ${before.ftd} → ${patch.ftd}`)
+    }
+    if ('conversionPct' in patch && patch.conversionPct !== before.conversionPct) {
+      changes.push(`Conversion ${before.conversionPct ?? '—'}% → ${patch.conversionPct ?? '—'}%`)
+    }
+    if (changes.length > 0) {
+      void logActivity('edit', 'ftds', `Edited ${brand} — ${formatMonthLabel(yearMonth)}: ${changes.join(', ')}`)
+    }
+
     setRecords((prev) => {
       const idx = prev.findIndex((r) => r.brand === brand && r.yearMonth === yearMonth)
       if (idx === -1) {
@@ -194,15 +213,22 @@ export function FTDs() {
       next[idx] = { ...next[idx], ...patch }
       return next
     })
-  }, [addToast, requireAuth])
+  }, [addToast, requireAuth, records])
 
   const handleEditTotals = useCallback(async (yearMonth: string, conversionPct: number | null) => {
+    const before = totals.find((t) => t.yearMonth === yearMonth)?.conversionPct ?? null
+
     try {
       await requireAuth(() => upsertFtdTotals(yearMonth, conversionPct))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
+
+    if (before !== conversionPct) {
+      void logActivity('edit', 'ftds', `Edited ${formatMonthLabel(yearMonth)} totals conversion: ${before ?? '—'}% → ${conversionPct ?? '—'}%`)
+    }
+
     setTotals((prev) => {
       const idx = prev.findIndex((t) => t.yearMonth === yearMonth)
       if (idx === -1) return [...prev, { yearMonth, conversionPct }]
@@ -210,15 +236,22 @@ export function FTDs() {
       next[idx] = { ...next[idx], conversionPct }
       return next
     })
-  }, [addToast, requireAuth])
+  }, [addToast, requireAuth, totals])
 
   const handleEditStags = useCallback(async (brand: string, stagsValue: string) => {
+    const before = stags.find((s) => s.brand === brand)?.stags ?? ''
+
     try {
       await requireAuth(() => upsertBrandStags(brand, stagsValue))
     } catch (err) {
       addToast(`Save failed: ${formatError(err)}`, 'error')
       return
     }
+
+    if (before !== stagsValue) {
+      void logActivity('edit', 'ftds', `Edited ${brand} stags: '${before}' → '${stagsValue}'`)
+    }
+
     setStags((prev) => {
       const idx = prev.findIndex((s) => s.brand === brand)
       if (idx === -1) return [...prev, { brand, stags: stagsValue }]
@@ -226,7 +259,7 @@ export function FTDs() {
       next[idx] = { ...next[idx], stags: stagsValue }
       return next
     })
-  }, [addToast, requireAuth])
+  }, [addToast, requireAuth, stags])
 
   if (loading) {
     return (
