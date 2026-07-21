@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp, DollarSign, Users } from 'lucide-react'
+import { CircleHelp, DollarSign, History, Users } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 import type { WriteGate } from '../types'
 
@@ -33,6 +33,9 @@ const PAGES: Array<{ path: string; label: string; icon: ReactNode; activePath?: 
   )},
   { path: '/how-it-works', label: 'How It Works', icon: (
     <CircleHelp size={18} />
+  )},
+  { path: '/log', label: 'Activity Log', icon: (
+    <History size={18} />
   )},
 ]
 

@@ -31,6 +31,7 @@ import { FTDs }         from './pages/FTDs'
 import { AskAI }        from './pages/AskAI'
 import { HowItWorks }   from './pages/HowItWorks'
 import { AdminUsers }   from './pages/AdminUsers'
+import { Log }          from './pages/Log'
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 
@@ -363,6 +364,7 @@ function Layout() {
     '/lp-sites':      ['LP Sites', 'Landing page ranking report'],
     '/ftds':          ['Reg & FTD Metrics', 'First-time depositors'],
     '/how-it-works':  ['How It Works', 'A quick guide to using the dashboard'],
+    '/log':           ['Activity Log', 'Who changed what, and when'],
   }
   const currentPath =
     location.pathname === '/'
@@ -503,6 +505,7 @@ export function App() {
         <Route path="/ftds"             element={<FTDs />} />
         <Route path="/ask-ai"           element={<AskAI />} />
         <Route path="/how-it-works"     element={<HowItWorks />} />
+        <Route path="/log"              element={<Log />} />
         <Route path="/admin/users"      element={<AdminUsers />} />
       </Route>
     </Routes>
