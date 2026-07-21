@@ -13,6 +13,9 @@
 --      statement in the SQL editor):
 --        update public.user_access set is_admin = true, status = 'approved'
 --        where email = 'you@example.com';
+--      — run this only after your own account already exists (e.g. from the
+--      previous feature's manual setup), and check the editor reports "1 row"
+--      affected; 0 rows means your account isn't in auth.users yet.
 --   3. Supabase Dashboard → Authentication → Providers → Email: turn "Allow
 --      new users to sign up" back ON — this reverses auth-write-lockdown.sql's
 --      checklist step 3. Approval, not signup-blocking, is now the gate.

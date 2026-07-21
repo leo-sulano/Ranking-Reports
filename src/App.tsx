@@ -329,6 +329,7 @@ function Layout() {
     onEditCell:        handleEditCell,
     addToast,
     requireAuth,
+    currentUserId:     session?.user.id ?? null,
   }
 
   if (loading) {

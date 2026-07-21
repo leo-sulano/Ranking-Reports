@@ -75,6 +75,9 @@ export interface RROutletContext {
   // Gate for mutating actions — runs fn immediately if signed in, otherwise
   // opens the shared login modal and resumes fn on success. See useAuth().
   requireAuth: <T>(fn: () => T | Promise<T>) => Promise<T>
+  // The signed-in user's id (null if signed out) — used e.g. by AdminUsers to
+  // avoid showing destructive self-actions (like revoking your own access).
+  currentUserId: string | null
 }
 
 // FTD tracking — brand+month shaped, independent of the Snapshot model above.

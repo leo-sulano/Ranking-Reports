@@ -18,7 +18,7 @@ function formatDate(iso: string): string {
 }
 
 export function AdminUsers() {
-  const { addToast, requireAuth } = useOutletContext<RROutletContext>()
+  const { addToast, requireAuth, currentUserId } = useOutletContext<RROutletContext>()
   const [rows, setRows] = useState<UserAccessRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
@@ -112,17 +112,24 @@ export function AdminUsers() {
                         Admin
                       </span>
                     )}
+                    {r.userId === currentUserId && (
+                      <span className="text-[9px] uppercase tracking-wide font-bold text-[#94A3B8] bg-[#F1F5F9] rounded px-1.5 py-0.5">
+                        You
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] font-mono text-[#94A3B8]">Signed up {formatDate(r.createdAt)}</div>
                 </div>
-                <button
-                  onClick={() => handleSetStatus(r.userId, 'pending')}
-                  disabled={busyUserId === r.userId}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
-                >
-                  <RotateCcw size={13} strokeWidth={2.25} />
-                  Revoke
-                </button>
+                {r.userId !== currentUserId && (
+                  <button
+                    onClick={() => handleSetStatus(r.userId, 'pending')}
+                    disabled={busyUserId === r.userId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
+                  >
+                    <RotateCcw size={13} strokeWidth={2.25} />
+                    Revoke
+                  </button>
+                )}
               </div>
             ))}
           </div>
