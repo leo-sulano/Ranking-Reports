@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
+    "jose": "^6.2.4",
     "lucide-react": "^1.14.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
