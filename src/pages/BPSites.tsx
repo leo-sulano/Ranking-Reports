@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot, SnapshotMeta } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
+import { PinButton } from '../components/PinButton'
+import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
@@ -31,6 +33,10 @@ const DATE_BAND_FG  = '#FFFFFF'
 const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
+// Fixed column width for pinned domain groups — sticky offsets must be
+// deterministic, so pinned country columns are locked to the same 90px
+// the country sub-headers already use as their min-width.
+const PIN_COL_W     = 90
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
@@ -327,6 +333,10 @@ function BrandView({
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
   const [showClassChart, setShowClassChart] = useState(false)
   const [showAllSnapshots, setShowAllSnapshots] = useState(false)
+
+  // Pinned domain groups — shared across every snapshot matrix on the page,
+  // persisted per brand.
+  const [pinnedDomains, togglePinnedDomain] = usePinnedGroups(`bp-${brand.name}`)
 
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id or 'month:<MonthYear>'.
@@ -684,6 +694,8 @@ function BrandView({
                         cardFilter={cardFilter}
                         onEditCell={onEditCell}
                         isLatest={snap.id === latestSnap?.id}
+                        pinnedDomains={pinnedDomains}
+                        onTogglePin={togglePinnedDomain}
                       />
                     )
                   })}
@@ -1066,6 +1078,8 @@ function SnapshotMatrix({
   cardFilter,
   onEditCell,
   isLatest,
+  pinnedDomains,
+  onTogglePin,
 }: {
   snapshot: Snapshot
   prevSnapshot: Snapshot | null
@@ -1080,12 +1094,15 @@ function SnapshotMatrix({
   cardFilter: CardFilterKey | null
   onEditCell: EditCellFn
   isLatest: boolean
+  pinnedDomains: string[]
+  onTogglePin: (domainKey: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const keywordColRef = useRef<HTMLTableCellElement>(null)
   const domainRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const [scrolled, setScrolled] = useState(false)
-  const [scrollRightPad, setScrollRightPad] = useState(0)
+  // Measured keyword-column width — pinned domain groups stick right after it.
+  const [kwW, setKwW] = useState(120)
 
   // Stable index so each BP domain always gets the same palette colour
   // regardless of which other sites are currently selected.
@@ -1093,11 +1110,6 @@ function SnapshotMatrix({
     () => brand.domains.filter((d) => d.toLowerCase() !== mainDomain),
     [brand, mainDomain],
   )
-  const bpPaletteIndex = (bp: string) => {
-    const idx = allBpDomains.findIndex((d) => d.toLowerCase() === bp.toLowerCase())
-    return (idx >= 0 ? idx : 0) % BP_PALETTE.length
-  }
-
   const scrollToDomain = (key: string) => {
     const el = domainRefs.current[key]
     const scrollEl = scrollRef.current
@@ -1125,38 +1137,60 @@ function SnapshotMatrix({
     }
   }, [])
 
-  // After every render that may change column layout, measure real DOM widths so
-  // that at maximum scroll the last data column lands right beside the sticky
-  // keyword column — exactly like a frozen column in Google Sheets.
-  //   paddingRight = containerWidth - keywordWidth - lastColumnWidth
-  // At max scroll: scrollLeft = tableWidth + pad - cw, and
-  // first-visible-data = scrollLeft + kwWidth = tableWidth - lastColWidth ✓
+  // Re-measure the keyword column after each render — its width drives the
+  // sticky left offsets of pinned domain groups.
   useEffect(() => {
-    const scrollEl  = scrollRef.current
-    const kwEl      = keywordColRef.current
-    if (!scrollEl || !kwEl) return
-    const rows = scrollEl.querySelectorAll('thead tr')
-    const lastTh = rows.length >= 2
-      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
-      : null
-    if (!lastTh) return
-    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
+    const kwEl = keywordColRef.current
+    if (kwEl) setKwW(kwEl.offsetWidth)
   })
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
 
-  // All domains always show all visible countries so every snapshot has the same
-  // column structure and horizontal scroll width regardless of data presence.
-  const domainCountries = useMemo(() => {
-    const result = new Map<string, string[]>()
-    result.set(mainDomain, visibleCountries)
-    for (const bp of bpDomains) result.set(bp.toLowerCase(), visibleCountries)
-    return result
-  }, [mainDomain, bpDomains, visibleCountries])
+  // ── Domain groups, pinned ones first — pinned groups freeze beside the
+  //    keyword column, mirroring the fixed TOTALS pattern on Reg & FTDs. ──
+  type DomainGroup = { domain: string; dk: string; refKey: string; isMain: boolean; headerBg: string; cellBg: string }
+  const groups = useMemo<DomainGroup[]>(() => {
+    const list: DomainGroup[] = []
+    if (showMain) {
+      list.push({ domain: brand.mainDomain, dk: mainDomain, refKey: mainDomain, isMain: true, headerBg: MAIN_HEADER_BG, cellBg: MAIN_CELL_BG })
+    }
+    for (const bp of bpDomains) {
+      const idx = allBpDomains.findIndex((d) => d.toLowerCase() === bp.toLowerCase())
+      const palette = BP_PALETTE[(idx >= 0 ? idx : 0) % BP_PALETTE.length]
+      list.push({ domain: bp, dk: bp.toLowerCase(), refKey: bp, isMain: false, headerBg: palette.headerBg, cellBg: palette.cellBg })
+    }
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    const pinned = pinnedLower.map((d) => list.find((g) => g.dk === d)).filter((g): g is DomainGroup => g != null)
+    return [...pinned, ...list.filter((g) => !pinnedLower.includes(g.dk))]
+  }, [showMain, brand.mainDomain, mainDomain, bpDomains, allBpDomains, pinnedDomains])
+  const pinnedCount = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    return groups.filter((g) => pinnedLower.includes(g.dk)).length
+  }, [groups, pinnedDomains])
+  const colsPerGroup = visibleCountries.length
 
-  const mainDomainCols = domainCountries.get(mainDomain) ?? []
-  const mainColCount = mainDomainCols.length
+  // Sticky style for a pinned group's cell; {} when the group isn't pinned.
+  const pinStyle = (groupPos: number, colIdx: number, z: number): CSSProperties =>
+    groupPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + (groupPos * colsPerGroup + colIdx) * PIN_COL_W,
+          zIndex: z,
+          width: PIN_COL_W, minWidth: PIN_COL_W, maxWidth: PIN_COL_W,
+          boxShadow: scrolled && groupPos === pinnedCount - 1 && colIdx === colsPerGroup - 1
+            ? '4px 0 8px -2px rgba(0,0,0,0.18)'
+            : undefined,
+        }
+      : {}
+  const pinHeaderStyle = (groupPos: number): CSSProperties =>
+    groupPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + groupPos * colsPerGroup * PIN_COL_W,
+          zIndex: 6,
+          maxWidth: colsPerGroup * PIN_COL_W,
+        }
+      : {}
 
   // keyword → domain → country → record for the immediately prior snapshot.
   // null when there is no older snapshot to compare against.
@@ -1304,8 +1338,7 @@ function SnapshotMatrix({
 
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full"
-               style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
@@ -1319,92 +1352,55 @@ function SnapshotMatrix({
                   color: '#000',
                   borderRight: borderStyle,
                   borderBottom: borderStyle,
-                  boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                  boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                 }}
               >
                 Keyword
               </th>
-              {showMain && (
+              {groups.map((g, gi) => (
                 <th
-                  ref={(el) => { domainRefs.current[mainDomain] = el }}
-                  colSpan={mainColCount}
+                  key={`grp-h-${g.dk}`}
+                  ref={(el) => { domainRefs.current[g.refKey] = el }}
+                  colSpan={colsPerGroup}
                   className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
                   style={{
-                    background: MAIN_HEADER_BG,
+                    background: g.headerBg,
                     color: HEADER_FG,
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
+                    ...pinHeaderStyle(gi),
                   }}
                 >
-                  MAIN — <span className="">{brand.mainDomain}</span>
+                  <span className="inline-flex items-center gap-1.5 max-w-full">
+                    <span className="truncate">{g.isMain ? <>MAIN — {g.domain}</> : <>BP — {g.domain}</>}</span>
+                    <PinButton pinned={gi < pinnedCount} onToggle={() => onTogglePin(g.dk)} />
+                  </span>
                 </th>
-              )}
-              {bpDomains.map((bp, bpIdx) => {
-                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                return (
-                  <th
-                    key={`bp-h-${bp}`}
-                    ref={(el) => { domainRefs.current[bp] = el }}
-                    colSpan={bpCols.length}
-                    className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
-                    style={{
-                      background: palette.headerBg,
-                      color: HEADER_FG,
-                      borderRight: borderStyle,
-                      borderBottom: borderStyle,
-                    }}
-                  >
-                    BP — <span className="">{bp}</span>
-                  </th>
-                )
-              })}
+              ))}
             </tr>
 
             {/* Row 2 — Country / spec sub-header */}
             <tr>
-              {showMain && (
-                <Fragment>
-                  {mainDomainCols.map((c, ci) => (
+              {groups.map((g, gi) => (
+                <Fragment key={`grp-sub-${g.dk}`}>
+                  {visibleCountries.map((c, ci) => (
                     <th
-                      key={`main-sub-${c}`}
+                      key={`grp-sub-${g.dk}-${c}`}
                       className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em] min-w-[90px]"
                       style={{
-                        background: MAIN_HEADER_BG,
+                        background: g.headerBg,
                         color: HEADER_FG,
-                        borderLeft: ci === 0 ? undefined : borderStyle,
-                        borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
+                        borderLeft: g.isMain && ci === 0 ? undefined : borderStyle,
+                        borderRight: ci === colsPerGroup - 1 ? borderStyle : undefined,
                         borderBottom: borderStyle,
+                        ...pinStyle(gi, ci, 6),
                       }}
                     >
                       {c}
                     </th>
                   ))}
                 </Fragment>
-              )}
-              {bpDomains.map((bp, bpIdx) => {
-                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                return (
-                  <Fragment key={`bp-sub-${bp}`}>
-                    {bpCols.map((c, ci) => (
-                      <th
-                        key={`bp-sub-${bp}-${c}`}
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: palette.headerBg,
-                          color: HEADER_FG,
-                          borderLeft: borderStyle,
-                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        {c}
-                      </th>
-                    ))}
-                  </Fragment>
-                )
-              })}
+              ))}
             </tr>
           </thead>
 
@@ -1420,65 +1416,36 @@ function SnapshotMatrix({
                     color: '#000',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
-                    boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                    boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                   }}
                 >
                   {label}
                 </td>
 
-                {showMain && (
-                  <Fragment>
-                    {mainDomainCols.map((c, ci) => {
-                      const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                      const prevRec = prevLookup?.[kw]?.[mainDomain]?.[c]
-                      const crossSnapPrevPos = prevLookup !== null
-                        ? parsePosition(prevRec?.position ?? '')
-                        : undefined
-                      return (
-                        <td
-                          key={`main-cell-${kw}-${c}`}
-                          className="px-2 py-1.5 text-center align-middle min-w-[90px]"
-                          style={{
-                            background: MAIN_CELL_BG,
-                            borderLeft: ci === 0 ? undefined : borderStyle,
-                            borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
-                            borderBottom: borderStyle,
-                          }}
-                        >
-                          {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                        </td>
-                      )
-                    })}
-                  </Fragment>
-                )}
-
-                {/* BP blocks */}
-                {bpDomains.map((bp, bpIdx) => {
-                  const dk = bp.toLowerCase()
-                  const bpCols = domainCountries.get(dk) ?? []
-                  const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                  return bpCols.map((c, ci) => {
-                    const rec = lookup?.[kw]?.[dk]?.[c]
-                    const prevRec = prevLookup?.[kw]?.[dk]?.[c]
+                {groups.map((g, gi) =>
+                  visibleCountries.map((c, ci) => {
+                    const rec = lookup?.[kw]?.[g.dk]?.[c]
+                    const prevRec = prevLookup?.[kw]?.[g.dk]?.[c]
                     const crossSnapPrevPos = prevLookup !== null
                       ? parsePosition(prevRec?.position ?? '')
                       : undefined
                     return (
                       <td
-                        key={`bp-cell-${kw}-${bp}-${c}`}
-                        className="px-2 py-1.5 text-center align-middle"
+                        key={`grp-cell-${kw}-${g.dk}-${c}`}
+                        className={`px-2 py-1.5 text-center align-middle ${g.isMain ? 'min-w-[90px]' : ''}`}
                         style={{
-                          background: palette.cellBg,
-                          borderLeft: borderStyle,
-                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
+                          background: g.cellBg,
+                          borderLeft: g.isMain && ci === 0 ? undefined : borderStyle,
+                          borderRight: ci === colsPerGroup - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(gi, ci, 4),
                         }}
                       >
                         {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                       </td>
                     )
                   })
-                })}
+                )}
               </tr>
             ))}
           </tbody>

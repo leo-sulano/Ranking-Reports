@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot, SnapshotMeta } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
+import { PinButton } from '../components/PinButton'
+import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
@@ -28,6 +30,9 @@ const DATE_BAND_FG = '#FFFFFF'
 const HEADER_FG    = '#000000'
 const TABLE_BORDER = '#B0B7BD'
 const STICKY_KW_BG = '#FFFFFF'
+// Fixed column width for pinned LP blocks — sticky offsets must be
+// deterministic, matching the 90px min-width the country columns use.
+const PIN_COL_W    = 90
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, import('../types').RankingRecord>>>
@@ -251,6 +256,10 @@ function BrandView({
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [showAllSnapshots, setShowAllSnapshots] = useState(false)
 
+  // Pinned LP blocks — shared across every snapshot matrix on the page,
+  // persisted per brand.
+  const [pinnedDomains, togglePinnedDomain] = usePinnedGroups(`lp-${brand.name}`)
+
   const [statsFilter, setStatsFilter] = useState<string>(
     () => searchParams.get('date') ?? 'all',
   )
@@ -453,6 +462,8 @@ function BrandView({
                       kwFilter={kwFilter}
                       cardFilter={cardFilter}
                       isLatest={snap.id === latestSnap?.id}
+                      pinnedDomains={pinnedDomains}
+                      onTogglePin={togglePinnedDomain}
                     />
                   ))}
                   {hiddenCount > 0 && (
@@ -759,6 +770,8 @@ function SnapshotMatrix({
   kwFilter,
   cardFilter,
   isLatest,
+  pinnedDomains,
+  onTogglePin,
 }: {
   snapshot: Snapshot
   lpDomains: string[]
@@ -767,10 +780,13 @@ function SnapshotMatrix({
   kwFilter: string
   cardFilter: CardFilterKey | null
   isLatest: boolean
+  pinnedDomains: string[]
+  onTogglePin: (domainKey: string) => void
 }) {
   const scrollRef      = useRef<HTMLDivElement>(null)
   const keywordColRef  = useRef<HTMLTableCellElement>(null)
-  const [scrollRightPad, setScrollRightPad] = useState(0)
+  // Measured keyword-column width — pinned LP blocks stick right after it.
+  const [kwW, setKwW] = useState(120)
 
   const lpPaletteIndex = (lp: string) => {
     const idx = allLpDomains.findIndex((d) => d.toLowerCase() === lp.toLowerCase())
@@ -778,16 +794,8 @@ function SnapshotMatrix({
   }
 
   useEffect(() => {
-    const scrollEl = scrollRef.current
-    const kwEl     = keywordColRef.current
-    if (!scrollEl || !kwEl) return
-    const rows  = scrollEl.querySelectorAll('thead tr')
-    const lastTh = rows.length >= 2
-      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
-      : null
-    if (!lastTh) return
-    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
+    const kwEl = keywordColRef.current
+    if (kwEl) setKwW(kwEl.offsetWidth)
   })
 
   useEffect(() => {
@@ -807,6 +815,39 @@ function SnapshotMatrix({
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const colsPerBlock = visibleCountries.length
+
+  // ── LP blocks, pinned ones first — pinned blocks freeze beside the
+  //    keyword column. ──
+  const orderedLpDomains = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    const pinned = pinnedLower
+      .map((d) => lpDomains.find((lp) => lp.toLowerCase() === d))
+      .filter((lp): lp is string => lp != null)
+    return [...pinned, ...lpDomains.filter((lp) => !pinnedLower.includes(lp.toLowerCase()))]
+  }, [lpDomains, pinnedDomains])
+  const pinnedCount = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    return orderedLpDomains.filter((lp) => pinnedLower.includes(lp.toLowerCase())).length
+  }, [orderedLpDomains, pinnedDomains])
+
+  const pinStyle = (blockPos: number, colIdx: number, z: number): CSSProperties =>
+    blockPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + (blockPos * colsPerBlock + colIdx) * PIN_COL_W,
+          zIndex: z,
+          width: PIN_COL_W, minWidth: PIN_COL_W, maxWidth: PIN_COL_W,
+        }
+      : {}
+  const pinHeaderStyle = (blockPos: number): CSSProperties =>
+    blockPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + blockPos * colsPerBlock * PIN_COL_W,
+          zIndex: 6,
+          maxWidth: colsPerBlock * PIN_COL_W,
+        }
+      : {}
 
   const keywords = useMemo(() => {
     const seen = new Set<string>()
@@ -879,8 +920,7 @@ function SnapshotMatrix({
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full"
-               style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — LP domain block label */}
           <thead>
@@ -898,7 +938,7 @@ function SnapshotMatrix({
               >
                 Keyword
               </th>
-              {lpDomains.map((lp, idx) => {
+              {orderedLpDomains.map((lp, li) => {
                 const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <th
@@ -910,9 +950,13 @@ function SnapshotMatrix({
                       color: HEADER_FG,
                       borderRight: borderStyle,
                       borderBottom: borderStyle,
+                      ...pinHeaderStyle(li),
                     }}
                   >
-                    LP — <span>{lp}</span>
+                    <span className="inline-flex items-center gap-1.5 max-w-full">
+                      <span className="truncate">LP — {lp}</span>
+                      <PinButton pinned={li < pinnedCount} onToggle={() => onTogglePin(lp.toLowerCase())} />
+                    </span>
                   </th>
                 )
               })}
@@ -920,7 +964,7 @@ function SnapshotMatrix({
 
             {/* Row 2 — country sub-header */}
             <tr>
-              {lpDomains.map((lp, idx) => {
+              {orderedLpDomains.map((lp, li) => {
                 const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <Fragment key={`lp-sub-${lp}`}>
@@ -931,9 +975,10 @@ function SnapshotMatrix({
                         style={{
                           background: palette.headerBg,
                           color: HEADER_FG,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderLeft: borderStyle,
                           borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(li, ci, 6),
                         }}
                       >
                         {c}
@@ -960,7 +1005,7 @@ function SnapshotMatrix({
                   {label}
                 </td>
 
-                {lpDomains.map((lp, idx) => {
+                {orderedLpDomains.map((lp, li) => {
                   const dk = lp.toLowerCase()
                   const palette = LP_PALETTE[lpPaletteIndex(lp)]
                   return visibleCountries.map((c, ci) => {
@@ -971,9 +1016,10 @@ function SnapshotMatrix({
                         className="px-2 py-1.5 text-center align-middle min-w-[90px]"
                         style={{
                           background: palette.cellBg,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderLeft: borderStyle,
                           borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(li, ci, 4),
                         }}
                       >
                         {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
