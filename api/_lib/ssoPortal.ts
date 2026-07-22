@@ -25,7 +25,7 @@ export async function verifyPortalAssertion(
     issuer: opts.issuer,
     audience: opts.audience,
   })
-  const email = typeof payload.email === 'string' ? payload.email : ''
+  const email = (typeof payload.email === 'string' ? payload.email : '').trim()
   if (!email) throw new Error('Portal token has no email claim')
   return { email }
 }

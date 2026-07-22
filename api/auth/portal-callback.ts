@@ -9,6 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const token = typeof req.query.token === 'string' ? req.query.token : undefined
     if (!token) {
+      console.error('[sso] missing token')
       res.redirect(302, `${origin}/?error=sso`)
       return
     }
@@ -20,10 +21,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const SUPABASE_SERVICE_ROLE_KEY = requireEnv(process.env, 'SUPABASE_SERVICE_ROLE_KEY')
 
     const jwks = createRemoteJWKSet(new URL(PORTAL_JWKS_URL))
-    const { email } = await verifyPortalAssertion(token, jwks, {
-      issuer: PORTAL_ISSUER,
-      audience: SSO_AUDIENCE,
-    })
+    let email: string
+    try {
+      const assertion = await verifyPortalAssertion(token, jwks, {
+        issuer: PORTAL_ISSUER,
+        audience: SSO_AUDIENCE,
+      })
+      email = assertion.email
+    } catch (err) {
+      console.error('[sso] token verification failed', err)
+      res.redirect(302, `${origin}/?error=sso`)
+      return
+    }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -35,6 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       options: { redirectTo: `${origin}/` },
     })
     if (linkErr || !link?.properties?.action_link || !link.user) {
+      console.error('[sso] generateLink failed', linkErr)
       res.redirect(302, `${origin}/?error=sso`)
       return
     }
@@ -43,12 +53,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('user_access')
       .upsert({ user_id: link.user.id, email, status: 'approved' }, { onConflict: 'user_id' })
     if (upsertErr) {
+      console.error('[sso] user_access upsert failed', upsertErr)
       res.redirect(302, `${origin}/?error=sso`)
       return
     }
 
     res.redirect(302, link.properties.action_link)
-  } catch {
+  } catch (err) {
+    console.error('[sso] unexpected error', err)
     res.redirect(302, `${origin}/?error=sso`)
   }
 }

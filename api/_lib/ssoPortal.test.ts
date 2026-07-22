@@ -82,4 +82,12 @@ describe('verifyPortalAssertion', () => {
       'Portal token has no email claim'
     )
   })
+
+  it('rejects a token signed by a key not in the JWKS', async () => {
+    const { jwks } = await buildTestJwks()
+    const { privateKey: otherPrivateKey } = await generateKeyPair('RS256', { extractable: true })
+    const token = await sign(otherPrivateKey, { email: 'user@example.com' })
+
+    await expect(verifyPortalAssertion(token, jwks, { issuer: ISSUER, audience: AUDIENCE })).rejects.toThrow()
+  })
 })
