@@ -1448,7 +1448,7 @@ const CARD_MODAL_ACCENTS: Record<CardFilterKey, string> = {
   notRanking: '#64748B',
 }
 
-type ModalEntry = { keyword: string; country: string; position: string; change: string }
+type ModalEntry = { keyword: string; country: string; position: string; change: string; prevPos: number | 'NR' | null }
 
 function StatsCardModal({
   card,
@@ -1498,15 +1498,20 @@ function StatsCardModal({
       const kwMap = map.get(r.domain)!
       const kl = r.keyword.toLowerCase()
       if (!kwMap.has(kl)) kwMap.set(kl, [])
+      const cc = COUNTRY_LABELS[r.country] ?? r.country.toUpperCase()
+      const prevPos = prevPosMap
+        ? prevPosMap.get(`${kl}|${r.domain.toLowerCase()}|${cc}`) ?? null
+        : null
       kwMap.get(kl)!.push({
         keyword: r.keyword,
-        country: COUNTRY_LABELS[r.country] ?? r.country.toUpperCase(),
+        country: cc,
         position: r.position,
         change: r.change ?? '',
+        prevPos,
       })
     }
     return map
-  }, [filtered])
+  }, [filtered, prevPosMap])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -1594,15 +1599,36 @@ function StatsCardModal({
                           <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
                             {sorted.map((entry, i) => {
                               const p = parsePosition(entry.position)
-                              const posDisplay = typeof p === 'number' ? `#${p}` : 'NR'
+                              const prev = entry.prevPos
+
+                              const positionNode = (() => {
+                                if (prev === null) {
+                                  return <span style={{ color: accent }}>{typeof p === 'number' ? `#${p}` : 'NR'}</span>
+                                }
+                                if (prev === p || (prev === 'NR' && p === 'NR')) {
+                                  return <span style={{ color: '#000000' }}>{typeof p === 'number' ? p : 'NR'}</span>
+                                }
+                                const improved = p !== 'NR' && (prev === 'NR' || (typeof prev === 'number' && typeof p === 'number' && prev > p))
+                                const dirColor = improved ? '#15803D' : '#B91C1C'
+                                const arrow = improved ? '↑' : '↓'
+                                const curDisplay = typeof p === 'number' ? p : 'NR'
+                                const prevDisplay = typeof prev === 'number' ? prev : 'NR'
+                                return (
+                                  <>
+                                    <span style={{ color: dirColor }}>{curDisplay} {arrow}</span>{' '}
+                                    <span style={{ color: '#000000' }}>{prevDisplay}</span>
+                                  </>
+                                )
+                              })()
+
                               return (
                                 <span
                                   key={i}
                                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
-                                  style={{ background: accent + '18', color: accent }}
+                                  style={{ background: accent + '18' }}
                                 >
                                   <span className="font-normal" style={{ color: '#94A3B8' }}>{entry.country}</span>
-                                  <span>{posDisplay}</span>
+                                  {positionNode}
                                 </span>
                               )
                             })}
