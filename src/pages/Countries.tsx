@@ -22,7 +22,7 @@ const MAIN_HEADER_BG = '#B4A7D6'
 const MAIN_CELL_BG   = '#D9D2E9'
 const TABLE_BORDER   = '#B0B7BD'
 const STICKY_KW_BG   = '#FFFFFF'
-const DATE_BAND_BG   = '#5894CD'
+const DATE_BAND_BG   = 'var(--band-date)'
 const DATE_BAND_FG   = '#FFFFFF'
 const HEADER_FG      = '#000000'
 

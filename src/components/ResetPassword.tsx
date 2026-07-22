@@ -143,7 +143,7 @@ export function ResetPassword() {
             />
 
             {error && (
-              <p className="mb-4 text-[12px] text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[9px] px-3 py-2">
+              <p className="mb-4 text-[12px] text-[var(--neg)] bg-[var(--neg-surface)] border border-[var(--neg-border)] rounded-[9px] px-3 py-2">
                 {error}
               </p>
             )}

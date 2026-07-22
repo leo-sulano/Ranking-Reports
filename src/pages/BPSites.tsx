@@ -28,7 +28,7 @@ const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
   { headerBg: '#C27BA0', cellBg: '#EAD1DC' }, // BP #4 — light magenta 2 / 3
 ]
 
-const DATE_BAND_BG  = '#5894CD'
+const DATE_BAND_BG  = 'var(--band-date)'
 const DATE_BAND_FG  = '#FFFFFF'
 const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
@@ -621,7 +621,7 @@ function BrandView({
 
             {posFilter !== 'all' && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold"
-                style={{ background: '#EEF2FF', borderColor: '#C7D2FE', color: '#4338CA' }}>
+                style={{ background: 'var(--info-surface)', borderColor: 'var(--info-border)', color: 'var(--info)' }}>
                 <span>
                   {posFilter === 'p1' ? 'P1 only' : posFilter === 'top3' ? 'Top-3 only' : 'Top-10 only'}
                 </span>
@@ -1467,8 +1467,8 @@ const CARD_MODAL_LABELS: Record<CardFilterKey, string> = {
 
 const CARD_MODAL_ACCENTS: Record<CardFilterKey, string> = {
   top3: '#0F172A',
-  improved: '#10B981',
-  dropped: '#F43F5E',
+  improved: 'var(--pos)',
+  dropped: 'var(--neg)',
   unchanged: '#94A3B8',
   notRanking: '#64748B',
 }
@@ -1634,7 +1634,7 @@ function StatsCardModal({
                                   return <span style={{ color: '#000000' }}>{typeof p === 'number' ? p : 'NR'}</span>
                                 }
                                 const improved = p !== 'NR' && (prev === 'NR' || (typeof prev === 'number' && typeof p === 'number' && prev > p))
-                                const dirColor = improved ? '#15803D' : '#B91C1C'
+                                const dirColor = improved ? 'var(--pos)' : 'var(--neg)'
                                 const arrow = improved ? '↑' : '↓'
                                 const curDisplay = typeof p === 'number' ? p : 'NR'
                                 const prevDisplay = typeof prev === 'number' ? prev : 'NR'
@@ -1693,8 +1693,8 @@ function ChartRow({
     >
       <span className="text-[var(--text-2)] flex-1 leading-snug">{condition}</span>
       <span
-        className="px-2.5 py-[3px] rounded-full text-[10px] font-bold text-white whitespace-nowrap shrink-0"
-        style={{ background: badgeColor }}
+        className="px-2.5 py-[3px] rounded-full text-[10px] font-bold whitespace-nowrap shrink-0"
+        style={{ background: badgeColor, color: 'var(--surface)' }}
       >
         {badge}
       </span>
@@ -1785,9 +1785,9 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
                 </>
               }
               badge="IMPROVED ↑"
-              badgeColor="#10B981"
-              accent="#F0FDF4"
-              border="#BBF7D0"
+              badgeColor="var(--pos)"
+              accent="var(--pos-surface)"
+              border="var(--pos-border)"
             />
             <ChartRow
               condition={
@@ -1797,9 +1797,9 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
                 </>
               }
               badge="DROPPED ↓"
-              badgeColor="#F43F5E"
-              accent="#FFF1F2"
-              border="#FECDD3"
+              badgeColor="var(--neg)"
+              accent="var(--neg-surface)"
+              border="var(--neg-border)"
             />
             <ChartRow
               condition={
@@ -1809,7 +1809,7 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
                 </>
               }
               badge="UNCHANGED"
-              badgeColor="#0F172A"
+              badgeColor="var(--btn-ink)"
             />
           </div>
         </div>

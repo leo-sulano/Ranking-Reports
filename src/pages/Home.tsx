@@ -193,7 +193,7 @@ export function Home() {
       <div className="flex-1 overflow-auto flex items-center justify-center bg-[var(--hover)]">
         <div className="text-center max-w-[280px]" style={{ animation: 'fadeUp 0.4s ease both' }}>
           <div className="w-16 h-16 rounded-2xl bg-[var(--surface)] border border-[var(--border-2)] shadow-sm flex items-center justify-center mx-auto mb-5">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D0D0CA" strokeWidth="1.5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.5">
               <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
             </svg>
           </div>
@@ -234,7 +234,7 @@ export function Home() {
           {/* Brands — blue card */}
           <div
             className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
-            style={{ background: '#1c9fe0' }}
+            style={{ background: 'var(--brand-blue-deep)' }}
             onClick={() => setMetricModal('brands')}
           >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-[var(--surface)]" />
@@ -262,7 +262,7 @@ export function Home() {
                     <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)] w-10">#</th>
                     <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)]">Brand</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)]">P1</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--neg)]">Top-3</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--navy-text)]">Top-10</th>
                   </tr>
                 </thead>
@@ -294,9 +294,9 @@ export function Home() {
                             {row.rankChange === null || row.rankChange === 0 ? (
                               <span className="font-mono text-[9px] text-[var(--border-strong)]">—</span>
                             ) : row.rankChange > 0 ? (
-                              <span className="font-mono text-[9px] font-semibold text-[#1A7A3A]">↑{row.rankChange}</span>
+                              <span className="font-mono text-[9px] font-semibold text-[var(--pos)]">↑{row.rankChange}</span>
                             ) : (
-                              <span className="font-mono text-[9px] font-semibold text-[#CC0000]">↓{Math.abs(row.rankChange)}</span>
+                              <span className="font-mono text-[9px] font-semibold text-[var(--neg)]">↓{Math.abs(row.rankChange)}</span>
                             )}
                           </div>
                         </td>
@@ -319,7 +319,7 @@ export function Home() {
                           {row.p1 || <span className="text-[var(--border-strong)] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--neg)] cursor-pointer hover:text-[var(--neg)] hover:underline"
                           onClick={() => row.t3 > 0 && setKwModal({ brand: row.brand, tier: 'top3', records: row.records })}
                           title={row.t3 > 0 ? 'View Top-3 keywords' : undefined}
                         >
@@ -349,18 +349,18 @@ export function Home() {
             <div className="px-5 py-4 space-y-4">
               <MoverGroup
                 label="Climbers"
-                tint="#1A7A3A"
-                bgTint="#F0FAF4"
-                borderTint="#BBE8CC"
+                tint="var(--pos)"
+                bgTint="var(--pos-surface)"
+                borderTint="var(--pos-border)"
                 rows={movers.climbers}
                 empty="No upward movement."
               />
               <div className="h-px bg-[var(--border-3)]" />
               <MoverGroup
                 label="Droppers"
-                tint="#CC0000"
-                bgTint="#FFF5F5"
-                borderTint="#FFCCCC"
+                tint="var(--neg)"
+                bgTint="var(--neg-surface)"
+                borderTint="var(--neg-border)"
                 rows={movers.droppers}
                 empty="No downward movement."
               />
@@ -585,9 +585,9 @@ function KeywordModal({
     })
 
   function tierBadgeStyle() {
-    if (limit === 1)  return { bg: '#EEF0F9', color: '#1e2a6e' }
-    if (limit <= 3)   return { bg: '#E8F6FD', color: '#1c9fe0' }
-    return                   { bg: '#F5F7FB', color: '#136a99' }
+    if (limit === 1)  return { bg: 'var(--info-surface)', color: 'var(--navy-text)' }
+    if (limit <= 3)   return { bg: 'var(--info-surface)', color: 'var(--info)' }
+    return                   { bg: 'var(--info-surface)', color: 'var(--info)' }
   }
   const headerBadge = tierBadgeStyle()
 
@@ -662,7 +662,7 @@ function KeywordModal({
                           <span
                             key={`${country}-${pos}`}
                             className="inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                            style={{ background: '#E8F6FD', color: '#136a99' }}
+                            style={{ background: 'var(--info-surface)', color: 'var(--info)' }}
                           >
                             {country} <span className="opacity-70">#</span>{pos}
                           </span>

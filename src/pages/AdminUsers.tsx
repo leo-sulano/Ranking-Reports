@@ -129,7 +129,7 @@ export function AdminUsers() {
                     <button
                       onClick={() => handleDeleteUser(r.userId, r.email)}
                       disabled={busyUserId === r.userId}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#EF4444] border border-[#FECACA] hover:bg-[#FEF2F2] disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--neg)] border border-[var(--neg-border)] hover:bg-[var(--neg-surface)] disabled:opacity-50 transition-colors"
                     >
                       <Trash2 size={13} strokeWidth={2.25} />
                       Delete
@@ -156,7 +156,7 @@ export function AdminUsers() {
                   <div className="text-[13px] font-semibold text-[var(--ink)] flex items-center gap-2">
                     {r.email}
                     {r.isAdmin && (
-                      <span className="text-[9px] uppercase tracking-wide font-bold text-white bg-[#8B5CF6] rounded px-1.5 py-0.5">
+                      <span className="text-[9px] uppercase tracking-wide font-bold text-white bg-[var(--brand-blue-deep)] rounded px-1.5 py-0.5">
                         Admin
                       </span>
                     )}
@@ -189,7 +189,7 @@ export function AdminUsers() {
                     <button
                       onClick={() => handleDeleteUser(r.userId, r.email)}
                       disabled={busyUserId === r.userId}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#EF4444] border border-[#FECACA] hover:bg-[#FEF2F2] disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--neg)] border border-[var(--neg-border)] hover:bg-[var(--neg-surface)] disabled:opacity-50 transition-colors"
                     >
                       <Trash2 size={13} strokeWidth={2.25} />
                       Delete
