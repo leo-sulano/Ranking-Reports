@@ -23,6 +23,16 @@ export interface Snapshot {
   records: RankingRecord[]
 }
 
+// Lightweight snapshot identity — no records. Fetched in full on mount so the
+// UI knows how much history exists without downloading it; used to drive
+// "load older history" affordances once only a recent window is hydrated.
+export interface SnapshotMeta {
+  id:          string
+  category:    CategoryId
+  rawDate:     string
+  displayDate: string
+}
+
 export interface Brand {
   name: string
   abbr: string
@@ -37,7 +47,8 @@ export interface Brand {
 export type SortDir = 'asc' | 'desc'
 
 export interface AppState {
-  snapshots: Snapshot[]
+  snapshots: Snapshot[]         // hydrated (records included) — bounded recent window + any on-demand-loaded older ones
+  snapshotMeta: SnapshotMeta[]  // every snapshot that exists, metadata only
   activeSnapshotId: string | null  // null = most recent
 }
 
@@ -103,6 +114,19 @@ export interface RROutletContext {
   // Consumers must not make an admin-gated redirect decision while this is
   // true, to avoid a false redirect flash for a real admin on page load.
   accessLoading: boolean
+  // True until the initial bounded-recent-window snapshot fetch resolves.
+  // Only routes that read `snapshots` (Home, BPSites, LPSites) should block
+  // on this — everything else renders regardless.
+  snapshotsLoading: boolean
+  // Every snapshot that exists, metadata only (no records) — lets pages know
+  // how much older history is available to load on demand.
+  snapshotMeta: SnapshotMeta[]
+  // Fetches the next batch of not-yet-loaded older snapshots for a category
+  // and merges them into `snapshots`. Safe to call repeatedly; a no-op once
+  // everything for that category is loaded.
+  onLoadOlderSnapshots: (category: CategoryId) => Promise<void>
+  loadingOlderSnapshots: boolean
+  loadOlderError: string | null
 }
 
 // FTD tracking — brand+month shaped, independent of the Snapshot model above.

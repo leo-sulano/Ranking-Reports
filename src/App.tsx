@@ -1,17 +1,20 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
+import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
+import { Routes, Route, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
 import { ResetPassword } from './components/ResetPassword'
 import { useAuth, getWriteGate } from './lib/useAuth'
 import { LoginModal } from './components/LoginModal'
-import type { AppState, RROutletContext, RankingRecord, Snapshot, EditCellMatcher, EditCellPatch } from './types'
+import type { AppState, RROutletContext, RankingRecord, Snapshot, SnapshotMeta, EditCellMatcher, EditCellPatch } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
 import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from './lib/brands'
 import {
   summarizeRecords, formatDisplayDate, applyCarryForward,
 } from './lib/parser'
-import { loadSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields } from './lib/storage'
+import {
+  loadRecentSnapshots, loadOlderSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields,
+  DEFAULT_RECENT_PER_CATEGORY,
+} from './lib/storage'
 import { logActivity } from './lib/activityLog'
 
 import { Sidebar }       from './components/Sidebar'
@@ -37,6 +40,7 @@ import { Log }          from './pages/Log'
 
 const INITIAL: AppState = {
   snapshots:         [],
+  snapshotMeta:      [],
   activeSnapshotId:  null,
 }
 
@@ -53,6 +57,8 @@ function Layout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [loadOlderError, setLoadOlderError] = useState<string | null>(null)
   const { session, modalOpen, requireAuth, openLogin, cancelAuth, isAdmin, isApproved, accessLoading } = useAuth()
   const writeGate = getWriteGate(session, isApproved, accessLoading)
 
@@ -66,17 +72,20 @@ function Layout() {
   }, [])
 
   // ── Initial load from Supabase ────────────────────────────────────────────
+  // Bounded to the most recent DEFAULT_RECENT_PER_CATEGORY snapshots per
+  // category — older history is fetched on demand via onLoadOlderSnapshots.
   useEffect(() => {
     let cancelled = false
-    loadSnapshots()
-      .then((snaps) => {
+    loadRecentSnapshots()
+      .then(({ meta, snapshots }) => {
         if (cancelled) return
         // Store the RAW snapshots — carry-forward is applied in a useMemo
         // derived from this state, so edits can re-propagate downstream.
         setState((s) => ({
           ...s,
-          snapshots:        snaps,
-          activeSnapshotId: snaps[0]?.id ?? null,
+          snapshots:        snapshots,
+          snapshotMeta:     meta,
+          activeSnapshotId: snapshots[0]?.id ?? null,
         }))
         setLoading(false)
       })
@@ -88,6 +97,29 @@ function Layout() {
       })
     return () => { cancelled = true }
   }, [addToast])
+
+  // On-demand hydration of older, not-yet-loaded snapshots for one category.
+  // No-op once everything for that category is already loaded.
+  const onLoadOlderSnapshots = useCallback(async (category: CategoryId) => {
+    const loadedIds = new Set(state.snapshots.map((s) => s.id))
+    const toLoad = state.snapshotMeta
+      .filter((m) => m.category === category && !loadedIds.has(m.id))
+      .slice(0, DEFAULT_RECENT_PER_CATEGORY)
+    if (toLoad.length === 0) return
+
+    setLoadingOlder(true)
+    setLoadOlderError(null)
+    try {
+      const older = await loadOlderSnapshots(toLoad)
+      setState((s) => ({ ...s, snapshots: [...s.snapshots, ...older] }))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setLoadOlderError(msg)
+      addToast(`Failed to load older history: ${msg}`, 'error')
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [state.snapshots, state.snapshotMeta, addToast])
 
   // Derived view: snapshots with GSV / SV / AFF carry-forward applied. Kept
   // separate from raw state so live edits re-propagate downstream.
@@ -130,10 +162,16 @@ function Layout() {
       const next = [newSnap, ...filtered].sort((a, b) =>
         (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0),
       )
+      const metaFiltered = s.snapshotMeta.filter((m) => !(m.category === category && m.rawDate === rawDate))
+      const nextMeta = [
+        { id: newSnap.id, category: newSnap.category, rawDate: newSnap.rawDate, displayDate: newSnap.displayDate },
+        ...metaFiltered,
+      ].sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
       // Carry-forward is applied in the derived useMemo; state stays raw.
       return {
         ...s,
         snapshots:        next,
+        snapshotMeta:     nextMeta,
         activeSnapshotId: s.activeSnapshotId ?? newId,
       }
     })
@@ -224,7 +262,11 @@ function Layout() {
       addToast(`Delete failed: ${msg}`, 'error')
       return
     }
-    setState((s) => ({ ...s, snapshots: s.snapshots.filter((sn) => sn.id !== existing.id) }))
+    setState((s) => ({
+      ...s,
+      snapshots:    s.snapshots.filter((sn) => sn.id !== existing.id),
+      snapshotMeta: s.snapshotMeta.filter((m) => m.id !== existing.id),
+    }))
     const snap = await persistOneSnapshot(
       { rawDate: existing.rawDate, records: pendingRecords },
       existing.category,
@@ -328,6 +370,7 @@ function Layout() {
       return {
         ...s,
         snapshots:        nextSnapshots,
+        snapshotMeta:     s.snapshotMeta.filter((m) => m.id !== id),
         activeSnapshotId: s.activeSnapshotId === id ? (nextSnapshots[0]?.id ?? null) : s.activeSnapshotId,
       }
     })
@@ -387,14 +430,11 @@ function Layout() {
     writeGate,
     isAdmin,
     accessLoading,
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#F7F7F5] text-[#ABABAA] font-mono text-[12px] tracking-wider">
-        Loading rankings…
-      </div>
-    )
+    snapshotsLoading:     loading,
+    snapshotMeta:         state.snapshotMeta,
+    onLoadOlderSnapshots,
+    loadingOlderSnapshots: loadingOlder,
+    loadOlderError,
   }
 
   return (
@@ -486,6 +526,22 @@ function Layout() {
   )
 }
 
+// ─── RankingGate ──────────────────────────────────────────────────────────────
+// Wraps only the routes that read snapshots (Home, BPSites, LPSites) so they
+// wait for the initial bounded snapshot fetch. Every other route renders
+// immediately regardless of ranking-data load state.
+function RankingGate({ children }: { children: ReactNode }) {
+  const ctx = useOutletContext<RROutletContext>()
+  if (ctx.snapshotsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-[#ABABAA] font-mono text-[12px] tracking-wider">
+        Loading rankings…
+      </div>
+    )
+  }
+  return <>{children}</>
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export function App() {
@@ -495,13 +551,13 @@ export function App() {
           AuthGate/session state, so it lives outside AuthGate entirely. */}
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<AuthGate><Layout /></AuthGate>}>
-        <Route index element={<Home />} />
-        <Route path="/bp-sites"                          element={<BPSites />} />
-        <Route path="/bp-sites/:brandSlug"               element={<BPSites />} />
-        <Route path="/bp-sites/:brandSlug/:domainFilter" element={<BPSites />} />
-        <Route path="/lp-sites"                          element={<LPSites />} />
-        <Route path="/lp-sites/:brandSlug"               element={<LPSites />} />
-        <Route path="/lp-sites/:brandSlug/:domainFilter" element={<LPSites />} />
+        <Route index element={<RankingGate><Home /></RankingGate>} />
+        <Route path="/bp-sites"                          element={<RankingGate><BPSites /></RankingGate>} />
+        <Route path="/bp-sites/:brandSlug"               element={<RankingGate><BPSites /></RankingGate>} />
+        <Route path="/bp-sites/:brandSlug/:domainFilter" element={<RankingGate><BPSites /></RankingGate>} />
+        <Route path="/lp-sites"                          element={<RankingGate><LPSites /></RankingGate>} />
+        <Route path="/lp-sites/:brandSlug"               element={<RankingGate><LPSites /></RankingGate>} />
+        <Route path="/lp-sites/:brandSlug/:domainFilter" element={<RankingGate><LPSites /></RankingGate>} />
         <Route path="/ftds"             element={<FTDs />} />
         <Route path="/ask-ai"           element={<AskAI />} />
         <Route path="/how-it-works"     element={<HowItWorks />} />

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
+import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot, SnapshotMeta } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
@@ -47,6 +47,10 @@ export function BPSites() {
     () => snapshots.filter((s) => s.category === 'bp-sites'),
     [snapshots],
   )
+  const bpSnapshotMeta = useMemo(
+    () => ctx.snapshotMeta.filter((m) => m.category === 'bp-sites'),
+    [ctx.snapshotMeta],
+  )
   const activeBrand = brandSlug ? (BRAND_BY_SLUG[brandSlug] ?? null) : null
 
   if (activeBrand) {
@@ -55,6 +59,9 @@ export function BPSites() {
         key={`${activeBrand.name}|${domainFilter ?? ''}`}
         brand={activeBrand}
         snapshots={bpSnapshots}
+        snapshotMeta={bpSnapshotMeta}
+        onLoadOlder={() => ctx.onLoadOlderSnapshots('bp-sites')}
+        loadingOlder={ctx.loadingOlderSnapshots}
         domainFilter={domainFilter}
         onBack={() => navigate('/bp-sites')}
         onEditCell={onEditCell}
@@ -200,16 +207,33 @@ function BrandGrid({
 function BrandView({
   brand,
   snapshots,
+  snapshotMeta,
+  onLoadOlder,
+  loadingOlder,
   domainFilter,
   onBack,
   onEditCell,
 }: {
   brand: Brand
   snapshots: Snapshot[]
+  snapshotMeta: SnapshotMeta[]
+  onLoadOlder: () => void
+  loadingOlder: boolean
   domainFilter: string | undefined
   onBack: () => void
   onEditCell: EditCellFn
 }) {
+  // Older history not yet hydrated for this category (snapshotMeta covers
+  // every date; snapshots only the currently-loaded window) — drives the
+  // "load older history" affordances below. Not brand-scoped (snapshotMeta
+  // has no per-brand data), so this is "more history exists", not "this
+  // brand definitely has data in it".
+  const oldestLoadedDate = snapshots.length > 0
+    ? snapshots.reduce((min, s) => (s.rawDate < min ? s.rawDate : min), snapshots[0].rawDate)
+    : null
+  const unloadedOlderCount = oldestLoadedDate === null
+    ? 0
+    : snapshotMeta.filter((m) => m.rawDate < oldestLoadedDate).length
   const navigate = useNavigate()
   const brandDomainSet = useMemo(
     () => new Set(brand.domains.map((d) => d.toLowerCase())),
@@ -471,6 +495,9 @@ function BrandView({
               snapshots={brandSnapshots}
               onChange={handleStatsFilterChange}
               monthly={monthly}
+              unloadedOlderCount={unloadedOlderCount}
+              onLoadOlder={onLoadOlder}
+              loadingOlder={loadingOlder}
             />
           </div>
         )}
@@ -669,6 +696,16 @@ function BrandView({
                       Show {hiddenCount} older snapshot{hiddenCount !== 1 ? 's' : ''}
                     </button>
                   )}
+                  {hiddenCount === 0 && statsFilter === 'all' && unloadedOlderCount > 0 && (
+                    <button
+                      onClick={onLoadOlder}
+                      disabled={loadingOlder}
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      <ChevronDown size={14} />
+                      {loadingOlder ? 'Loading…' : 'Load older snapshots from history'}
+                    </button>
+                  )}
                 </>
               )
             })()}
@@ -707,11 +744,17 @@ function StatsDateFilter({
   snapshots,
   onChange,
   monthly,
+  unloadedOlderCount,
+  onLoadOlder,
+  loadingOlder,
 }: {
   value: string                 // 'all' or snapshot id
   snapshots: Snapshot[]         // already filtered to brand snapshots (newest first)
   onChange: (next: string) => void
   monthly: boolean              // weekly/monthly mode, owned by the parent's toolbar toggle
+  unloadedOlderCount: number    // snapshots that exist in history but aren't hydrated yet
+  onLoadOlder: () => void
+  loadingOlder: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -852,6 +895,17 @@ function StatsDateFilter({
               </>
             )}
           </div>
+          {!query && unloadedOlderCount > 0 && (
+            <button
+              type="button"
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#475569] border-t border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors disabled:opacity-50 disabled:cursor-wait"
+            >
+              <ChevronDown size={12} />
+              {loadingOlder ? 'Loading…' : 'Load older history…'}
+            </button>
+          )}
         </div>
       )}
     </div>
