@@ -65,6 +65,9 @@ function Layout() {
       return next
     })
   }, [])
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem('rr_sidebar_expanded') !== 'false' } catch { return true }
+  })
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -466,6 +469,14 @@ function Layout() {
         onSelectBPBrand={setBPFilterBrand}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
+        expanded={sidebarExpanded}
+        onToggleExpanded={() => {
+          setSidebarExpanded((v) => {
+            const next = !v
+            try { localStorage.setItem('rr_sidebar_expanded', String(next)) } catch { /* ignore */ }
+            return next
+          })
+        }}
         isAdmin={isAdmin}
         writeGate={writeGate}
       />

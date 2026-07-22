@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { CircleHelp, DollarSign, History, Users } from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, CircleHelp, DollarSign, History, Users } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 import type { WriteGate } from '../types'
 
@@ -51,6 +51,8 @@ interface Props {
   onMobileClose?: () => void
   isAdmin: boolean
   writeGate: WriteGate
+  expanded: boolean
+  onToggleExpanded: () => void
 }
 
 export function Sidebar({
@@ -62,6 +64,8 @@ export function Sidebar({
   onMobileClose,
   isAdmin,
   writeGate,
+  expanded,
+  onToggleExpanded,
 }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -83,16 +87,16 @@ export function Sidebar({
   }, [mobileOpen])
 
   function SidebarInner({ isMobile }: { isMobile: boolean }) {
-    const labelCls = isMobile
-      ? 'whitespace-nowrap'
-      : 'whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150'
+    const labelCls = isMobile || expanded
+      ? 'whitespace-nowrap transition-opacity duration-150'
+      : 'whitespace-nowrap opacity-0 transition-opacity duration-150'
 
     return (
       <aside
         className={
           isMobile
             ? 'flex flex-col bg-[var(--surface)] h-full w-[240px] border-r border-[var(--border-2)] overflow-hidden'
-            : 'group absolute top-0 left-0 bottom-0 w-[64px] hover:w-[240px] flex flex-col bg-[var(--surface)] border-r border-[var(--border-2)] overflow-hidden transition-[width] duration-200 ease-out hover:shadow-[8px_0_32px_rgba(0,0,0,0.06)]'
+            : 'flex flex-col bg-[var(--surface)] h-full w-full border-r border-[var(--border-2)] overflow-hidden'
         }
       >
         {/* Logo */}
@@ -126,7 +130,7 @@ export function Sidebar({
               >
                 <span
                   className="w-[18px] flex items-center justify-center shrink-0"
-                  style={{ color: active ? '#1c9fe0' : '#ABABAA' }}
+                  style={{ color: active ? '#1c9fe0' : 'var(--muted-3)' }}
                 >
                   {p.icon}
                 </span>
@@ -144,7 +148,7 @@ export function Sidebar({
         {hasBrandList ? (
           <div className={`flex-1 flex flex-col min-h-0 ${labelCls}`}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ABABAA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
@@ -210,9 +214,20 @@ export function Sidebar({
 
   return (
     <>
-      {/* Desktop — fixed-width placeholder keeps layout stable */}
-      <div className="hidden sm:block w-[64px] shrink-0 h-screen relative z-30">
+      {/* Desktop — width drives the flex layout so content shifts with it */}
+      <div
+        className={`hidden sm:block shrink-0 h-screen relative z-30 transition-[width] duration-200 ease-out ${
+          expanded ? 'w-[240px]' : 'w-[64px]'
+        }`}
+      >
         <SidebarInner isMobile={false} />
+        <button
+          onClick={onToggleExpanded}
+          title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          className="absolute -right-3 top-7 w-6 h-6 flex items-center justify-center rounded-full bg-[var(--surface)] border border-[var(--border-2)] text-[var(--text-2)] shadow-sm hover:text-[var(--navy-text)] hover:border-[#1c9fe0] transition-colors"
+        >
+          {expanded ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
+        </button>
       </div>
 
       {/* Mobile drawer + backdrop */}

@@ -115,7 +115,7 @@ function BrandGrid({
             <button
               key={brand.name}
               onClick={() => onSelect(brand)}
-              className="bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              className="flex flex-col justify-start bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
               <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: c }} />
