@@ -673,3 +673,75 @@ Added a Supabase-backed password reset flow: a "Forgot password?" link in both `
 Added an `activity_log` table with append-only RLS and an `activityLog` client module (`logActivity`, `loadActivityLog`). Wrote a design spec and implementation plan for a new `/log` page that will surface recent write activity, with call sites planned across `App.tsx` and `FTDs.tsx`.
 
 ---
+
+## Task 59: SSO Portal Callback Integration
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw54lbb000404kwwio6ag88
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Wrote the spec for the SSO portal callback endpoint, added portal JWT verification helpers, and shipped the SSO portal callback route. Addressed final-review findings and documented the implementation plan and original reference prompt.
+
+---
+
+## Task 60: Bound Initial Ranking-Data Fetch
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw55d5h000404jjlubj2j2g
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Fixed the initial ranking-data fetch to be bounded, unblocking rendering that was stalled on unbounded loads.
+
+---
+
+## Task 61: Remove Retired .de LP Domains
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw55twl000704jjh7z3lrrp
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Removed retired `.de` LP domains from brand `lpDomains` config to stop tracking dead landing pages.
+
+---
+
+## Task 62: Brand Favicons & Clickable LP Sites Domains
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw573vn000a04jjm81uczna
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Added brand favicons across the UI and made LP Sites domains clickable.
+
+---
+
+## Task 63: Stats Modal - Previous Position Display
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw5azwm000704kwa3p8nshh
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Wrote a design spec and shipped previous-position display with direction color (up/down) in the stats modal.
+
+---
+
+## Task 64: Activity Log - getSession Polish
+
+**Date:** 2026-07-22
+**PMS Task ID:** cmrw5bdjn000a04kwrrt6ln7q
+**Column:** Review/QA
+**Label:** Feature
+**Assignee:** Leo Sulano
+
+Polished `activityLog` to use `getSession` over `getUser` for determining the active user, and fixed spec examples to match the shipped summary wording.
+
+---
