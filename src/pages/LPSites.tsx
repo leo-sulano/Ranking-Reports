@@ -25,7 +25,7 @@ const LP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
   { headerBg: '#A4C2F4', cellBg: '#D9E1F2' }, // light blue 2 / 3
 ]
 
-const DATE_BAND_BG = '#5894CD'
+const DATE_BAND_BG = 'var(--band-date)'
 const DATE_BAND_FG = '#FFFFFF'
 const HEADER_FG    = '#000000'
 const TABLE_BORDER = '#B0B7BD'

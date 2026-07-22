@@ -221,8 +221,8 @@ function UnknownDomainsPanel({
         aria-expanded={open}
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[rgba(244,63,94,0.08)] transition-colors"
       >
-        <AlertCircle size={13} strokeWidth={2.25} className="text-[#F43F5E] shrink-0" />
-        <p className="text-[12px] text-[#F43F5E] leading-snug flex-1">
+        <AlertCircle size={13} strokeWidth={2.25} className="text-[var(--neg)] shrink-0" />
+        <p className="text-[12px] text-[var(--neg)] leading-snug flex-1">
           <span className="font-semibold">
             {total.toLocaleString()} record{total !== 1 ? 's' : ''}
           </span>{' '}
@@ -231,7 +231,7 @@ function UnknownDomainsPanel({
         <ChevronDown
           size={13}
           strokeWidth={2.25}
-          className={`text-[#F43F5E] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+          className={`text-[var(--neg)] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
         />
       </button>
 
@@ -240,10 +240,10 @@ function UnknownDomainsPanel({
           {domains.map((u, i) => (
             <div
               key={u.domain}
-              className={`flex items-center justify-between px-3 py-1.5 ${i > 0 ? 'border-t border-[#FEE2E2]' : ''}`}
+              className={`flex items-center justify-between px-3 py-1.5 ${i > 0 ? 'border-t border-[var(--neg-surface)]' : ''}`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                <Globe size={11} strokeWidth={2} className="text-[#F43F5E] shrink-0" />
+                <Globe size={11} strokeWidth={2} className="text-[var(--neg)] shrink-0" />
                 <span className="font-mono text-[12px] text-[var(--ink)] truncate">{u.domain}</span>
               </div>
               <span className="font-mono text-[11px] text-[var(--muted)] shrink-0">

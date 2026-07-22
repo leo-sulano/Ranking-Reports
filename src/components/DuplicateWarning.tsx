@@ -19,11 +19,11 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
       className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-[60] flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-[var(--surface)] border border-[rgba(244,63,94,0.4)] rounded-[14px] w-[440px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease]">
+      <div className="bg-[var(--surface)] border border-[var(--neg-border)] rounded-[14px] w-[440px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-[modalIn_0.2s_ease]">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--border)]">
-          <div className="w-9 h-9 rounded-full bg-[rgba(244,63,94,0.15)] border border-[rgba(244,63,94,0.4)] flex items-center justify-center text-[#F43F5E] text-[18px] font-bold">
+          <div className="w-9 h-9 rounded-full bg-[var(--neg-surface)] border border-[var(--neg-border)] flex items-center justify-center text-[var(--neg)] text-[18px] font-bold">
             !
           </div>
           <div>
@@ -58,7 +58,7 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
           </div>
 
           <p className="text-[12px] text-[var(--muted)] leading-relaxed">
-            To re-import, delete the existing snapshot first — or click <span className="text-[#F43F5E] font-semibold">Delete &amp; replace</span> below.
+            To re-import, delete the existing snapshot first — or click <span className="text-[var(--neg)] font-semibold">Delete &amp; replace</span> below.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
             onClick={onDelete}
             disabled={writeGate.disabled}
             title={writeGate.title}
-            className="px-4 py-1.5 bg-[#F43F5E] text-white rounded-md text-[12px] font-bold hover:bg-[#E11D48] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 bg-[var(--neg)] text-white rounded-md text-[12px] font-bold hover:bg-[var(--neg)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Delete &amp; replace
           </button>

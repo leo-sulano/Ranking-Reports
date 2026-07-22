@@ -13,9 +13,9 @@ function ToastEl({ toast, onRemove }: { toast: ToastItem; onRemove: (id: string)
   }, [toast.id, toast.type, onRemove])
 
   const accent =
-    toast.type === 'success' ? '#10B981'
-    : toast.type === 'warning' ? '#F59E0B'
-    : '#F43F5E'
+    toast.type === 'success' ? 'var(--pos)'
+    : toast.type === 'warning' ? 'var(--warn)'
+    : 'var(--neg)'
 
   return (
     <div

@@ -199,8 +199,8 @@ export function UploadModal({ onImport, onClose }: Props) {
           {/* Error */}
           {error && (
             <div className="flex items-start gap-2 bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.3)] rounded-md px-3 py-2.5">
-              <AlertCircle size={14} strokeWidth={2.25} className="text-[#F43F5E] shrink-0 mt-0.5" />
-              <p className="text-[12px] text-[#F43F5E] leading-snug">{error}</p>
+              <AlertCircle size={14} strokeWidth={2.25} className="text-[var(--neg)] shrink-0 mt-0.5" />
+              <p className="text-[12px] text-[var(--neg)] leading-snug">{error}</p>
             </div>
           )}
         </div>

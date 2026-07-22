@@ -56,8 +56,8 @@ export function StatsRow({ top3, improved, dropped, notRanking, unchanged, activ
   return (
     <div className="grid grid-cols-3 sm:grid-cols-5 gap-[5px] px-3 sm:px-7 shrink-0">
       <StatCard label="Top 3"       value={top3}       accent="var(--ink)" sub="positions"  active={activeCard === 'top3'}       onClick={() => toggle('top3')} />
-      <StatCard label="Improved"    value={improved}   accent="#10B981" sub="moved up"   active={activeCard === 'improved'}   onClick={() => toggle('improved')} />
-      <StatCard label="Dropped"     value={dropped}    accent="#F43F5E" sub="moved down" active={activeCard === 'dropped'}    onClick={() => toggle('dropped')} />
+      <StatCard label="Improved"    value={improved}   accent="var(--pos)" sub="moved up"   active={activeCard === 'improved'}   onClick={() => toggle('improved')} />
+      <StatCard label="Dropped"     value={dropped}    accent="var(--neg)" sub="moved down" active={activeCard === 'dropped'}    onClick={() => toggle('dropped')} />
       <StatCard label="Unchanged"   value={unchanged}  accent="#94A3B8" sub="flat"       active={activeCard === 'unchanged'}  onClick={() => toggle('unchanged')} />
       <StatCard label="Not Ranking" value={notRanking} accent="#64748B" sub="records"    active={activeCard === 'notRanking'} onClick={() => toggle('notRanking')} />
     </div>

@@ -104,7 +104,7 @@ export function AssistantPanel({
           </div>
         ))}
         {error && (
-          <div className="text-[12px] text-[#EF4444] bg-[#FEF2F2] border border-[#FECACA] rounded-[8px] px-3 py-2">
+          <div className="text-[12px] text-[var(--neg)] bg-[var(--neg-surface)] border border-[var(--neg-border)] rounded-[8px] px-3 py-2">
             {error}
           </div>
         )}
@@ -147,7 +147,7 @@ export function AssistantPanel({
             aria-label="Click to speak"
             className={`rounded-[8px] p-2 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
               recording
-                ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
+                ? 'bg-[var(--neg-surface)] text-[var(--neg)] animate-pulse'
                 : 'bg-[var(--surface-2)] text-[var(--muted-2)] hover:text-[var(--ink)] hover:bg-[var(--surface-3)]'
             }`}
           >
@@ -161,7 +161,7 @@ export function AssistantPanel({
         ) : recording ? (
           <button
             onClick={stopListening}
-            className="bg-[#EF4444] text-white rounded-[8px] p-2 animate-pulse"
+            className="bg-[var(--neg)] text-white rounded-[8px] p-2 animate-pulse"
             aria-label="Stop and send"
           >
             <Send size={16} />

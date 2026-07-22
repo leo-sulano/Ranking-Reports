@@ -12,53 +12,105 @@
    The spreadsheet-style data matrices (BP/LP ranking tables, Reg & FTD
    matrix) intentionally keep their own hardcoded light palette — they read
    like an embedded Google Sheet in both themes. */
+/* Color System v1 — anchored on the royal/navy blue. Values from
+   design-audit/design_handoff_color_system/tokens.css (AA-checked). */
 :root {
-  --page:          #F7F7F5;  /* app background            */
-  --grid-line:     #E5E4DF;  /* background grid overlay   */
+  /* Background & surfaces */
+  --page:          #F5F7FA;  /* app background            */
+  --grid-line:     #E7ECF3;  /* background grid overlay   */
   --surface:       #FFFFFF;  /* cards, sidebar, topbar    */
-  --surface-2:     #F8FAFC;  /* subtle fills              */
-  --surface-3:     #F1F5F9;  /* inputs, chips             */
-  --hover:         #F7F7F5;  /* hover fill on surface     */
-  --border:        #E2E8F0;  /* primary border            */
-  --border-2:      #E5E4DF;  /* sidebar/topbar border     */
-  --border-3:      #EEEEE9;  /* sidebar inner dividers    */
-  --border-strong: #CBD5E1;  /* emphasized border         */
-  --ink:           #0F172A;  /* primary text              */
-  --ink-2:         #0A0A0A;  /* near-black text           */
-  --text-2:        #475569;  /* secondary text            */
-  --muted:         #64748B;  /* tertiary text             */
-  --muted-2:       #94A3B8;  /* faint text                */
-  --muted-3:       #ABABAA;  /* warm faint text           */
-  --btn-ink:       #0F172A;  /* dark filled buttons       */
-  --btn-ink-hover: #1E293B;
-  --navy-text:     #1e2a6e;  /* brand navy as TEXT        */
-  --active-tint:   #E8F6FD;  /* active-nav light blue     */
-  --scrollbar:     #D0D0CA;
-  --scrollbar-hover: #A8A8A3;
+  --surface-2:     #F4F7FB;  /* subtle fills              */
+  --surface-3:     #EDF2F8;  /* inputs, chips             */
+  --hover:         #EFF3F9;  /* hover fill on surface     */
+  /* Borders & dividers */
+  --border:        #DCE3ED;  /* primary border            */
+  --border-2:      #E4E9F1;  /* sidebar/topbar border     */
+  --border-3:      #EAEFF6;  /* inner dividers            */
+  --border-strong: #C2CCDB;  /* emphasized border         */
+  /* Text & ink */
+  --ink:           #101A2E;  /* primary text              */
+  --ink-2:         #0A0F1A;  /* near-black text           */
+  --text-2:        #475467;  /* secondary text            */
+  --muted:         #64728A;  /* tertiary text             */
+  --muted-2:       #7E8AA0;  /* faint text (large only)   */
+  --muted-3:       #9AA5B6;  /* decorative timestamps     */
+  /* Buttons, brand & states */
+  --btn-ink:       #1E2A6E;  /* navy filled buttons       */
+  --btn-ink-hover: #172052;
+  --navy-text:     #1E2A6E;  /* brand navy as TEXT        */
+  --active-tint:   #E6F4FD;  /* active-nav light blue     */
+  --brand-blue-deep: #127BAC; /* brand blue under white text (AA) */
+  /* Scrollbar */
+  --scrollbar:     #CBD3DF;
+  --scrollbar-hover: #AEB8C8;
+  /* Brand */
+  --brand-navy:  #1E2A6E;
+  --brand-blue:  #1C9FE0;
+  --brand-light: #7FD4F5;
+  /* Semantic accents (text / surface / border) */
+  --pos:          #0F7A3D;
+  --pos-surface:  #DFF3E7;
+  --pos-border:   #86C9A2;
+  --neg:          #C42A3B;
+  --neg-surface:  #FCE6E9;
+  --neg-border:   #E39AA4;
+  --info:         #1F5FBF;
+  --info-surface: #E7EFFB;
+  --info-border:  #AEC8ED;
+  --warn:         #B45309;
+  --warn-surface: #FDF5E6;
+  --warn-border:  #E7C489;
+  /* Matrix date band — stays light in both themes */
+  --band-date:    #3D5FA8;
 }
 .dark {
-  --page:          #0B0E14;
-  --grid-line:     #161C26;
-  --surface:       #141A24;
-  --surface-2:     #1A212D;
-  --surface-3:     #202938;
-  --hover:         #1C2430;
-  --border:        #2A3444;
-  --border-2:      #242D3B;
-  --border-3:      #202834;
-  --border-strong: #3B4759;
-  --ink:           #E7ECF4;
-  --ink-2:         #F2F5FA;
-  --text-2:        #B4C0D3;
-  --muted:         #8CA0B8;
-  --muted-2:       #64748B;
-  --muted-3:       #77808C;
+  /* Background & surfaces */
+  --page:          #0A0E15;
+  --grid-line:     #141B27;
+  --surface:       #131A26;
+  --surface-2:     #182130;
+  --surface-3:     #1F2937;
+  --hover:         #1B2431;
+  /* Borders & dividers */
+  --border:        #29354A;
+  --border-2:      #233042;
+  --border-3:      #1E2836;
+  --border-strong: #3A4860;
+  /* Text & ink */
+  --ink:           #E8EDF6;
+  --ink-2:         #F3F6FB;
+  --text-2:        #B6C2D6;
+  --muted:         #8EA1BA;
+  --muted-2:       #66768F;
+  --muted-3:       #78889C;
+  /* Buttons, brand & states */
   --btn-ink:       #2E4B8F;
   --btn-ink-hover: #3A5CAD;
   --navy-text:     #9DB4F0;
-  --active-tint:   #14293B;
+  --active-tint:   #13293C;
+  --brand-blue-deep: #127BAC;
+  /* Scrollbar */
   --scrollbar:     #333D4C;
   --scrollbar-hover: #46536A;
+  /* Brand (unchanged across themes) */
+  --brand-navy:  #1E2A6E;
+  --brand-blue:  #1C9FE0;
+  --brand-light: #7FD4F5;
+  /* Semantic accents */
+  --pos:          #35CE86;
+  --pos-surface:  #102C20;
+  --pos-border:   #2E7A52;
+  --neg:          #FF6B7A;
+  --neg-surface:  #331319;
+  --neg-border:   #7E3038;
+  --info:         #6BA8F0;
+  --info-surface: #14243B;
+  --info-border:  #2C4468;
+  --warn:         #F0B34A;
+  --warn-surface: #33260F;
+  --warn-border:  #7A5A26;
+  /* Matrix date band — light in both themes; not theme-dependent */
+  --band-date:    #3D5FA8;
 }
 
 /* Scrollbar */
