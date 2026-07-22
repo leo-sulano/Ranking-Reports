@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateKeyPair, exportJWK, SignJWT, createLocalJWKSet, type JWK } from 'jose'
-import { requireEnv, verifyPortalAssertion } from './ssoPortal'
+import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin } from './ssoPortal'
 
 const ISSUER = 'https://portal.example.com'
 const AUDIENCE = 'test-audience-id'
@@ -89,5 +89,69 @@ describe('verifyPortalAssertion', () => {
     const token = await sign(otherPrivateKey, { email: 'user@example.com' })
 
     await expect(verifyPortalAssertion(token, jwks, { issuer: ISSUER, audience: AUDIENCE })).rejects.toThrow()
+  })
+})
+
+/** Minimal stand-in for the supabase admin client's createUser surface. */
+function fakeAdmin(result: { error: { code?: string; message: string; status?: number } | null }) {
+  const calls: Array<{ email: string; email_confirm: boolean }> = []
+  return {
+    admin: {
+      auth: {
+        admin: {
+          createUser: async (attrs: { email: string; email_confirm: boolean }) => {
+            calls.push(attrs)
+            return { data: { user: null }, error: result.error }
+          },
+        },
+      },
+    },
+    calls,
+  }
+}
+
+describe('ensureUserExists', () => {
+  it('creates the user with email pre-confirmed when they do not exist', async () => {
+    const { admin, calls } = fakeAdmin({ error: null })
+
+    await ensureUserExists(admin, 'new@example.com')
+
+    expect(calls).toEqual([{ email: 'new@example.com', email_confirm: true }])
+  })
+
+  it('treats an email_exists error code as success', async () => {
+    const { admin } = fakeAdmin({ error: { code: 'email_exists', message: 'User already registered', status: 422 } })
+
+    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBeUndefined()
+  })
+
+  it('treats an "already been registered" message without a code as success (older GoTrue)', async () => {
+    const { admin } = fakeAdmin({
+      error: { message: 'A user with this email address has already been registered', status: 422 },
+    })
+
+    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBeUndefined()
+  })
+
+  it('throws on any other createUser error', async () => {
+    const { admin } = fakeAdmin({ error: { code: 'unexpected_failure', message: 'Database error', status: 500 } })
+
+    await expect(ensureUserExists(admin, 'new@example.com')).rejects.toThrow('Database error')
+  })
+})
+
+describe('resolveAppOrigin', () => {
+  it('prefers APP_URL, stripping any trailing slash', () => {
+    expect(resolveAppOrigin({ APP_URL: 'https://ranking-reports-alpha.vercel.app/' }, 'other.host')).toBe(
+      'https://ranking-reports-alpha.vercel.app'
+    )
+  })
+
+  it('falls back to https://<host> when APP_URL is unset', () => {
+    expect(resolveAppOrigin({}, 'ranking-reports-alpha.vercel.app')).toBe('https://ranking-reports-alpha.vercel.app')
+  })
+
+  it('returns an empty-host https origin when neither is available', () => {
+    expect(resolveAppOrigin({}, undefined)).toBe('https://')
   })
 })
