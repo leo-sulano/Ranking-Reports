@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateKeyPair, exportJWK, SignJWT, createLocalJWKSet, type JWK } from 'jose'
-import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin } from './ssoPortal'
+import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin } from './ssoPortal.js'
 
 const ISSUER = 'https://portal.example.com'
 const AUDIENCE = 'test-audience-id'
