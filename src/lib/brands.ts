@@ -16,10 +16,8 @@ export const BRANDS: Brand[] = [
     lpDomains: [
       'lucky7even.club',
       'lucky7evencasino.org',
-      'lucky7casino.de',
       'lucky7seven.net',
       'lucky7seven.org',
-      'lucky7seven.de',
     ],
   },
   {
@@ -35,7 +33,6 @@ export const BRANDS: Brand[] = [
     ],
     lpDomains: [
       'roosterbet.club',
-      'roostercasino.de',
       'roosterbet.io',
       'roosterbet.info',
     ],
@@ -79,7 +76,6 @@ export const BRANDS: Brand[] = [
       'spinsup-casino.com',
       'spinsup.casino',
       'spinsup.club',
-      'spinsupcasinos.de',
       'spinsupcasino.net',
       'spinsupcasino.org',
     ],
@@ -100,7 +96,6 @@ export const BRANDS: Brand[] = [
       'spinjos.casino',
       'spinjo.it.com',
       'spinjo.info',
-      'spinjo.de',
       'spinjocasino.net',
     ],
   },
@@ -118,7 +113,6 @@ export const BRANDS: Brand[] = [
     lpDomains: [
       'fortuneplay.club',
       'fortuneplaylive.com',
-      'fortuneplaycasino.de',
       'fortuneplaycasino.org',
     ],
   },
