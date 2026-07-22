@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createRemoteJWKSet } from 'jose'
 import { createClient } from '@supabase/supabase-js'
-import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin } from './_lib/ssoPortal'
+import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin } from './_lib/ssoPortal.js'
 
 /**
  * SSO callback the dashboard portal redirects to with ?token=<portal JWT>.

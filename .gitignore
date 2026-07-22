@@ -35,3 +35,4 @@ npm-debug.log*
 
 # Supabase CLI local cache
 supabase/.temp/
+.vercel
