@@ -25,10 +25,10 @@ export function HowItWorks() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto px-7 py-10">
       <div className="max-w-2xl mx-auto w-full">
-        <h1 className="font-display text-[28px] tracking-wider text-[#0A0A0A] mb-2">
+        <h1 className="font-display text-[28px] tracking-wider text-[var(--ink-2)] mb-2">
           How It Works
         </h1>
-        <p className="text-[14px] text-[#6B6B65] mb-8 leading-relaxed">
+        <p className="text-[14px] text-[var(--text-2)] mb-8 leading-relaxed">
           A quick guide to using the dashboard, from uploading your first report to reading the results.
         </p>
 
@@ -36,16 +36,16 @@ export function HowItWorks() {
           {STEPS.map((step, i) => (
             <div
               key={step.title}
-              className="flex gap-4 items-start bg-white border border-[#E5E4DF] rounded-[14px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+              className="flex gap-4 items-start bg-[var(--surface)] border border-[var(--border-2)] rounded-[14px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
             >
               <div className="w-8 h-8 shrink-0 rounded-full bg-[#0A0A0A] text-white font-display text-[13px] flex items-center justify-center">
                 {i + 1}
               </div>
               <div>
-                <h2 className="font-display text-[15px] tracking-wide text-[#0A0A0A] mb-1">
+                <h2 className="font-display text-[15px] tracking-wide text-[var(--ink-2)] mb-1">
                   {step.title}
                 </h2>
-                <p className="text-[13px] text-[#6B6B65] leading-relaxed">{step.desc}</p>
+                <p className="text-[13px] text-[var(--text-2)] leading-relaxed">{step.desc}</p>
               </div>
             </div>
           ))}

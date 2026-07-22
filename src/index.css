@@ -6,14 +6,69 @@
   --font-body: 'Figtree', sans-serif;
 }
 
+/* ── Semantic theme tokens ────────────────────────────────────────────────
+   Light values on :root, dark overrides under .dark (toggled on <html> by
+   the theme switch in the Topbar; initialized pre-render in main.tsx).
+   The spreadsheet-style data matrices (BP/LP ranking tables, Reg & FTD
+   matrix) intentionally keep their own hardcoded light palette — they read
+   like an embedded Google Sheet in both themes. */
+:root {
+  --page:          #F7F7F5;  /* app background            */
+  --grid-line:     #E5E4DF;  /* background grid overlay   */
+  --surface:       #FFFFFF;  /* cards, sidebar, topbar    */
+  --surface-2:     #F8FAFC;  /* subtle fills              */
+  --surface-3:     #F1F5F9;  /* inputs, chips             */
+  --hover:         #F7F7F5;  /* hover fill on surface     */
+  --border:        #E2E8F0;  /* primary border            */
+  --border-2:      #E5E4DF;  /* sidebar/topbar border     */
+  --border-3:      #EEEEE9;  /* sidebar inner dividers    */
+  --border-strong: #CBD5E1;  /* emphasized border         */
+  --ink:           #0F172A;  /* primary text              */
+  --ink-2:         #0A0A0A;  /* near-black text           */
+  --text-2:        #475569;  /* secondary text            */
+  --muted:         #64748B;  /* tertiary text             */
+  --muted-2:       #94A3B8;  /* faint text                */
+  --muted-3:       #ABABAA;  /* warm faint text           */
+  --btn-ink:       #0F172A;  /* dark filled buttons       */
+  --btn-ink-hover: #1E293B;
+  --navy-text:     #1e2a6e;  /* brand navy as TEXT        */
+  --active-tint:   #E8F6FD;  /* active-nav light blue     */
+  --scrollbar:     #D0D0CA;
+  --scrollbar-hover: #A8A8A3;
+}
+.dark {
+  --page:          #0B0E14;
+  --grid-line:     #161C26;
+  --surface:       #141A24;
+  --surface-2:     #1A212D;
+  --surface-3:     #202938;
+  --hover:         #1C2430;
+  --border:        #2A3444;
+  --border-2:      #242D3B;
+  --border-3:      #202834;
+  --border-strong: #3B4759;
+  --ink:           #E7ECF4;
+  --ink-2:         #F2F5FA;
+  --text-2:        #B4C0D3;
+  --muted:         #8CA0B8;
+  --muted-2:       #64748B;
+  --muted-3:       #77808C;
+  --btn-ink:       #2E4B8F;
+  --btn-ink-hover: #3A5CAD;
+  --navy-text:     #9DB4F0;
+  --active-tint:   #14293B;
+  --scrollbar:     #333D4C;
+  --scrollbar-hover: #46536A;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D0D0CA; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #A8A8A3; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: var(--font-body); background: #F7F7F5; color: #0A0A0A; }
+body { font-family: var(--font-body); background: var(--page); color: var(--ink-2); }
 
 /* Font utility classes */
 .font-display { font-family: var(--font-display); }
@@ -42,8 +97,8 @@ body { font-family: var(--font-body); background: #F7F7F5; color: #0A0A0A; }
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(#E5E4DF 1px, transparent 1px),
-    linear-gradient(90deg, #E5E4DF 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 40px 40px;
   opacity: 0.3;
   pointer-events: none;

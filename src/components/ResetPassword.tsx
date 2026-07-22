@@ -65,7 +65,7 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#F8FAFC] relative px-4">
+    <div className="flex items-center justify-center min-h-screen bg-[var(--surface-2)] relative px-4">
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-60"
         style={{
@@ -75,29 +75,29 @@ export function ResetPassword() {
         }}
       />
 
-      <div className="relative z-10 w-[380px] max-w-full bg-white border border-[#E2E8F0] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)]">
+      <div className="relative z-10 w-[380px] max-w-full bg-[var(--surface)] border border-[var(--border)] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)]">
         <div className="flex items-center gap-2.5 mb-1">
-          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[#0F172A] text-white">
+          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[var(--btn-ink)] text-white">
             <Lock size={15} />
           </span>
-          <span className="font-display text-[20px] tracking-wider text-[#0F172A]">
+          <span className="font-display text-[20px] tracking-wider text-[var(--ink)]">
             Ranking Reports
           </span>
         </div>
 
         {!ready && (
-          <p className="text-[12px] font-mono text-[#64748B] mt-6">Verifying reset link…</p>
+          <p className="text-[12px] font-mono text-[var(--muted)] mt-6">Verifying reset link…</p>
         )}
 
         {ready && !validLink && (
           <>
-            <p className="text-[12px] font-mono text-[#64748B] mb-6 mt-5">
+            <p className="text-[12px] font-mono text-[var(--muted)] mb-6 mt-5">
               This reset link is invalid or has expired.
             </p>
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider hover:bg-[#1E293B] transition-colors"
+              className="w-full h-10 rounded-[9px] bg-[var(--btn-ink)] text-white text-[13px] font-medium tracking-wider hover:bg-[var(--btn-ink-hover)] transition-colors"
             >
               Back to sign in
             </button>
@@ -105,18 +105,18 @@ export function ResetPassword() {
         )}
 
         {ready && validLink && done && (
-          <p className="text-[12px] font-mono text-[#64748B] mb-1 mt-6">
+          <p className="text-[12px] font-mono text-[var(--muted)] mb-1 mt-6">
             ✓ Password updated — redirecting…
           </p>
         )}
 
         {ready && validLink && !done && (
           <form onSubmit={handleSubmit}>
-            <p className="text-[12px] font-mono text-[#64748B] mb-6">
+            <p className="text-[12px] font-mono text-[var(--muted)] mb-6">
               Choose a new password for your account
             </p>
 
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
               New password
             </label>
             <input
@@ -125,11 +125,11 @@ export function ResetPassword() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
               placeholder="••••••••"
             />
 
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
               Confirm password
             </label>
             <input
@@ -138,7 +138,7 @@ export function ResetPassword() {
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="w-full mb-5 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              className="w-full mb-5 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
               placeholder="••••••••"
             />
 
@@ -151,7 +151,7 @@ export function ResetPassword() {
             <button
               type="submit"
               disabled={busy}
-              className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#1E293B] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="w-full h-10 rounded-[9px] bg-[var(--btn-ink)] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--btn-ink-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               <KeyRound size={15} />
               {busy ? 'Updating…' : 'Update password'}

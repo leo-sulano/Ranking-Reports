@@ -98,15 +98,15 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
       className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white border border-[#E2E8F0] rounded-[14px] w-[640px] max-w-[95vw] max-h-[85vh] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] flex flex-col animate-[modalIn_0.2s_ease]">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] shrink-0">
-          <h2 className="font-display text-[18px] tracking-wider text-[#0F172A] leading-none">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[14px] w-[640px] max-w-[95vw] max-h-[85vh] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] flex flex-col animate-[modalIn_0.2s_ease]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] shrink-0">
+          <h2 className="font-display text-[18px] tracking-wider text-[var(--ink)] leading-none">
             Add / Edit Month
           </h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all"
+            className="w-7 h-7 flex items-center justify-center bg-[var(--surface-3)] border border-[var(--border)] rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] transition-all"
           >
             <X size={14} strokeWidth={2.25} />
           </button>
@@ -114,39 +114,39 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
 
         <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-1.5">
+            <label className="block text-[10px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)] mb-1.5">
               Month
             </label>
             <input
               type="month"
               value={yearMonth}
               onChange={(e) => loadMonth(e.target.value)}
-              className="border border-[#CBD5E1] rounded-md px-3 py-2 text-[13px] text-[#0F172A] outline-none focus:border-[#0F172A]"
+              className="border border-[var(--border-strong)] rounded-md px-3 py-2 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--ink)]"
             />
           </div>
 
-          <div className="border border-[#E2E8F0] rounded-md overflow-hidden">
-            <div className="grid grid-cols-4 gap-2 px-3 py-2 bg-[#F8FAFC] text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">
+          <div className="border border-[var(--border)] rounded-md overflow-hidden">
+            <div className="grid grid-cols-4 gap-2 px-3 py-2 bg-[var(--surface-2)] text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               <span>Brand</span><span className="text-center">REG</span><span className="text-center">FTD</span><span className="text-center">Conv%</span>
             </div>
             <div className="divide-y divide-[#F1F5F9] max-h-[280px] overflow-y-auto">
               {BRANDS.map((b) => (
                 <div key={b.name} className="grid grid-cols-4 gap-2 px-3 py-1.5 items-center">
-                  <span className="text-[12px] font-semibold text-[#0F172A] truncate">{b.name}</span>
+                  <span className="text-[12px] font-semibold text-[var(--ink)] truncate">{b.name}</span>
                   <input
                     type="number"
                     value={values[b.name]?.reg ?? ''}
                     onChange={(e) => setValues((v) => ({ ...v, [b.name]: { ...v[b.name], reg: e.target.value } }))}
-                    className="border border-[#E2E8F0] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[#0F172A]"
+                    className="border border-[var(--border)] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[var(--ink)]"
                   />
                   <input
                     type="number"
                     value={values[b.name]?.ftd ?? ''}
                     onChange={(e) => setValues((v) => ({ ...v, [b.name]: { ...v[b.name], ftd: e.target.value } }))}
-                    className="border border-[#E2E8F0] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[#0F172A]"
+                    className="border border-[var(--border)] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[var(--ink)]"
                   />
                   <span
-                    className="text-[12px] text-center font-mono text-[#64748B]"
+                    className="text-[12px] text-center font-mono text-[var(--muted)]"
                     title="Conversion % = FTD ÷ REG × 100, calculated automatically"
                   >
                     {formatPct(ratioPct(toNum(values[b.name]?.reg ?? ''), toNum(values[b.name]?.ftd ?? '')))}
@@ -156,24 +156,24 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 items-center border border-[#E2E8F0] rounded-md px-3 py-2 bg-[#F8FAFC]">
-            <span className="text-[12px] font-bold text-[#0F172A]">Totals</span>
-            <span className="text-[12px] text-center font-mono text-[#64748B]">{computedTotals.reg}</span>
-            <span className="text-[12px] text-center font-mono text-[#64748B]">{computedTotals.ftd}</span>
+          <div className="grid grid-cols-4 gap-2 items-center border border-[var(--border)] rounded-md px-3 py-2 bg-[var(--surface-2)]">
+            <span className="text-[12px] font-bold text-[var(--ink)]">Totals</span>
+            <span className="text-[12px] text-center font-mono text-[var(--muted)]">{computedTotals.reg}</span>
+            <span className="text-[12px] text-center font-mono text-[var(--muted)]">{computedTotals.ftd}</span>
             <input
               type="number"
               value={totalsConv}
               onChange={(e) => setTotalsConv(e.target.value)}
               placeholder="Conv%"
-              className="border border-[#CBD5E1] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[#0F172A]"
+              className="border border-[var(--border-strong)] rounded px-2 py-1 text-[12px] text-center outline-none focus:border-[var(--ink)]"
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#E2E8F0] shrink-0">
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[var(--border)] shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-md text-[13px] font-semibold text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="px-4 py-2 rounded-md text-[13px] font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             Cancel
           </button>
@@ -181,7 +181,7 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
             onClick={handleSubmit}
             disabled={saving || writeGate.disabled}
             title={writeGate.title}
-            className="px-4 py-2 rounded-md text-[13px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
+            className="px-4 py-2 rounded-md text-[13px] font-bold text-white bg-[var(--btn-ink)] hover:bg-[var(--btn-ink-hover)] disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving…' : 'Save Month'}
           </button>

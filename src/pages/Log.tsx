@@ -54,7 +54,7 @@ export function Log() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
+      <div className="flex-1 flex items-center justify-center h-full text-[var(--muted-2)] font-mono text-[12px] tracking-wider">
         Loading activity log…
       </div>
     )
@@ -62,12 +62,12 @@ export function Log() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <h2 className="font-display text-[16px] tracking-wider text-[#0F172A] mb-4">
+      <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] mb-4">
         Activity Log ({entries.length})
       </h2>
-      <div className="border border-[#E2E8F0] rounded-md overflow-hidden">
+      <div className="border border-[var(--border)] rounded-md overflow-hidden">
         {entries.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[#94A3B8] text-[12px]">No activity yet.</p>
+          <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No activity yet.</p>
         ) : (
           <div className="divide-y divide-[#F1F5F9]">
             {entries.map((e) => {
@@ -82,14 +82,14 @@ export function Log() {
                       >
                         {actionStyle.label}
                       </span>
-                      <span className="text-[9px] uppercase tracking-wide font-bold text-[#64748B] bg-[#F1F5F9] rounded px-1.5 py-0.5">
+                      <span className="text-[9px] uppercase tracking-wide font-bold text-[var(--muted)] bg-[var(--surface-3)] rounded px-1.5 py-0.5">
                         {SECTION_LABELS[e.section]}
                       </span>
-                      <span className="text-[13px] font-semibold text-[#0F172A]">{e.email}</span>
+                      <span className="text-[13px] font-semibold text-[var(--ink)]">{e.email}</span>
                     </div>
                     <div className="text-[12px] text-[#334155] break-words">{e.summary}</div>
                   </div>
-                  <div className="text-[11px] font-mono text-[#94A3B8] whitespace-nowrap shrink-0">
+                  <div className="text-[11px] font-mono text-[var(--muted-2)] whitespace-nowrap shrink-0">
                     {formatDateTime(e.createdAt)}
                   </div>
                 </div>

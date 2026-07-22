@@ -36,7 +36,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!checked) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] text-[#64748B] font-mono text-[12px] tracking-wider">
+      <div className="flex items-center justify-center h-screen bg-[var(--surface-2)] text-[var(--muted)] font-mono text-[12px] tracking-wider">
         Checking session…
       </div>
     )

@@ -323,7 +323,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
       : { background: tint }
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
+    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff', color: '#0F172A' }}>
       <table
         className="w-max min-w-full"
         style={{ borderCollapse: 'collapse', fontSize: '12px' }}
