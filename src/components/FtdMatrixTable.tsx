@@ -9,6 +9,13 @@ const STICKY_BG    = '#FFFFFF'
 const STAGS_BG     = '#F1F5F9'
 const SUBHEAD_BG   = '#F8FAFC'
 
+// TOTALS column group — mirrors the source sheet's green "Totals" block.
+// Fixed column width so the sticky left offsets are deterministic.
+const TOTALS_COL_W      = 58
+const TOTALS_HEADER_BG  = '#16A34A'
+const TOTALS_SUBHEAD_BG = '#D9EDDF'
+const TOTALS_CELL_BG    = '#EAF6EF' // solid (not alpha) — sticky cells overlay scrolled content
+
 export type FtdMetric = 'reg' | 'ftd' | 'conv'
 
 const ALL_METRICS: Array<{ key: FtdMetric; label: string }> = [
@@ -93,6 +100,8 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   const monthColRef = useRef<HTMLTableCellElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const [scrollRightPad, setScrollRightPad] = useState(0)
+  // Measured MONTH column width — the TOTALS group's sticky offsets start here.
+  const [monthW, setMonthW] = useState(90)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -128,6 +137,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
     if (!lastTh) return
     const pad = scrollEl.clientWidth - monthEl.offsetWidth - lastTh.offsetWidth
     setScrollRightPad(Math.max(0, pad))
+    setMonthW(monthEl.offsetWidth)
   })
 
   const recordMap = useMemo(() => {
@@ -175,6 +185,50 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
   const yearsList = useMemo(() => Array.from(monthsByYear.keys()), [monthsByYear])
 
+  // ── All-brand totals per month / year / grand — the TOTALS column group ──
+  // Monthly conversion is the blended FTD ÷ REG of that month's totals;
+  // year and grand conversions average the monthly blended ratios, matching
+  // both the source sheet and the stat cards' "All Years" arithmetic.
+  const monthTotals = useMemo(() => {
+    const map = new Map<string, { reg: number; ftd: number }>()
+    for (const r of records) {
+      const t = map.get(r.yearMonth) ?? { reg: 0, ftd: 0 }
+      t.reg += r.reg
+      t.ftd += r.ftd
+      map.set(r.yearMonth, t)
+    }
+    return map
+  }, [records])
+
+  const yearTotals = useMemo(() => {
+    const map = new Map<string, { reg: number; ftd: number; convValues: number[] }>()
+    for (const [year, yearMonths] of monthsByYear) {
+      const agg = { reg: 0, ftd: 0, convValues: [] as number[] }
+      for (const ym of yearMonths) {
+        const t = monthTotals.get(ym)
+        if (!t) continue
+        agg.reg += t.reg
+        agg.ftd += t.ftd
+        const r = rawRatio(t.reg, t.ftd)
+        if (r != null) agg.convValues.push(r)
+      }
+      map.set(year, agg)
+    }
+    return map
+  }, [monthsByYear, monthTotals])
+
+  const grandTotals = useMemo(() => {
+    let reg = 0, ftd = 0
+    const convValues: number[] = []
+    for (const t of monthTotals.values()) {
+      reg += t.reg
+      ftd += t.ftd
+      const r = rawRatio(t.reg, t.ftd)
+      if (r != null) convValues.push(r)
+    }
+    return { reg, ftd, conv: averagePct(convValues) }
+  }, [monthTotals])
+
   // Collapsed by default, except the most recent year — re-expands the
   // newest year whenever the visible year set changes in a way that drops
   // whatever was expanded (e.g. the period filter jumps to a different
@@ -202,8 +256,34 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   const colsPerBrand = activeMetrics.length
 
   const border = `1px solid ${TABLE_BORDER}`
-  const totalCols = 1 + BRANDS.length * colsPerBrand // month + brands(colsPerBrand each)
+  const totalCols = 1 + colsPerBrand + BRANDS.length * colsPerBrand // month + totals + brands
   const YEAR_ROW_BG = '#EDF0F4'
+
+  // Sticky TOTALS body cells for one row. Pass null values to render the
+  // group blank (expanded year rows, matching the blank brand cells).
+  const totalsCells = (
+    reg: number | null,
+    ftd: number | null,
+    conv: number | null,
+    fontClass: string,
+    borderBottom: string,
+  ) => activeMetrics.map(({ key }, i) => (
+    <td
+      key={`totals-${key}`}
+      className={`px-2 py-1.5 text-center font-mono ${fontClass}`}
+      style={{
+        position: 'sticky',
+        left: monthW + i * TOTALS_COL_W,
+        zIndex: 5,
+        width: TOTALS_COL_W, minWidth: TOTALS_COL_W, maxWidth: TOTALS_COL_W,
+        background: TOTALS_CELL_BG,
+        borderLeft: border, borderRight: border, borderBottom,
+        boxShadow: scrolled && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+      }}
+    >
+      {key === 'reg' ? (reg ?? '') : key === 'ftd' ? (ftd ?? '') : formatPct(conv)}
+    </td>
+  ))
 
   return (
     <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
@@ -222,10 +302,22 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 borderRight: border,
                 borderBottom: border,
                 minWidth: 90,
-                boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
               }}
             >
               MONTH
+            </th>
+            <th
+              colSpan={colsPerBrand}
+              rowSpan={2}
+              className="sticky top-0 z-[7] px-2 py-1.5 text-center align-middle text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
+              style={{
+                left: monthW,
+                background: TOTALS_HEADER_BG,
+                borderLeft: border, borderRight: border, borderBottom: border,
+                boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+              }}
+            >
+              Totals
             </th>
             {BRANDS.map((b) => (
               <th
@@ -259,6 +351,21 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
           </tr>
 
           <tr>
+            {activeMetrics.map(({ key, label }, i) => (
+              <th
+                key={`totals-${key}`}
+                className="sticky top-[52px] z-[7] px-2 py-1 text-center text-[12px] font-bold whitespace-nowrap"
+                style={{
+                  left: monthW + i * TOTALS_COL_W,
+                  width: TOTALS_COL_W, minWidth: TOTALS_COL_W, maxWidth: TOTALS_COL_W,
+                  background: TOTALS_SUBHEAD_BG,
+                  borderLeft: border, borderRight: border, borderBottom: border,
+                  boxShadow: scrolled && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                }}
+              >
+                {label}
+              </th>
+            ))}
             {BRANDS.map((b) => (
               <Fragment key={b.name}>
                 {activeMetrics.map(({ key, label }) => (
@@ -292,11 +399,12 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                   background: SUBHEAD_BG,
                   borderRight: border,
                   borderBottom: `2px solid ${TABLE_BORDER}`,
-                  boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                 }}
               >
                 {summaryLabel}
               </td>
+
+              {totalsCells(grandTotals.reg, grandTotals.ftd, grandTotals.conv, 'font-bold', `2px solid ${TABLE_BORDER}`)}
 
               {BRANDS.map((b) => {
                 const bt = summary.perBrand[b.name]
@@ -336,7 +444,6 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       background: YEAR_ROW_BG,
                       borderRight: border,
                       borderBottom: border,
-                      boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                     }}
                   >
                     <div className="flex items-center gap-1.5">
@@ -348,6 +455,17 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       {year}
                     </div>
                   </td>
+
+                  {(() => {
+                    const yt = yearTotals.get(year)
+                    return totalsCells(
+                      expanded ? null : (yt?.reg ?? 0),
+                      expanded ? null : (yt?.ftd ?? 0),
+                      expanded ? null : averagePct(yt?.convValues ?? []),
+                      'font-semibold',
+                      border,
+                    )
+                  })()}
 
                   {BRANDS.map((b) => {
                     const bt = yearAgg[b.name]
@@ -382,11 +500,15 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                         background: STICKY_BG,
                         borderRight: border,
                         borderBottom: border,
-                        boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                       }}
                     >
                       {formatMonthLabel(ym)}
                     </td>
+
+                    {(() => {
+                      const mt = monthTotals.get(ym) ?? { reg: 0, ftd: 0 }
+                      return totalsCells(mt.reg, mt.ftd, ratioPct(mt.reg, mt.ftd), 'font-semibold', border)
+                    })()}
 
                     {BRANDS.map((b) => {
                       const rec = recordMap.get(`${b.name}|${ym}`)
