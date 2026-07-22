@@ -190,15 +190,15 @@ export function Home() {
   // ── Empty state ───────────────────────────────────────────────────────────
   if (!latestSnapshot) {
     return (
-      <div className="flex-1 overflow-auto flex items-center justify-center bg-[#F7F7F5]">
+      <div className="flex-1 overflow-auto flex items-center justify-center bg-[var(--hover)]">
         <div className="text-center max-w-[280px]" style={{ animation: 'fadeUp 0.4s ease both' }}>
-          <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5E4DF] shadow-sm flex items-center justify-center mx-auto mb-5">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--surface)] border border-[var(--border-2)] shadow-sm flex items-center justify-center mx-auto mb-5">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D0D0CA" strokeWidth="1.5">
               <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
             </svg>
           </div>
-          <h2 className="font-display text-[18px] font-[700] text-[#0A0A0A] mb-2">No data yet</h2>
-          <p className="text-[13px] text-[#ABABAA] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
+          <h2 className="font-display text-[18px] font-[700] text-[var(--ink-2)] mb-2">No data yet</h2>
+          <p className="text-[13px] text-[var(--muted-3)] mb-6 leading-relaxed">Import a ranking snapshot to begin tracking positions across brands.</p>
           <button
             onClick={ctx.onOpenUpload}
             disabled={ctx.writeGate.disabled}
@@ -213,7 +213,7 @@ export function Home() {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-[#F7F7F5]">
+    <div className="flex-1 overflow-auto bg-[var(--hover)]">
       <div className="px-3 sm:px-6 py-4 sm:py-5 space-y-4">
 
         {/* ── Hero metric cards ────────────────────────────────────────────── */}
@@ -224,7 +224,7 @@ export function Home() {
             className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#1e2a6e] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
             onClick={() => setMetricModal('keywords')}
           >
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-[var(--surface)]" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50 mb-2">Keywords</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.keywords.toLocaleString()}
@@ -237,7 +237,7 @@ export function Home() {
             style={{ background: '#1c9fe0' }}
             onClick={() => setMetricModal('brands')}
           >
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-white" />
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-[var(--surface)]" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 mb-2">Brands</div>
             <div className="font-display text-[28px] sm:text-[38px] font-[600] text-white tabular-nums leading-none">
               {totals.brands}
@@ -251,25 +251,25 @@ export function Home() {
 
           {/* Brand Leaderboard */}
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
             style={{ animation: 'fadeUp 0.35s ease 0.1s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#F5F4EF]">
-                    <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] w-10">#</th>
-                    <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">Brand</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA]">P1</th>
+                  <tr className="border-b border-[var(--border-3)]">
+                    <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)] w-10">#</th>
+                    <th className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)]">Brand</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)]">P1</th>
                     <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CC0000]">Top-3</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1e2a6e]">Top-10</th>
+                    <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--navy-text)]">Top-10</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboard.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-10 text-center text-[12px] text-[#ABABAA]">
+                      <td colSpan={5} className="px-5 py-10 text-center text-[12px] text-[var(--muted-3)]">
                         No brand data in current snapshot.
                       </td>
                     </tr>
@@ -280,7 +280,7 @@ export function Home() {
                     return (
                       <tr
                         key={row.brand.name}
-                        className="border-b border-[#F8F7F2] hover:bg-[#FAF9F4] transition-colors group"
+                        className="border-b border-[var(--border-3)] hover:bg-[var(--hover)] transition-colors group"
                         style={{ animation: `fadeUp 0.35s ease ${0.12 + i * 0.025}s both` }}
                       >
                         <td
@@ -288,11 +288,11 @@ export function Home() {
                           onClick={() => navigate(brandUrl)}
                         >
                           <div className="flex items-center gap-1">
-                            <span className="font-mono text-[11px] text-[#ABABAA] tabular-nums">
+                            <span className="font-mono text-[11px] text-[var(--muted-3)] tabular-nums">
                               {i < 3 ? MEDALS[i] : String(i + 1).padStart(2, '0')}
                             </span>
                             {row.rankChange === null || row.rankChange === 0 ? (
-                              <span className="font-mono text-[9px] text-[#D0CFC9]">—</span>
+                              <span className="font-mono text-[9px] text-[var(--border-strong)]">—</span>
                             ) : row.rankChange > 0 ? (
                               <span className="font-mono text-[9px] font-semibold text-[#1A7A3A]">↑{row.rankChange}</span>
                             ) : (
@@ -306,31 +306,31 @@ export function Home() {
                         >
                           <div className="flex items-center gap-2.5">
                             <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: row.brand.color }} />
-                            <span className="text-[13px] font-medium truncate group-hover:underline text-glow text-[#1e2a6e]">
+                            <span className="text-[13px] font-medium truncate group-hover:underline text-glow text-[var(--navy-text)]">
                               {row.brand.name}
                             </span>
                           </div>
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#0A0A0A] cursor-pointer hover:text-[#1E40AF] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--ink-2)] cursor-pointer hover:text-[#1E40AF] hover:underline"
                           onClick={() => row.p1 > 0 && setKwModal({ brand: row.brand, tier: 'p1', records: row.records })}
                           title={row.p1 > 0 ? 'View P1 keywords' : undefined}
                         >
-                          {row.p1 || <span className="text-[#D8D7D2] no-underline">—</span>}
+                          {row.p1 || <span className="text-[var(--border-strong)] no-underline">—</span>}
                         </td>
                         <td
                           className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#CC0000] cursor-pointer hover:text-[#991b1b] hover:underline"
                           onClick={() => row.t3 > 0 && setKwModal({ brand: row.brand, tier: 'top3', records: row.records })}
                           title={row.t3 > 0 ? 'View Top-3 keywords' : undefined}
                         >
-                          {row.t3 || <span className="text-[#D8D7D2] no-underline">—</span>}
+                          {row.t3 || <span className="text-[var(--border-strong)] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[#1e2a6e] cursor-pointer hover:text-[#18225a] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--navy-text)] cursor-pointer hover:text-[#18225a] hover:underline"
                           onClick={() => row.t10 > 0 && setKwModal({ brand: row.brand, tier: 'top10', records: row.records })}
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
-                          {row.t10 || <span className="text-[#D8D7D2] no-underline">—</span>}
+                          {row.t10 || <span className="text-[var(--border-strong)] no-underline">—</span>}
                         </td>
                       </tr>
                     )
@@ -342,7 +342,7 @@ export function Home() {
 
           {/* Top Movers */}
           <section
-            className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
             style={{ animation: 'fadeUp 0.35s ease 0.13s both' }}
           >
             <SectionHeader title="Top Movers" subtitle="vs. previous snapshot" />
@@ -355,7 +355,7 @@ export function Home() {
                 rows={movers.climbers}
                 empty="No upward movement."
               />
-              <div className="h-px bg-[#F0EFEA]" />
+              <div className="h-px bg-[var(--border-3)]" />
               <MoverGroup
                 label="Droppers"
                 tint="#CC0000"
@@ -371,18 +371,18 @@ export function Home() {
 
         {/* ── Navigate ─────────────────────────────────────────────────────── */}
         <section
-          className="bg-white rounded-2xl border border-[#E5E4DF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+          className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
           style={{ animation: 'fadeUp 0.35s ease 0.18s both' }}
         >
           <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
           <div className="grid grid-cols-2 gap-3 p-5">
-            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="#E8F6FD" borderColor="#1c9fe0" />
-            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="#F5F7FB" borderColor="#1e2a6e" />
+            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="var(--active-tint)" borderColor="#1c9fe0" />
+            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="var(--surface-2)" borderColor="#1e2a6e" />
             <NavCard
               label="Import Data"
               hint="Upload an XLSX snapshot"
               onClick={ctx.onOpenUpload}
-              bgColor="#E8F6FD"
+              bgColor="var(--active-tint)"
               borderColor="#1e2a6e"
               disabled={ctx.writeGate.disabled}
               title={ctx.writeGate.title}
@@ -417,7 +417,7 @@ export function Home() {
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF]">
+    <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border-3)]">
       {/* Brand accent bars — navy / blue / light-blue */}
       <div className="flex flex-col w-[3px] h-[15px] rounded-sm overflow-hidden shrink-0">
         <div className="flex-1 bg-[#1e2a6e]" />
@@ -425,8 +425,8 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
         <div className="flex-1 bg-[#7fd4f5]" />
       </div>
       <div>
-        <h2 className="text-[13px] font-[600] text-[#1e2a6e] leading-none">{title}</h2>
-        <p className="text-[10px] text-[#ABABAA] mt-0.5">{subtitle}</p>
+        <h2 className="text-[13px] font-[600] text-[var(--navy-text)] leading-none">{title}</h2>
+        <p className="text-[10px] text-[var(--muted-3)] mt-0.5">{subtitle}</p>
       </div>
     </div>
   )
@@ -448,10 +448,10 @@ function MoverGroup({
     <div>
       <div className="flex items-center gap-2.5 mb-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: tint }}>{label}</span>
-        <div className="flex-1 h-px bg-[#F0EFEA]" />
+        <div className="flex-1 h-px bg-[var(--border-3)]" />
       </div>
       {rows.length === 0 && (
-        <p className="text-[12px] text-[#ABABAA] px-1">{empty}</p>
+        <p className="text-[12px] text-[var(--muted-3)] px-1">{empty}</p>
       )}
       <ul className="space-y-0.5">
         {rows.map((m, i) => {
@@ -461,12 +461,12 @@ function MoverGroup({
             <li key={`${m.domain}-${i}`}>
               <div
                 onClick={() => setExpanded(isOpen ? null : m.domain)}
-                className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-[#FAF9F4] transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-[var(--hover)] transition-colors cursor-pointer"
               >
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-medium text-[#0A0A0A] truncate leading-snug">{m.domain}</div>
-                  <div className="font-mono text-[10px] text-[#ABABAA] truncate mt-0.5">
+                  <div className="text-[12px] font-medium text-[var(--ink-2)] truncate leading-snug">{m.domain}</div>
+                  <div className="font-mono text-[10px] text-[var(--muted-3)] truncate mt-0.5">
                     {m.brand} · {m.count} kw
                   </div>
                 </div>
@@ -483,11 +483,11 @@ function MoverGroup({
                     <li
                       key={`${kw.record.keyword}-${kw.record.country}-${j}`}
                       onClick={() => navigate(`/bp-sites/${brandToSlug(m.brand)}/${kw.record.domain}?kw=${encodeURIComponent(kw.record.keyword)}&countries=${encodeURIComponent(kw.record.country)}&exact=1`)}
-                      className="flex items-center gap-2 px-2 py-0.5 rounded-lg hover:bg-[#FAF9F4] transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-0.5 rounded-lg hover:bg-[var(--hover)] transition-colors cursor-pointer"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11px] text-[#3A3A3A] truncate">{kw.record.keyword}</div>
-                        <div className="font-mono text-[10px] text-[#ABABAA]">
+                        <div className="text-[11px] text-[var(--text-2)] truncate">{kw.record.keyword}</div>
+                        <div className="font-mono text-[10px] text-[var(--muted-3)]">
                           {kw.record.country} · {(() => { const p = parsePosition(kw.record.previous); return p === null ? '' : `${p === 'NR' ? 'NR' : p} → ` })()}{kw.record.position}
                         </div>
                       </div>
@@ -519,15 +519,15 @@ function NavCard({
       title={title}
       className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
       style={{
-        background:  bgColor ?? (highlight ? '#E8F6FD' : '#FAFAF7'),
-        borderColor: borderColor ?? (highlight ? '#7FD4F5' : '#E5E4DF'),
+        background:  bgColor ?? (highlight ? 'var(--active-tint)' : 'var(--surface-2)'),
+        borderColor: borderColor ?? (highlight ? '#7FD4F5' : 'var(--border-2)'),
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] font-semibold text-glow text-[#1e2a6e] leading-tight">{label}</span>
-        <span className="text-[#ABABAA] text-[13px] transition-all duration-150 group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100 shrink-0">→</span>
+        <span className="text-[13px] font-semibold text-glow text-[var(--navy-text)] leading-tight">{label}</span>
+        <span className="text-[var(--muted-3)] text-[13px] transition-all duration-150 group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100 shrink-0">→</span>
       </div>
-      <div className="text-[11px] text-[#ABABAA] mt-1.5">{hint}</div>
+      <div className="text-[11px] text-[var(--muted-3)] mt-1.5">{hint}</div>
     </button>
   )
 }
@@ -598,12 +598,12 @@ function KeywordModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-[580px] flex flex-col overflow-hidden"
+        className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-[580px] flex flex-col overflow-hidden"
         style={{ maxHeight: '80vh', animation: 'fadeUp 0.2s ease both' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF] shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border-3)] shrink-0">
           <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: brand.color }} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -616,14 +616,14 @@ function KeywordModal({
               >
                 {TIER_LABEL[tier]}
               </span>
-              <span className="text-[11px] text-[#ABABAA]">{filtered.length} keywords</span>
+              <span className="text-[11px] text-[var(--muted-3)]">{filtered.length} keywords</span>
             </div>
-            <p className="text-[11px] text-[#ABABAA] mt-0.5">{TIER_RANGE[tier]}</p>
-            <p className="text-[11px] text-[#8A8A85] mt-1 leading-snug">{TIER_DESC[tier]}</p>
+            <p className="text-[11px] text-[var(--muted-3)] mt-0.5">{TIER_RANGE[tier]}</p>
+            <p className="text-[11px] text-[var(--muted)] mt-1 leading-snug">{TIER_DESC[tier]}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[#ABABAA] hover:bg-[#F5F4EF] hover:text-[#0A0A0A] transition-colors shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[#F5F4EF] hover:text-[var(--ink-2)] transition-colors shrink-0"
           >
             ×
           </button>
@@ -632,17 +632,17 @@ function KeywordModal({
         {/* Grouped content */}
         <div className="overflow-y-auto flex-1 px-5 py-3 space-y-5">
           {domainGroups.length === 0 ? (
-            <p className="text-[12px] text-[#ABABAA] text-center py-10">No keywords found.</p>
+            <p className="text-[12px] text-[var(--muted-3)] text-center py-10">No keywords found.</p>
           ) : (
             domainGroups.map((group) => (
               <div key={group.domain}>
                 {/* Domain header */}
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: brand.color }} />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#0A0A0A]">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--ink-2)]">
                     {group.domain}
                   </span>
-                  <span className="ml-auto text-[10px] text-[#ABABAA]">{group.totalKw} kw</span>
+                  <span className="ml-auto text-[10px] text-[var(--muted-3)]">{group.totalKw} kw</span>
                 </div>
                 {/* Keyword rows */}
                 <div className="divide-y divide-[#F3F2EE]">
@@ -707,20 +707,20 @@ function MetricModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-[460px] flex flex-col overflow-hidden"
+        className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-[460px] flex flex-col overflow-hidden"
         style={{ maxHeight: '80vh', animation: 'fadeUp 0.2s ease both' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F5F4EF] shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border-3)] shrink-0">
           <div className="w-[3px] h-7 rounded-full shrink-0" style={{ background: meta.color }} />
           <div className="flex-1 min-w-0">
-            <div className="text-[14px] font-bold text-[#0A0A0A]">{meta.title}</div>
-            <div className="text-[11px] text-[#ABABAA] mt-0.5">{meta.subtitle}</div>
+            <div className="text-[14px] font-bold text-[var(--ink-2)]">{meta.title}</div>
+            <div className="text-[11px] text-[var(--muted-3)] mt-0.5">{meta.subtitle}</div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[#ABABAA] hover:bg-[#F5F4EF] hover:text-[#0A0A0A] transition-colors shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[#F5F4EF] hover:text-[var(--ink-2)] transition-colors shrink-0"
           >×</button>
         </div>
 
@@ -735,7 +735,7 @@ function MetricModal({
                   onClick={() => brandSlug && onNavigate(`/bp-sites/${brandSlug}?kw=${encodeURIComponent(kw)}`)}
                 >
                   <span className="text-[13px] text-[#1A1A1A]">{kw}</span>
-                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} record{count !== 1 ? 's' : ''}</span>
+                  <span className="font-mono text-[11px] text-[var(--muted-3)] shrink-0">{count} record{count !== 1 ? 's' : ''}</span>
                 </div>
               ))}
             </div>
@@ -750,8 +750,8 @@ function MetricModal({
                   onClick={() => onNavigate(`/bp-sites/${brandToSlug(brand.name)}`)}
                 >
                   <div className="w-[3px] h-6 rounded-full shrink-0" style={{ background: brand.color }} />
-                  <span className="text-[13px] font-medium text-[#0A0A0A] flex-1">{brand.name}</span>
-                  <span className="font-mono text-[11px] text-[#ABABAA] shrink-0">{count} records</span>
+                  <span className="text-[13px] font-medium text-[var(--ink-2)] flex-1">{brand.name}</span>
+                  <span className="font-mono text-[11px] text-[var(--muted-3)] shrink-0">{count} records</span>
                 </div>
               ))}
             </div>

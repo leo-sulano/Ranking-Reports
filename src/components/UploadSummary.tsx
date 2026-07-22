@@ -124,22 +124,22 @@ export function UploadSummary({ data, onClose }: Props) {
       className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white border border-[#E2E8F0] rounded-[14px] w-[600px] max-w-[95vw] max-h-[88vh] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease] flex flex-col">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[14px] w-[600px] max-w-[95vw] max-h-[88vh] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] shrink-0">
           <div>
-            <h2 className="font-display text-[18px] tracking-wider text-[#0F172A] leading-none">
+            <h2 className="font-display text-[18px] tracking-wider text-[var(--ink)] leading-none">
               Import Summary
             </h2>
-            <p className="text-[11px] text-[#64748B] mt-1.5">
+            <p className="text-[11px] text-[var(--muted)] mt-1.5">
               {displayDate} · {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} uploaded
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all"
+            className="w-7 h-7 flex items-center justify-center bg-[var(--surface-3)] border border-[var(--border)] rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] transition-all"
           >
             <X size={14} strokeWidth={2.25} />
           </button>
@@ -164,12 +164,12 @@ export function UploadSummary({ data, onClose }: Props) {
 
           {/* Distribution tree */}
           <div className="mb-5">
-            <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-2">
+            <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)] mb-2">
               Distribution
             </div>
 
             {brands.length === 0 ? (
-              <p className="text-[12px] text-[#64748B] py-3 text-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-md">
+              <p className="text-[12px] text-[var(--muted)] py-3 text-center bg-[var(--surface-2)] border border-[var(--border)] rounded-md">
                 No matching brands in this upload.
               </p>
             ) : (
@@ -189,10 +189,10 @@ export function UploadSummary({ data, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-[#E2E8F0] shrink-0 flex justify-end">
+        <div className="px-6 py-3 border-t border-[var(--border)] shrink-0 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#0F172A] text-white rounded-md text-[12px] font-bold hover:bg-[#1E293B] transition-colors"
+            className="px-4 py-1.5 bg-[var(--btn-ink)] text-white rounded-md text-[12px] font-bold hover:bg-[var(--btn-ink-hover)] transition-colors"
           >
             Done
           </button>
@@ -236,7 +236,7 @@ function UnknownDomainsPanel({
       </button>
 
       {open && (
-        <div className="border-t border-[rgba(244,63,94,0.25)] bg-white">
+        <div className="border-t border-[rgba(244,63,94,0.25)] bg-[var(--surface)]">
           {domains.map((u, i) => (
             <div
               key={u.domain}
@@ -244,9 +244,9 @@ function UnknownDomainsPanel({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Globe size={11} strokeWidth={2} className="text-[#F43F5E] shrink-0" />
-                <span className="font-mono text-[12px] text-[#0F172A] truncate">{u.domain}</span>
+                <span className="font-mono text-[12px] text-[var(--ink)] truncate">{u.domain}</span>
               </div>
-              <span className="font-mono text-[11px] text-[#64748B] shrink-0">
+              <span className="font-mono text-[11px] text-[var(--muted)] shrink-0">
                 {u.count.toLocaleString()}
               </span>
             </div>
@@ -259,9 +259,9 @@ function UnknownDomainsPanel({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md px-3 py-2.5">
-      <div className="text-[10px] uppercase tracking-[0.1em] text-[#64748B] mb-0.5">{label}</div>
-      <div className="text-[20px] font-bold font-mono text-[#0F172A]">
+    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2.5">
+      <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--muted)] mb-0.5">{label}</div>
+      <div className="text-[20px] font-bold font-mono text-[var(--ink)]">
         {value.toLocaleString()}
       </div>
     </div>
@@ -281,34 +281,34 @@ function BrandRow({
   const color = brand?.color ?? '#94A3B8'
 
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-md overflow-hidden">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-[#F8FAFC] transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-[var(--surface-2)] transition-colors"
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <ChevronDown
             size={14}
             strokeWidth={2.25}
-            className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+            className={`text-[var(--muted)] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
           />
           <Building2 size={13} strokeWidth={2} className="shrink-0" style={{ color }} />
-          <span className="text-[13px] font-semibold text-[#0F172A] truncate">{node.name}</span>
-          <span className="text-[10px] font-mono text-[#64748B] shrink-0">
+          <span className="text-[13px] font-semibold text-[var(--ink)] truncate">{node.name}</span>
+          <span className="text-[10px] font-mono text-[var(--muted)] shrink-0">
             {node.domains.length} site{node.domains.length !== 1 ? 's' : ''}
             <span className="mx-1 text-[#CBD5E1]">·</span>
             {node.keywords.toLocaleString()} keyword{node.keywords !== 1 ? 's' : ''}
           </span>
         </div>
-        <span className="text-[12px] font-mono font-semibold text-[#0F172A] shrink-0">
+        <span className="text-[12px] font-mono font-semibold text-[var(--ink)] shrink-0">
           {node.total.toLocaleString()}
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
+        <div className="border-t border-[var(--border)] bg-[var(--surface-2)]">
           {node.domains.map((d, i) => (
             <DomainRow key={d.domain} node={d} divider={i > 0} />
           ))}
@@ -320,25 +320,25 @@ function BrandRow({
 
 function DomainRow({ node, divider }: { node: DomainNode; divider: boolean }) {
   return (
-    <div className={`px-3 py-2 ${divider ? 'border-t border-[#E2E8F0]' : ''}`}>
+    <div className={`px-3 py-2 ${divider ? 'border-t border-[var(--border)]' : ''}`}>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <Globe size={11} strokeWidth={2} className="text-[#94A3B8] shrink-0" />
-          <span className="font-mono text-[12px] text-[#0F172A] truncate">{node.domain}</span>
+          <Globe size={11} strokeWidth={2} className="text-[var(--muted-2)] shrink-0" />
+          <span className="font-mono text-[12px] text-[var(--ink)] truncate">{node.domain}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
           {node.countries.map((c) => (
             <span
               key={c.code}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-[#E2E8F0] rounded font-mono text-[10px] text-[#475569]"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded font-mono text-[10px] text-[var(--text-2)]"
             >
-              <span className="font-semibold text-[#0F172A]">{c.code}</span>
-              <span className="text-[#94A3B8]">·</span>
+              <span className="font-semibold text-[var(--ink)]">{c.code}</span>
+              <span className="text-[var(--muted-2)]">·</span>
               <span>{c.count.toLocaleString()}</span>
             </span>
           ))}
         </div>
-        <span className="font-mono text-[11px] text-[#64748B] shrink-0">
+        <span className="font-mono text-[11px] text-[var(--muted)] shrink-0">
           {node.total.toLocaleString()}
         </span>
       </div>

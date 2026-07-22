@@ -19,7 +19,7 @@ function ToastEl({ toast, onRemove }: { toast: ToastItem; onRemove: (id: string)
 
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-3 bg-white border border-[#E2E8F0] rounded-md text-[13px] text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.12)] max-w-[340px] animate-[toastIn_0.25s_ease]"
+      className="flex items-center gap-2.5 px-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[13px] text-[var(--ink)] shadow-[0_8px_24px_rgba(15,23,42,0.12)] max-w-[340px] animate-[toastIn_0.25s_ease]"
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       {toast.message}

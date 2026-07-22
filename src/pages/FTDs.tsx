@@ -35,24 +35,25 @@ function FtdStatCard({
       onClick={onClick}
       className={`rounded-[10px] px-3 sm:px-4 py-2.5 flex flex-col gap-1 relative overflow-hidden ${onClick ? 'cursor-pointer select-none transition-all' : ''}`}
       style={{
-        background: active ? `${accent}10` : 'white',
-        border: active ? `2px solid ${accent}` : '1px solid #E2E8F0',
+        // color-mix instead of hex+alpha so accent can be a CSS variable
+        background: active ? `color-mix(in srgb, ${accent} 7%, transparent)` : 'var(--surface)',
+        border: active ? `2px solid ${accent}` : '1px solid var(--border)',
         boxShadow: active
-          ? `0 0 0 3px ${accent}22, 0 2px 8px rgba(0,0,0,0.08)`
+          ? `0 0 0 3px color-mix(in srgb, ${accent} 14%, transparent), 0 2px 8px rgba(0,0,0,0.08)`
           : '0 1px 2px rgba(0,0,0,0.04)',
       }}
     >
       <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-[10px]" style={{ background: accent }} />
-      <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] truncate">
+      <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)] truncate">
         {label}
       </div>
       <div className="font-display text-[22px] sm:text-[32px] leading-none" style={{ color: accent }}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
-      <div className="text-[9px] sm:text-[10px] text-[#64748B] truncate">
+      <div className="text-[9px] sm:text-[10px] text-[var(--muted)] truncate">
         {active ? <span style={{ color: accent }}>● filtering</span> : sub}
       </div>
-      <div className="text-[8px] font-mono text-[#94A3B8] truncate" title={formula}>
+      <div className="text-[8px] font-mono text-[var(--muted-2)] truncate" title={formula}>
         {formula}
       </div>
     </div>
@@ -263,7 +264,7 @@ export function FTDs() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
+      <div className="flex-1 flex items-center justify-center h-full text-[var(--muted-2)] font-mono text-[12px] tracking-wider">
         Loading FTD data…
       </div>
     )
@@ -275,20 +276,20 @@ export function FTDs() {
         <div ref={periodDdRef} className="relative shrink-0">
           <div
             onClick={() => setPeriodDdOpen((v) => !v)}
-            className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
-              periodDdOpen ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+            className={`flex items-center gap-2 bg-[var(--surface)] border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[var(--ink)] cursor-pointer transition-colors ${
+              periodDdOpen ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
             }`}
           >
             <span className="font-medium flex-1 min-w-0 truncate">{activePeriodOption.label}</span>
             <ChevronDown
               size={13}
               strokeWidth={2.25}
-              className={`text-[#64748B] shrink-0 transition-transform duration-150 ${periodDdOpen ? 'rotate-180' : ''}`}
+              className={`text-[var(--muted)] shrink-0 transition-transform duration-150 ${periodDdOpen ? 'rotate-180' : ''}`}
             />
           </div>
 
           {periodDdOpen && (
-            <div className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[160px] max-h-[320px] overflow-y-auto animate-[modalIn_0.12s_ease]">
+            <div className="absolute right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[160px] max-h-[320px] overflow-y-auto animate-[modalIn_0.12s_ease]">
               {periodOptions.map((o) => {
                 const selected = o.id === periodFilter
                 return (
@@ -300,7 +301,7 @@ export function FTDs() {
                     onClick={() => { setPeriodFilter(o.id); setPeriodDdOpen(false) }}
                     className={`w-full flex items-center justify-between text-left transition-colors ${
                       o.indent ? 'pl-6 pr-3 py-1.5 text-[11px]' : 'px-3 py-2 text-[12px]'
-                    } ${selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'}`}
+                    } ${selected ? 'bg-[var(--btn-ink)] text-white' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'}`}
                   >
                     <span className={o.indent ? 'font-normal' : 'font-medium'}>{o.label}</span>
                     {selected && <Check size={13} strokeWidth={2.5} />}
@@ -316,7 +317,7 @@ export function FTDs() {
         <FtdStatCard
           label="Total REG"
           value={cardStats.totalReg}
-          accent="#0F172A"
+          accent="var(--ink)"
           sub="registrations"
           formula="Σ REG — every brand"
           active={activeMetric === 'reg'}
@@ -347,7 +348,7 @@ export function FTDs() {
           onClick={() => requireAuth(() => setShowEntryForm(true)).catch(() => {})}
           disabled={writeGate.disabled}
           title={writeGate.title}
-          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md text-[12px] font-bold text-white bg-[var(--btn-ink)] hover:bg-[var(--btn-ink-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Add / Edit Month
         </button>

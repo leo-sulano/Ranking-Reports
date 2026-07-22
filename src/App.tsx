@@ -16,6 +16,7 @@ import {
   DEFAULT_RECENT_PER_CATEGORY,
 } from './lib/storage'
 import { logActivity } from './lib/activityLog'
+import { getInitialTheme, applyTheme, saveTheme, type Theme } from './lib/theme'
 
 import { Sidebar }       from './components/Sidebar'
 import { Topbar }        from './components/Topbar'
@@ -55,6 +56,15 @@ function Layout() {
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      applyTheme(next)
+      saveTheme(next)
+      return next
+    })
+  }, [])
   // Bulk-import (matrix-format) progress overlay. null when not importing.
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -438,13 +448,13 @@ function Layout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F7F7F5] relative">
+    <div className="flex h-screen overflow-hidden bg-[var(--page)] relative">
       {/* Background grid */}
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-30"
         style={{
           backgroundImage:
-            'linear-gradient(#E5E4DF 1px, transparent 1px), linear-gradient(90deg, #E5E4DF 1px, transparent 1px)',
+            'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />
@@ -467,6 +477,8 @@ function Layout() {
           session={session}
           onSignIn={openLogin}
           onMenuToggle={() => setMobileNavOpen((v) => !v)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
         <Outlet context={rrContext} />
@@ -491,11 +503,11 @@ function Layout() {
 
       {bulkProgress && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white border border-[#E5E4DF] rounded-2xl w-[420px] max-w-[95vw] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
-            <h2 className="font-display text-[16px] tracking-wider text-[#0A0A0A] mb-4">
+          <div className="bg-[var(--surface)] border border-[var(--border-2)] rounded-2xl w-[420px] max-w-[95vw] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+            <h2 className="font-display text-[16px] tracking-wider text-[var(--ink-2)] mb-4">
               Bulk import in progress
             </h2>
-            <div className="h-[5px] bg-[#F0EFEA] rounded-full overflow-hidden mb-3">
+            <div className="h-[5px] bg-[var(--border-3)] rounded-full overflow-hidden mb-3">
               <div
                 className="h-full rounded-full transition-[width] duration-150"
                 style={{
@@ -504,7 +516,7 @@ function Layout() {
                 }}
               />
             </div>
-            <p className="text-center text-[12px] text-[#ABABAA]">
+            <p className="text-center text-[12px] text-[var(--muted-3)]">
               Saving snapshot {bulkProgress.done} of {bulkProgress.total}…
             </p>
           </div>
@@ -534,7 +546,7 @@ function RankingGate({ children }: { children: ReactNode }) {
   const ctx = useOutletContext<RROutletContext>()
   if (ctx.snapshotsLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[#ABABAA] font-mono text-[12px] tracking-wider">
+      <div className="flex-1 flex items-center justify-center text-[var(--muted-3)] font-mono text-[12px] tracking-wider">
         Loading rankings…
       </div>
     )

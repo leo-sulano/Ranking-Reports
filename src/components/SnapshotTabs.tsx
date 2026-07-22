@@ -14,7 +14,7 @@ export function SnapshotTabs({ snapshots, activeId, onSelect }: Props) {
 
   return (
     <div className="flex items-center gap-1 px-7 pb-3 shrink-0 overflow-x-auto">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-2 shrink-0">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-2 shrink-0">
         Snapshot
       </span>
 
@@ -27,13 +27,13 @@ export function SnapshotTabs({ snapshots, activeId, onSelect }: Props) {
             onClick={() => onSelect(snap.id)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-mono border transition-all shrink-0 ${
               isActive
-                ? 'bg-[#F1F5F9] border-[#CBD5E1] text-[#0F172A]'
-                : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:text-[#475569]'
+                ? 'bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--ink)]'
+                : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-strong)] hover:text-[var(--text-2)]'
             }`}
           >
             {snap.displayDate}
             {isLatest && (
-              <span className="text-[9px] font-bold uppercase tracking-widest px-1 py-0.5 rounded bg-[#CBD5E1] text-[#0F172A]">
+              <span className="text-[9px] font-bold uppercase tracking-widest px-1 py-0.5 rounded bg-[#CBD5E1] text-[var(--ink)]">
                 LATEST
               </span>
             )}

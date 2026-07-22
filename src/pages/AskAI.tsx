@@ -63,18 +63,18 @@ export function AskAI() {
     : 'Ask a question or click 🎤 to speak'
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[var(--surface)]">
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-6 h-14 shrink-0 border-b border-[#E2E8F0]">
+      <div className="flex items-center gap-2 px-6 h-14 shrink-0 border-b border-[var(--border)]">
         <AiIcon size={22} />
-        <span className="font-display text-[15px] tracking-wider text-[#0F172A] flex-1">
+        <span className="font-display text-[15px] tracking-wider text-[var(--ink)] flex-1">
           Ask AI
         </span>
         {messages.length > 0 && (
           <button
             onClick={reset}
-            className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#0F172A] px-2 py-1 rounded-[6px] hover:bg-[#F8FAFC] transition-colors"
+            className="flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--ink)] px-2 py-1 rounded-[6px] hover:bg-[var(--surface-2)] transition-colors"
           >
             <RotateCcw size={12} />
             Reset
@@ -86,7 +86,7 @@ export function AskAI() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-3 max-w-3xl w-full mx-auto">
         {messages.length === 0 && (
           <>
-            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[#64748B]'}`}>
+            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[var(--muted)]'}`}>
               {emptyState}
             </p>
             {ready && (
@@ -95,7 +95,7 @@ export function AskAI() {
                   <button
                     key={q}
                     onClick={() => send(q)}
-                    className="text-[11px] border border-[#E2E8F0] rounded-[8px] px-3 py-1.5 text-[#475569] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-colors"
+                    className="text-[11px] border border-[var(--border)] rounded-[8px] px-3 py-1.5 text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)] transition-colors"
                   >
                     {q}
                   </button>
@@ -108,8 +108,8 @@ export function AskAI() {
           <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
             <div className={
               m.role === 'user'
-                ? 'inline-block bg-[#0F172A] text-white rounded-[10px] px-4 py-2.5 text-[13px] max-w-[75%] text-left whitespace-pre-wrap'
-                : 'inline-block bg-[#F1F5F9] text-[#0F172A] rounded-[10px] px-4 py-2.5 text-[13px] max-w-[75%] whitespace-pre-wrap'
+                ? 'inline-block bg-[var(--btn-ink)] text-white rounded-[10px] px-4 py-2.5 text-[13px] max-w-[75%] text-left whitespace-pre-wrap'
+                : 'inline-block bg-[var(--surface-3)] text-[var(--ink)] rounded-[10px] px-4 py-2.5 text-[13px] max-w-[75%] whitespace-pre-wrap'
             }>
               {m.content || (isStreaming && i === messages.length - 1 ? '…' : '')}
             </div>
@@ -127,7 +127,7 @@ export function AskAI() {
         <button
           onClick={summarize}
           disabled={!ready || isStreaming}
-          className="w-full text-[12px] font-mono tracking-wider text-[#0F172A] border border-[#E2E8F0] rounded-[8px] py-2 hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full text-[12px] font-mono tracking-wider text-[var(--ink)] border border-[var(--border)] rounded-[8px] py-2 hover:bg-[var(--surface-2)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Summarize this view
         </button>
@@ -145,7 +145,7 @@ export function AskAI() {
             onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
             disabled={!ready || recording}
             placeholder={inputPlaceholder}
-            className="flex-1 text-[13px] border border-[#E2E8F0] rounded-[8px] px-3 py-2.5 outline-none focus:border-[#0F172A] disabled:bg-[#F8FAFC]"
+            className="flex-1 text-[13px] border border-[var(--border)] rounded-[8px] px-3 py-2.5 outline-none focus:border-[var(--ink)] disabled:bg-[var(--surface-2)]"
           />
 
           {/* Mic button — click to start recording */}
@@ -158,7 +158,7 @@ export function AskAI() {
               className={`rounded-[8px] p-2.5 transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
                 recording
                   ? 'bg-[#FEF2F2] text-[#EF4444] animate-pulse'
-                  : 'bg-[#F8FAFC] text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
+                  : 'bg-[var(--surface-2)] text-[var(--muted-2)] hover:text-[var(--ink)] hover:bg-[var(--surface-3)]'
               }`}
             >
               <Mic size={16} />
@@ -166,7 +166,7 @@ export function AskAI() {
           )}
 
           {isStreaming ? (
-            <button onClick={stop} className="bg-[#F1F5F9] text-[#0F172A] rounded-[8px] p-2.5" aria-label="Stop">
+            <button onClick={stop} className="bg-[var(--surface-3)] text-[var(--ink)] rounded-[8px] p-2.5" aria-label="Stop">
               <Square size={16} />
             </button>
           ) : recording ? (
@@ -182,7 +182,7 @@ export function AskAI() {
             <button
               onClick={submit}
               disabled={!input.trim() || !ready}
-              className="bg-[#0F172A] text-white rounded-[8px] p-2.5 disabled:opacity-40"
+              className="bg-[var(--btn-ink)] text-white rounded-[8px] p-2.5 disabled:opacity-40"
               aria-label="Send"
             >
               <Send size={16} />

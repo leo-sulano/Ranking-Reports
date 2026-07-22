@@ -89,26 +89,26 @@ export function LoginModal({
     >
       <form
         onSubmit={handleSubmit}
-        className="relative w-[380px] max-w-full bg-white border border-[#E2E8F0] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease]"
+        className="relative w-[380px] max-w-full bg-[var(--surface)] border border-[var(--border)] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease]"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all"
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-[var(--surface-3)] border border-[var(--border)] rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] transition-all"
         >
           <X size={14} strokeWidth={2.25} />
         </button>
 
         <div className="flex items-center gap-2.5 mb-1">
-          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[#0F172A] text-white">
+          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[var(--btn-ink)] text-white">
             <Lock size={15} />
           </span>
-          <span className="font-display text-[20px] tracking-wider text-[#0F172A]">
+          <span className="font-display text-[20px] tracking-wider text-[var(--ink)]">
             {mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Reset password' : 'Sign in'}
           </span>
         </div>
-        <p className="text-[12px] font-mono text-[#64748B] mb-6">
+        <p className="text-[12px] font-mono text-[var(--muted)] mb-6">
           {mode === 'signup'
             ? 'Create an account — an admin will approve it before you can make changes'
             : mode === 'forgot'
@@ -116,7 +116,7 @@ export function LoginModal({
             : 'Sign in to make changes to the dashboard'}
         </p>
 
-        <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+        <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
           Email
         </label>
         <input
@@ -125,13 +125,13 @@ export function LoginModal({
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+          className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
           placeholder="you@optinetsolutions.com"
         />
 
         {mode !== 'forgot' && (
           <>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
               Password
             </label>
             <input
@@ -140,7 +140,7 @@ export function LoginModal({
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
               placeholder="••••••••"
             />
           </>
@@ -150,7 +150,7 @@ export function LoginModal({
           <button
             type="button"
             onClick={openForgot}
-            className="block ml-auto mb-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="block ml-auto mb-3 text-[12px] font-mono text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             Forgot password?
           </button>
@@ -171,7 +171,7 @@ export function LoginModal({
         <button
           type="submit"
           disabled={busy}
-          className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#1E293B] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-10 rounded-[9px] bg-[var(--btn-ink)] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--btn-ink-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           <LogIn size={15} />
           {busy
@@ -183,7 +183,7 @@ export function LoginModal({
           <button
             type="button"
             onClick={backToSignIn}
-            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="w-full mt-3 text-[12px] font-mono text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             Back to sign in
           </button>
@@ -191,7 +191,7 @@ export function LoginModal({
           <button
             type="button"
             onClick={toggleMode}
-            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="w-full mt-3 text-[12px] font-mono text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             {mode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
           </button>
@@ -201,14 +201,14 @@ export function LoginModal({
           <>
             <div className="flex items-center gap-3 my-4">
               <div className="flex-1 h-px bg-[#E2E8F0]" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">or</span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-2)]">or</span>
               <div className="flex-1 h-px bg-[#E2E8F0]" />
             </div>
 
             <button
               type="button"
               onClick={handleGoogle}
-              className="w-full h-10 rounded-[9px] border border-[#E2E8F0] text-[#0F172A] text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#F8FAFC] transition-colors"
+              className="w-full h-10 rounded-[9px] border border-[var(--border)] text-[var(--ink)] text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--surface-2)] transition-colors"
             >
               Sign in with Google
             </button>
