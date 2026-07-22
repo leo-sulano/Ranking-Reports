@@ -213,20 +213,35 @@ BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()
 export const LP_DOMAIN_TO_BRAND: Record<string, string> = {}
 BRANDS.forEach((b) => b.lpDomains.forEach((d) => { LP_DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
 
-// Logo-accurate brand colors — sampled from each brand's actual logo, distinct
-// from Brand.color (the generic value used for Home stats/badges app-wide).
-// Used wherever a brand needs to visually match its real identity: BP/LP
-// Sites' brand grid cards, FTDs' brand column headers.
+// Logo-accurate brand colors — sampled from each brand's actual favicon
+// (public/Brand-Favicon/), distinct from Brand.color (the generic value used
+// for Home stats/badges app-wide). Used wherever a brand needs to visually
+// match its real identity: BP/LP Sites' brand grid cards, FTDs' brand column
+// headers.
 export const BRAND_LOGO_COLORS: Record<string, string> = {
-  'Lucky 7even': '#C026D3',
+  'Lucky 7even': '#7C3AED',
   'RoosterBet':  '#DC2626',
-  'LuckyVibe':   '#0F766E',
+  'LuckyVibe':   '#2563EB',
   'SpinsUp':     '#EC4899',
-  'Spinjo':      '#1E40AF',
+  'Spinjo':      '#22D3EE',
   'FortunePLay': '#CA8A04',
-  'RocketSpin':  '#1F2937',
-  'PlayMojo':    '#38BDF8',
+  'RocketSpin':  '#0EA5E9',
+  'PlayMojo':    '#64748B',
   'Rollero':     '#B8860B',
+}
+
+// Favicon image path for each brand, served from public/Brand-Favicon/.
+// Rendered in place of the abbreviation badge on BP/LP Sites' brand grid cards.
+export const BRAND_FAVICONS: Record<string, string> = {
+  'Lucky 7even': '/Brand-Favicon/lucky7even.webp',
+  'RoosterBet':  '/Brand-Favicon/roosterbet.webp',
+  'LuckyVibe':   '/Brand-Favicon/luckyvibe.webp',
+  'SpinsUp':     '/Brand-Favicon/spinsup.webp',
+  'Spinjo':      '/Brand-Favicon/spinjo.webp',
+  'FortunePLay': '/Brand-Favicon/fortuneplay.webp',
+  'RocketSpin':  '/Brand-Favicon/rocketspin.webp',
+  'PlayMojo':    '/Brand-Favicon/playmojo.webp',
+  'Rollero':     '/Brand-Favicon/rollero.webp',
 }
 
 export const COUNTRY_LABELS: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange } from '../lib/parser'
@@ -58,7 +58,13 @@ export function LPSites() {
     )
   }
 
-  return <BrandGrid snapshots={lpSnapshots} onSelect={(b) => navigate(`/lp-sites/${brandToSlug(b.name)}`)} />
+  return (
+    <BrandGrid
+      snapshots={lpSnapshots}
+      onSelect={(b) => navigate(`/lp-sites/${brandToSlug(b.name)}`)}
+      onSelectDomain={(b, domain) => navigate(`/lp-sites/${brandToSlug(b.name)}/${domain}`)}
+    />
+  )
 }
 
 // ─── Brand Grid — cards list LP domains (no MAIN marker) ──────────────────────
@@ -66,9 +72,11 @@ export function LPSites() {
 function BrandGrid({
   snapshots,
   onSelect,
+  onSelectDomain,
 }: {
   snapshots: Snapshot[]
   onSelect: (b: Brand) => void
+  onSelectDomain: (b: Brand, domain: string) => void
 }) {
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
@@ -91,10 +99,14 @@ function BrandGrid({
 
               <div className="flex items-center gap-3 mb-4">
                 <div
-                  className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-white shrink-0"
-                  style={{ background: c }}
+                  className="w-10 h-10 rounded-[10px] overflow-hidden shrink-0 border"
+                  style={{ borderColor: c + '30' }}
                 >
-                  {brand.abbr}
+                  <img
+                    src={BRAND_FAVICONS[brand.name]}
+                    alt={`${brand.name} favicon`}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0">
                   <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
@@ -114,18 +126,38 @@ function BrandGrid({
 
               <div className="flex flex-col gap-1">
                 {brand.lpDomains.map((d) => (
-                  <div
+                  <button
                     key={d}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-[#F8FAFC]"
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onSelectDomain(brand, d) }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left w-full bg-[#F8FAFC] transition-all duration-100 group/domain"
                     style={{ borderColor: '#E2E8F0' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = c + '90'
+                      e.currentTarget.style.background = c + '0D'
+                      e.currentTarget.style.boxShadow = `0 1px 6px ${c}25`
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#E2E8F0'
+                      e.currentTarget.style.background = '#F8FAFC'
+                      e.currentTarget.style.boxShadow = ''
+                    }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                       style={{ color: '#94A3B8', flexShrink: 0 }}>
                       <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
-                    <span className="text-[11px] truncate text-[#64748B]">{d}</span>
-                  </div>
+                    <span className="text-[11px] truncate text-[#64748B] flex-1">{d}</span>
+                    <svg
+                      width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round"
+                      className="shrink-0 opacity-0 group-hover/domain:opacity-60 transition-opacity"
+                      style={{ color: c }}
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
                 ))}
               </div>
             </button>

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
@@ -109,10 +109,14 @@ function BrandGrid({
 
               <div className="flex items-center gap-3 mb-4">
                 <div
-                  className="w-10 h-10 rounded-[10px] flex items-center justify-center font-display text-[14px] text-white shrink-0"
-                  style={{ background: c }}
+                  className="w-10 h-10 rounded-[10px] overflow-hidden shrink-0 border"
+                  style={{ borderColor: c + '30' }}
                 >
-                  {brand.abbr}
+                  <img
+                    src={BRAND_FAVICONS[brand.name]}
+                    alt={`${brand.name} favicon`}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0">
                   <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
