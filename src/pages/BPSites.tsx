@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot, SnapshotMeta } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
+import { PinButton } from '../components/PinButton'
+import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
@@ -31,6 +33,10 @@ const DATE_BAND_FG  = '#FFFFFF'
 const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
 const TABLE_BORDER  = '#B0B7BD'
 const STICKY_KW_BG  = '#FFFFFF'
+// Fixed column width for pinned domain groups — sticky offsets must be
+// deterministic, so pinned country columns are locked to the same 90px
+// the country sub-headers already use as their min-width.
+const PIN_COL_W     = 90
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, RankingRecord>>>
@@ -109,7 +115,7 @@ function BrandGrid({
             <button
               key={brand.name}
               onClick={() => onSelect(brand)}
-              className="flex flex-col justify-start bg-white border border-[#E2E8F0] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#CBD5E1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              className="flex flex-col justify-start bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
               <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: c }} />
@@ -126,7 +132,7 @@ function BrandGrid({
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
+                  <div className="text-[15px] font-bold text-[var(--ink)]">{brand.name}</div>
                 </div>
                 {hasData && (
                   <span
@@ -148,8 +154,8 @@ function BrandGrid({
                       onClick={(e) => { e.stopPropagation(); onSelectDomain(brand, d) }}
                       className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left w-full transition-all duration-100 group/domain"
                       style={{
-                        borderColor: isMain ? c + '60' : '#E2E8F0',
-                        background: isMain ? c + '14' : '#F8FAFC',
+                        borderColor: isMain ? c + '60' : 'var(--border)',
+                        background: isMain ? c + '14' : 'var(--surface-2)',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = c + '90'
@@ -157,19 +163,19 @@ function BrandGrid({
                         e.currentTarget.style.boxShadow = `0 1px 6px ${c}25`
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = isMain ? c + '60' : '#E2E8F0'
-                        e.currentTarget.style.background = isMain ? c + '14' : '#F8FAFC'
+                        e.currentTarget.style.borderColor = isMain ? c + '60' : 'var(--border)'
+                        e.currentTarget.style.background = isMain ? c + '14' : 'var(--surface-2)'
                         e.currentTarget.style.boxShadow = ''
                       }}
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ color: isMain ? c : '#94A3B8', flexShrink: 0 }}>
+                        style={{ color: isMain ? c : 'var(--muted-2)', flexShrink: 0 }}>
                         <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                       </svg>
                       <span
                         className="text-[11px] truncate flex-1"
-                        style={{ color: isMain ? '#0F172A' : '#64748B' }}
+                        style={{ color: isMain ? 'var(--ink)' : 'var(--muted)' }}
                       >
                         {d}
                       </span>
@@ -328,6 +334,10 @@ function BrandView({
   const [showClassChart, setShowClassChart] = useState(false)
   const [showAllSnapshots, setShowAllSnapshots] = useState(false)
 
+  // Pinned domain groups — shared across every snapshot matrix on the page,
+  // persisted per brand.
+  const [pinnedDomains, togglePinnedDomain] = usePinnedGroups(`bp-${brand.name}`)
+
   // Stats-date filter: 'all' resolves to the latest snapshot; otherwise the
   // selected snapshot id or 'month:<MonthYear>'.
   const [statsFilter, setStatsFilter] = useState<string>(
@@ -477,7 +487,7 @@ function BrandView({
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
+            className="flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--text-2)] transition-colors mr-1"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -485,7 +495,7 @@ function BrandView({
             All brands
           </button>
 
-          <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
+          <h1 className="font-display text-[20px] tracking-wider text-[var(--ink)] leading-none">{brand.name}</h1>
         </div>
 
         {brandSnapshots.length > 0 && (
@@ -505,7 +515,7 @@ function BrandView({
 
       {brandSnapshots.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 text-center gap-4 px-7 pb-7">
-          <p className="text-[14px] text-[#64748B] max-w-sm leading-relaxed">
+          <p className="text-[14px] text-[var(--muted)] max-w-sm leading-relaxed">
             No ranking data for {brand.name} yet. Import a data export to populate this view.
           </p>
         </div>
@@ -524,7 +534,7 @@ function BrandView({
 
           {/* Filter bar — sites + countries + keyword search */}
           <div className="flex items-center gap-1.5 px-3 sm:px-7 pt-[10px] pb-[5px] shrink-0 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Sites
             </span>
             <SiteFilter
@@ -537,7 +547,7 @@ function BrandView({
 
             <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
 
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
             </span>
             {COUNTRY_ORDER.map((c) => {
@@ -549,8 +559,8 @@ function BrandView({
                   className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
                   style={
                     active
-                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+                      ? { background: 'var(--border-strong)', color: 'var(--ink)', borderColor: 'transparent', fontWeight: 700 }
+                      : { background: 'var(--surface)', color: 'var(--text-2)', borderColor: 'var(--border)' }
                   }
                 >
                   {c}
@@ -584,16 +594,16 @@ function BrandView({
                   }, { replace: true })
                 }}
                 placeholder="Search keywords…"
-                className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-36 sm:w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
+                className="pl-7 pr-3 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded-full text-[12px] text-[var(--ink)] outline-none w-36 sm:w-44 placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] transition-colors"
               />
             </div>
 
-            <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-[#E2E8F0] bg-[#F1F5F9]">
+            <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-[var(--border)] bg-[var(--surface-3)]">
               <button
                 type="button"
                 onClick={() => setMonthlyMode(false)}
                 className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
-                  !monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                  !monthly ? 'bg-[var(--surface)] text-[var(--ink)] font-bold shadow-sm' : 'text-[var(--muted)]'
                 }`}
               >
                 Weekly
@@ -602,7 +612,7 @@ function BrandView({
                 type="button"
                 onClick={() => setMonthlyMode(true)}
                 className={`px-3 py-1 rounded-full text-[12px] font-sans transition-all ${
-                  monthly ? 'bg-white text-[#0F172A] font-bold shadow-sm' : 'text-[#64748B]'
+                  monthly ? 'bg-[var(--surface)] text-[var(--ink)] font-bold shadow-sm' : 'text-[var(--muted)]'
                 }`}
               >
                 Monthly
@@ -629,14 +639,14 @@ function BrandView({
             )}
 
             <div className="hidden sm:flex items-center gap-2 ml-auto">
-              <span className="text-[11px] font-mono text-[#64748B]">
+              <span className="text-[11px] font-mono text-[var(--muted)]">
                 {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {brand.domains.length} site{brand.domains.length !== 1 ? 's' : ''}
                 {' (1 main + ' + bpDomains.length + ' BP)'}
               </span>
               <button
                 onClick={() => setShowClassChart(true)}
                 title="How keywords are classified"
-                className="flex items-center gap-1 text-[10px] text-[#94A3B8] hover:text-[#475569] transition-colors border border-[#E2E8F0] hover:border-[#CBD5E1] rounded-md px-2 py-1"
+                className="flex items-center gap-1 text-[10px] text-[var(--muted-2)] hover:text-[var(--text-2)] transition-colors border border-[var(--border)] hover:border-[var(--border-strong)] rounded-md px-2 py-1"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/>
@@ -684,13 +694,15 @@ function BrandView({
                         cardFilter={cardFilter}
                         onEditCell={onEditCell}
                         isLatest={snap.id === latestSnap?.id}
+                        pinnedDomains={pinnedDomains}
+                        onTogglePin={togglePinnedDomain}
                       />
                     )
                   })}
                   {hiddenCount > 0 && (
                     <button
                       onClick={() => setShowAllSnapshots(true)}
-                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[12px] font-semibold text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
                     >
                       <ChevronDown size={14} />
                       Show {hiddenCount} older snapshot{hiddenCount !== 1 ? 's' : ''}
@@ -700,7 +712,7 @@ function BrandView({
                     <button
                       onClick={onLoadOlder}
                       disabled={loadingOlder}
-                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[12px] font-semibold text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                       <ChevronDown size={14} />
                       {loadingOlder ? 'Loading…' : 'Load older snapshots from history'}
@@ -817,7 +829,7 @@ function StatsDateFilter({
 
   return (
     <div ref={ref} className="relative">
-      <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
+      <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)]">
         Stats date
       </span>
 
@@ -825,11 +837,11 @@ function StatsDateFilter({
           input when open. No separate search bar inside the dropdown. */}
       <div
         onClick={() => { if (!open) setOpen(true) }}
-        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] transition-colors cursor-text ${
-          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        className={`flex items-center gap-2 bg-[var(--surface)] border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[var(--ink)] transition-colors cursor-text ${
+          open ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
         }`}
       >
-        <CalendarDays size={13} strokeWidth={2.25} className="text-[#64748B] shrink-0" />
+        <CalendarDays size={13} strokeWidth={2.25} className="text-[var(--muted)] shrink-0" />
         {open ? (
           <input
             ref={searchRef}
@@ -838,7 +850,7 @@ function StatsDateFilter({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={label}
             aria-label="Search dates"
-            className="bg-transparent outline-none flex-1 min-w-0 text-[12px] text-[#0F172A] placeholder:text-[#94A3B8] font-medium"
+            className="bg-transparent outline-none flex-1 min-w-0 text-[12px] text-[var(--ink)] placeholder:text-[var(--muted-2)] font-medium"
           />
         ) : (
           <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
@@ -853,7 +865,7 @@ function StatsDateFilter({
           <ChevronDown
             size={13}
             strokeWidth={2.25}
-            className={`text-[#64748B] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+            className={`text-[var(--muted)] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
           />
         </button>
       </div>
@@ -861,7 +873,7 @@ function StatsDateFilter({
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
+          className="absolute right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
           <div className="max-h-[240px] overflow-y-auto">
             {monthly ? (
@@ -869,7 +881,7 @@ function StatsDateFilter({
                 {showAllMonths && (
                   <DateOption label="All months" selected={value === 'all'} onClick={() => { onChange('all'); setOpen(false) }} />
                 )}
-                {showAllMonths && filteredMonths.length > 0 && <div className="border-t border-[#E2E8F0]" />}
+                {showAllMonths && filteredMonths.length > 0 && <div className="border-t border-[var(--border)]" />}
                 {filteredMonths.map((m) => {
                   const isSelected = value === 'month:' + m
                   return (
@@ -877,7 +889,7 @@ function StatsDateFilter({
                   )
                 })}
                 {!showAllMonths && filteredMonths.length === 0 && (
-                  <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">No months match.</p>
+                  <p className="px-3 py-3 text-[11px] text-[var(--muted-2)] text-center">No months match.</p>
                 )}
               </>
             ) : (
@@ -885,12 +897,12 @@ function StatsDateFilter({
                 {showAllOption && (
                   <DateOption label="All (latest)" selected={value === 'all'} onClick={() => { onChange('all'); setOpen(false) }} />
                 )}
-                {showAllOption && filteredSnapshots.length > 0 && <div className="border-t border-[#E2E8F0]" />}
+                {showAllOption && filteredSnapshots.length > 0 && <div className="border-t border-[var(--border)]" />}
                 {filteredSnapshots.map((s) => (
                   <DateOption key={s.id} label={s.displayDate} selected={value === s.id} onClick={() => { onChange(s.id); setOpen(false) }} />
                 ))}
                 {!showAllOption && filteredSnapshots.length === 0 && (
-                  <p className="px-3 py-3 text-[11px] text-[#94A3B8] text-center">No dates match.</p>
+                  <p className="px-3 py-3 text-[11px] text-[var(--muted-2)] text-center">No dates match.</p>
                 )}
               </>
             )}
@@ -900,7 +912,7 @@ function StatsDateFilter({
               type="button"
               onClick={onLoadOlder}
               disabled={loadingOlder}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#475569] border-t border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[var(--text-2)] border-t border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               <ChevronDown size={12} />
               {loadingOlder ? 'Loading…' : 'Load older history…'}
@@ -928,7 +940,7 @@ function DateOption({
       aria-selected={selected}
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-        selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+        selected ? 'bg-[var(--btn-ink)] text-white' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
       }`}
     >
       <span className="font-medium">{label}</span>
@@ -984,23 +996,23 @@ function SiteFilter({
     <div ref={ref} className="relative">
       <div
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
-          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        className={`flex items-center gap-2 bg-[var(--surface)] border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[var(--ink)] cursor-pointer transition-colors ${
+          open ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
         }`}
       >
         <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
         <ChevronDown
           size={13}
           strokeWidth={2.25}
-          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          className={`text-[var(--muted)] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         />
       </div>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[210px] animate-[modalIn_0.12s_ease]">
+        <div className="absolute left-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[210px] animate-[modalIn_0.12s_ease]">
           {/* All — select-all shortcut, checked when every site is visible */}
           <SiteOption label="All" selected={isFull} onClick={onSelectAll} />
-          <div className="border-t border-[#E2E8F0]" />
+          <div className="border-t border-[var(--border)]" />
           {/* Main + each BP domain — independent checkbox toggles */}
           <SiteOption
             label={mainDomain}
@@ -1035,13 +1047,13 @@ function SiteOption({
       type="button"
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-        selected ? 'bg-[#F0F9FF] text-[#0F172A]' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+        selected ? 'bg-[#F0F9FF] text-[var(--ink)]' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
       }`}
     >
       <span className="font-medium truncate mr-2">{label}</span>
       <div
         className={`w-[13px] h-[13px] shrink-0 rounded-[3px] border flex items-center justify-center ${
-          selected ? 'bg-[#0F172A] border-[#0F172A]' : 'border-[#CBD5E1] bg-white'
+          selected ? 'bg-[var(--btn-ink)] border-[var(--ink)]' : 'border-[var(--border-strong)] bg-[var(--surface)]'
         }`}
       >
         {selected && <Check size={9} strokeWidth={3} className="text-white" />}
@@ -1066,6 +1078,8 @@ function SnapshotMatrix({
   cardFilter,
   onEditCell,
   isLatest,
+  pinnedDomains,
+  onTogglePin,
 }: {
   snapshot: Snapshot
   prevSnapshot: Snapshot | null
@@ -1080,12 +1094,15 @@ function SnapshotMatrix({
   cardFilter: CardFilterKey | null
   onEditCell: EditCellFn
   isLatest: boolean
+  pinnedDomains: string[]
+  onTogglePin: (domainKey: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const keywordColRef = useRef<HTMLTableCellElement>(null)
   const domainRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const [scrolled, setScrolled] = useState(false)
-  const [scrollRightPad, setScrollRightPad] = useState(0)
+  // Measured keyword-column width — pinned domain groups stick right after it.
+  const [kwW, setKwW] = useState(120)
 
   // Stable index so each BP domain always gets the same palette colour
   // regardless of which other sites are currently selected.
@@ -1093,11 +1110,6 @@ function SnapshotMatrix({
     () => brand.domains.filter((d) => d.toLowerCase() !== mainDomain),
     [brand, mainDomain],
   )
-  const bpPaletteIndex = (bp: string) => {
-    const idx = allBpDomains.findIndex((d) => d.toLowerCase() === bp.toLowerCase())
-    return (idx >= 0 ? idx : 0) % BP_PALETTE.length
-  }
-
   const scrollToDomain = (key: string) => {
     const el = domainRefs.current[key]
     const scrollEl = scrollRef.current
@@ -1125,38 +1137,60 @@ function SnapshotMatrix({
     }
   }, [])
 
-  // After every render that may change column layout, measure real DOM widths so
-  // that at maximum scroll the last data column lands right beside the sticky
-  // keyword column — exactly like a frozen column in Google Sheets.
-  //   paddingRight = containerWidth - keywordWidth - lastColumnWidth
-  // At max scroll: scrollLeft = tableWidth + pad - cw, and
-  // first-visible-data = scrollLeft + kwWidth = tableWidth - lastColWidth ✓
+  // Re-measure the keyword column after each render — its width drives the
+  // sticky left offsets of pinned domain groups.
   useEffect(() => {
-    const scrollEl  = scrollRef.current
-    const kwEl      = keywordColRef.current
-    if (!scrollEl || !kwEl) return
-    const rows = scrollEl.querySelectorAll('thead tr')
-    const lastTh = rows.length >= 2
-      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
-      : null
-    if (!lastTh) return
-    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
+    const kwEl = keywordColRef.current
+    if (kwEl) setKwW(kwEl.offsetWidth)
   })
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
 
-  // All domains always show all visible countries so every snapshot has the same
-  // column structure and horizontal scroll width regardless of data presence.
-  const domainCountries = useMemo(() => {
-    const result = new Map<string, string[]>()
-    result.set(mainDomain, visibleCountries)
-    for (const bp of bpDomains) result.set(bp.toLowerCase(), visibleCountries)
-    return result
-  }, [mainDomain, bpDomains, visibleCountries])
+  // ── Domain groups, pinned ones first — pinned groups freeze beside the
+  //    keyword column, mirroring the fixed TOTALS pattern on Reg & FTDs. ──
+  type DomainGroup = { domain: string; dk: string; refKey: string; isMain: boolean; headerBg: string; cellBg: string }
+  const groups = useMemo<DomainGroup[]>(() => {
+    const list: DomainGroup[] = []
+    if (showMain) {
+      list.push({ domain: brand.mainDomain, dk: mainDomain, refKey: mainDomain, isMain: true, headerBg: MAIN_HEADER_BG, cellBg: MAIN_CELL_BG })
+    }
+    for (const bp of bpDomains) {
+      const idx = allBpDomains.findIndex((d) => d.toLowerCase() === bp.toLowerCase())
+      const palette = BP_PALETTE[(idx >= 0 ? idx : 0) % BP_PALETTE.length]
+      list.push({ domain: bp, dk: bp.toLowerCase(), refKey: bp, isMain: false, headerBg: palette.headerBg, cellBg: palette.cellBg })
+    }
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    const pinned = pinnedLower.map((d) => list.find((g) => g.dk === d)).filter((g): g is DomainGroup => g != null)
+    return [...pinned, ...list.filter((g) => !pinnedLower.includes(g.dk))]
+  }, [showMain, brand.mainDomain, mainDomain, bpDomains, allBpDomains, pinnedDomains])
+  const pinnedCount = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    return groups.filter((g) => pinnedLower.includes(g.dk)).length
+  }, [groups, pinnedDomains])
+  const colsPerGroup = visibleCountries.length
 
-  const mainDomainCols = domainCountries.get(mainDomain) ?? []
-  const mainColCount = mainDomainCols.length
+  // Sticky style for a pinned group's cell; {} when the group isn't pinned.
+  const pinStyle = (groupPos: number, colIdx: number, z: number): CSSProperties =>
+    groupPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + (groupPos * colsPerGroup + colIdx) * PIN_COL_W,
+          zIndex: z,
+          width: PIN_COL_W, minWidth: PIN_COL_W, maxWidth: PIN_COL_W,
+          boxShadow: scrolled && groupPos === pinnedCount - 1 && colIdx === colsPerGroup - 1
+            ? '4px 0 8px -2px rgba(0,0,0,0.18)'
+            : undefined,
+        }
+      : {}
+  const pinHeaderStyle = (groupPos: number): CSSProperties =>
+    groupPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + groupPos * colsPerGroup * PIN_COL_W,
+          zIndex: 6,
+          maxWidth: colsPerGroup * PIN_COL_W,
+        }
+      : {}
 
   // keyword → domain → country → record for the immediately prior snapshot.
   // null when there is no older snapshot to compare against.
@@ -1258,7 +1292,7 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-white rounded-[6px] text-black shrink-0 w-full"
+      className="bg-[#FFFFFF] rounded-[6px] text-black shrink-0 w-full"
       style={{ border: borderStyle, overflow: 'clip' }}
     >
       {/* Date band */}
@@ -1304,8 +1338,7 @@ function SnapshotMatrix({
 
       {/* Horizontal matrix */}
       <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full"
-               style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — Block label row (MAIN / BP per block) */}
           <thead>
@@ -1319,92 +1352,55 @@ function SnapshotMatrix({
                   color: '#000',
                   borderRight: borderStyle,
                   borderBottom: borderStyle,
-                  boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                  boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                 }}
               >
                 Keyword
               </th>
-              {showMain && (
+              {groups.map((g, gi) => (
                 <th
-                  ref={(el) => { domainRefs.current[mainDomain] = el }}
-                  colSpan={mainColCount}
+                  key={`grp-h-${g.dk}`}
+                  ref={(el) => { domainRefs.current[g.refKey] = el }}
+                  colSpan={colsPerGroup}
                   className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
                   style={{
-                    background: MAIN_HEADER_BG,
+                    background: g.headerBg,
                     color: HEADER_FG,
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
+                    ...pinHeaderStyle(gi),
                   }}
                 >
-                  MAIN — <span className="">{brand.mainDomain}</span>
+                  <span className="inline-flex items-center gap-1.5 max-w-full">
+                    <span className="truncate">{g.isMain ? <>MAIN — {g.domain}</> : <>BP — {g.domain}</>}</span>
+                    <PinButton pinned={gi < pinnedCount} onToggle={() => onTogglePin(g.dk)} />
+                  </span>
                 </th>
-              )}
-              {bpDomains.map((bp, bpIdx) => {
-                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                return (
-                  <th
-                    key={`bp-h-${bp}`}
-                    ref={(el) => { domainRefs.current[bp] = el }}
-                    colSpan={bpCols.length}
-                    className="px-3 py-2 text-center text-[11px] font-bold whitespace-nowrap"
-                    style={{
-                      background: palette.headerBg,
-                      color: HEADER_FG,
-                      borderRight: borderStyle,
-                      borderBottom: borderStyle,
-                    }}
-                  >
-                    BP — <span className="">{bp}</span>
-                  </th>
-                )
-              })}
+              ))}
             </tr>
 
             {/* Row 2 — Country / spec sub-header */}
             <tr>
-              {showMain && (
-                <Fragment>
-                  {mainDomainCols.map((c, ci) => (
+              {groups.map((g, gi) => (
+                <Fragment key={`grp-sub-${g.dk}`}>
+                  {visibleCountries.map((c, ci) => (
                     <th
-                      key={`main-sub-${c}`}
+                      key={`grp-sub-${g.dk}-${c}`}
                       className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em] min-w-[90px]"
                       style={{
-                        background: MAIN_HEADER_BG,
+                        background: g.headerBg,
                         color: HEADER_FG,
-                        borderLeft: ci === 0 ? undefined : borderStyle,
-                        borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
+                        borderLeft: g.isMain && ci === 0 ? undefined : borderStyle,
+                        borderRight: ci === colsPerGroup - 1 ? borderStyle : undefined,
                         borderBottom: borderStyle,
+                        ...pinStyle(gi, ci, 6),
                       }}
                     >
                       {c}
                     </th>
                   ))}
                 </Fragment>
-              )}
-              {bpDomains.map((bp, bpIdx) => {
-                const bpCols = domainCountries.get(bp.toLowerCase()) ?? []
-                const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                return (
-                  <Fragment key={`bp-sub-${bp}`}>
-                    {bpCols.map((c, ci) => (
-                      <th
-                        key={`bp-sub-${bp}-${c}`}
-                        className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: palette.headerBg,
-                          color: HEADER_FG,
-                          borderLeft: borderStyle,
-                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
-                          borderBottom: borderStyle,
-                        }}
-                      >
-                        {c}
-                      </th>
-                    ))}
-                  </Fragment>
-                )
-              })}
+              ))}
             </tr>
           </thead>
 
@@ -1420,65 +1416,36 @@ function SnapshotMatrix({
                     color: '#000',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
-                    boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                    boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                   }}
                 >
                   {label}
                 </td>
 
-                {showMain && (
-                  <Fragment>
-                    {mainDomainCols.map((c, ci) => {
-                      const rec = lookup?.[kw]?.[mainDomain]?.[c]
-                      const prevRec = prevLookup?.[kw]?.[mainDomain]?.[c]
-                      const crossSnapPrevPos = prevLookup !== null
-                        ? parsePosition(prevRec?.position ?? '')
-                        : undefined
-                      return (
-                        <td
-                          key={`main-cell-${kw}-${c}`}
-                          className="px-2 py-1.5 text-center align-middle min-w-[90px]"
-                          style={{
-                            background: MAIN_CELL_BG,
-                            borderLeft: ci === 0 ? undefined : borderStyle,
-                            borderRight: ci === mainDomainCols.length - 1 ? borderStyle : undefined,
-                            borderBottom: borderStyle,
-                          }}
-                        >
-                          {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
-                        </td>
-                      )
-                    })}
-                  </Fragment>
-                )}
-
-                {/* BP blocks */}
-                {bpDomains.map((bp, bpIdx) => {
-                  const dk = bp.toLowerCase()
-                  const bpCols = domainCountries.get(dk) ?? []
-                  const palette = BP_PALETTE[bpPaletteIndex(bp)]
-                  return bpCols.map((c, ci) => {
-                    const rec = lookup?.[kw]?.[dk]?.[c]
-                    const prevRec = prevLookup?.[kw]?.[dk]?.[c]
+                {groups.map((g, gi) =>
+                  visibleCountries.map((c, ci) => {
+                    const rec = lookup?.[kw]?.[g.dk]?.[c]
+                    const prevRec = prevLookup?.[kw]?.[g.dk]?.[c]
                     const crossSnapPrevPos = prevLookup !== null
                       ? parsePosition(prevRec?.position ?? '')
                       : undefined
                     return (
                       <td
-                        key={`bp-cell-${kw}-${bp}-${c}`}
-                        className="px-2 py-1.5 text-center align-middle"
+                        key={`grp-cell-${kw}-${g.dk}-${c}`}
+                        className={`px-2 py-1.5 text-center align-middle ${g.isMain ? 'min-w-[90px]' : ''}`}
                         style={{
-                          background: palette.cellBg,
-                          borderLeft: borderStyle,
-                          borderRight: ci === bpCols.length - 1 ? borderStyle : undefined,
+                          background: g.cellBg,
+                          borderLeft: g.isMain && ci === 0 ? undefined : borderStyle,
+                          borderRight: ci === colsPerGroup - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(gi, ci, 4),
                         }}
                       >
                         {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
                       </td>
                     )
                   })
-                })}
+                )}
               </tr>
             ))}
           </tbody>
@@ -1587,23 +1554,23 @@ function StatsCardModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[12px] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
+        className="bg-[var(--surface)] rounded-[12px] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
         style={{ borderTop: `3px solid ${accent}` }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-[#E2E8F0]">
+        <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-[var(--border)]">
           <div>
             <div className="text-[10px] uppercase tracking-[0.12em] font-semibold mb-0.5" style={{ color: accent }}>
               {label}
             </div>
-            <div className="text-[13px] text-[#64748B]">
+            <div className="text-[13px] text-[var(--muted)]">
               {filtered.length} record{filtered.length !== 1 ? 's' : ''} · {grouped.size} site{grouped.size !== 1 ? 's' : ''}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] transition-colors ml-4 shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface-3)] text-[var(--muted)] hover:text-[var(--ink)] transition-colors ml-4 shrink-0"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -1614,7 +1581,7 @@ function StatsCardModal({
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
           {grouped.size === 0 ? (
-            <p className="text-[13px] text-[#94A3B8] text-center py-8">No records match this filter.</p>
+            <p className="text-[13px] text-[var(--muted-2)] text-center py-8">No records match this filter.</p>
           ) : (
             Array.from(grouped.entries()).map(([domain, kwMap]) => (
               <div key={domain}>
@@ -1624,10 +1591,10 @@ function StatsCardModal({
                   onClick={() => { onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}`); onClose() }}
                 >
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
-                  <span className="text-[12px] font-bold text-[#0F172A] uppercase tracking-[0.05em] truncate flex-1 hover:underline">
+                  <span className="text-[12px] font-bold text-[var(--ink)] uppercase tracking-[0.05em] truncate flex-1 hover:underline">
                     {domain}
                   </span>
-                  <span className="text-[10px] text-[#94A3B8] shrink-0">
+                  <span className="text-[10px] text-[var(--muted-2)] shrink-0">
                     {kwMap.size} kw
                   </span>
                 </div>
@@ -1648,7 +1615,7 @@ function StatsCardModal({
                       return (
                         <div
                           key={kwL}
-                          className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[#F8FAFC] transition-colors cursor-pointer group/kw"
+                          className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[var(--surface-2)] transition-colors cursor-pointer group/kw"
                           onClick={() => { const countries = [...new Set(sorted.map((e) => e.country))].join(','); onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}&countries=${encodeURIComponent(countries)}&exact=1`); onClose() }}
                         >
                           <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate group-hover/kw:underline">
@@ -1710,8 +1677,8 @@ function ChartRow({
   condition,
   badge,
   badgeColor,
-  accent = '#F8FAFC',
-  border = '#E2E8F0',
+  accent = 'var(--surface-2)',
+  border = 'var(--border)',
 }: {
   condition: React.ReactNode
   badge: string
@@ -1724,7 +1691,7 @@ function ChartRow({
       className="flex items-center gap-2.5 py-2 px-3 rounded-[8px] border text-[11px]"
       style={{ background: accent, borderColor: border }}
     >
-      <span className="text-[#334155] flex-1 leading-snug">{condition}</span>
+      <span className="text-[var(--text-2)] flex-1 leading-snug">{condition}</span>
       <span
         className="px-2.5 py-[3px] rounded-full text-[10px] font-bold text-white whitespace-nowrap shrink-0"
         style={{ background: badgeColor }}
@@ -1749,18 +1716,18 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[12px] w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
+        className="bg-[var(--surface)] rounded-[12px] w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
         style={{ borderTop: '3px solid #0F172A' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#E2E8F0]">
-          <span className="text-[11px] font-bold text-[#0F172A] uppercase tracking-[0.1em]">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--border)]">
+          <span className="text-[11px] font-bold text-[var(--ink)] uppercase tracking-[0.1em]">
             Keyword Classification
           </span>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--surface-3)] text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1770,23 +1737,23 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
 
         {/* Body */}
         <div className="px-5 py-4 flex flex-col gap-3">
-          <p className="text-[11px] text-[#64748B]">
+          <p className="text-[11px] text-[var(--muted)]">
             Lower rank number = better position &nbsp;
-            <span className="text-[#94A3B8]">(rank 3 is better than rank 10)</span>
+            <span className="text-[var(--muted-2)]">(rank 3 is better than rank 10)</span>
           </p>
 
           {/* Step 1 */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="w-[18px] h-[18px] rounded-full bg-[#0F172A] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-[18px] h-[18px] rounded-full bg-[var(--btn-ink)] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
                 1
               </span>
-              <span className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.1em]">
+              <span className="text-[10px] font-bold text-[var(--text-2)] uppercase tracking-[0.1em]">
                 Check current position
               </span>
             </div>
             <ChartRow
-              condition={<>Position is <span className="font-semibold text-[#0F172A]">"Not in top 100"</span></>}
+              condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not in top 100"</span></>}
               badge="NOT RANKED"
               badgeColor="#64748B"
             />
@@ -1795,26 +1762,26 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
           {/* Divider */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-px bg-[#E2E8F0]"/>
-            <span className="text-[10px] text-[#94A3B8] shrink-0">if ranked → continue</span>
+            <span className="text-[10px] text-[var(--muted-2)] shrink-0">if ranked → continue</span>
             <div className="flex-1 h-px bg-[#E2E8F0]"/>
           </div>
 
           {/* Step 2 */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="w-[18px] h-[18px] rounded-full bg-[#0F172A] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-[18px] h-[18px] rounded-full bg-[var(--btn-ink)] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
                 2
               </span>
-              <span className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.1em]">
+              <span className="text-[10px] font-bold text-[var(--text-2)] uppercase tracking-[0.1em]">
                 Compare with previous snapshot
               </span>
             </div>
             <ChartRow
               condition={
                 <>
-                  Previous was <span className="font-semibold text-[#0F172A]">NR</span>,
-                  {' '}or previous rank# was <span className="font-semibold text-[#0F172A]">higher</span>
-                  {' '}<span className="text-[#94A3B8]">(e.g. 8 → 5)</span>
+                  Previous was <span className="font-semibold text-[var(--ink)]">NR</span>,
+                  {' '}or previous rank# was <span className="font-semibold text-[var(--ink)]">higher</span>
+                  {' '}<span className="text-[var(--muted-2)]">(e.g. 8 → 5)</span>
                 </>
               }
               badge="IMPROVED ↑"
@@ -1825,8 +1792,8 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
             <ChartRow
               condition={
                 <>
-                  Previous rank# was <span className="font-semibold text-[#0F172A]">lower</span>
-                  {' '}<span className="text-[#94A3B8]">(e.g. 5 → 8)</span>
+                  Previous rank# was <span className="font-semibold text-[var(--ink)]">lower</span>
+                  {' '}<span className="text-[var(--muted-2)]">(e.g. 5 → 8)</span>
                 </>
               }
               badge="DROPPED ↓"
@@ -1838,7 +1805,7 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
               condition={
                 <>
                   Same rank# as previous,
-                  {' '}or <span className="font-semibold text-[#0F172A]">no previous data</span>
+                  {' '}or <span className="font-semibold text-[var(--ink)]">no previous data</span>
                 </>
               }
               badge="UNCHANGED"

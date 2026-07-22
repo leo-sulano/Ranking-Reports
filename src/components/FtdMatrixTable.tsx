@@ -1,7 +1,9 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { BRANDS, BRAND_LOGO_COLORS } from '../lib/brands'
+import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { EditableCell } from './EditableCell'
+import { PinButton } from './PinButton'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, WriteGate } from '../types'
 
 const TABLE_BORDER = '#B0B7BD'
@@ -99,9 +101,10 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   const scrollRef = useRef<HTMLDivElement>(null)
   const monthColRef = useRef<HTMLTableCellElement>(null)
   const [scrolled, setScrolled] = useState(false)
-  const [scrollRightPad, setScrollRightPad] = useState(0)
   // Measured MONTH column width — the TOTALS group's sticky offsets start here.
   const [monthW, setMonthW] = useState(90)
+  // User-pinned brand groups — frozen right after the TOTALS group.
+  const [pinnedBrands, togglePin] = usePinnedGroups('ftd-matrix')
 
   useEffect(() => {
     const el = scrollRef.current
@@ -123,21 +126,11 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
     }
   }, [])
 
-  // Same "flush last column" trick as BPSites' SnapshotMatrix — pads the
-  // table so at max scroll the last brand's last metric column (Rollero /
-  // RO) lands right beside the sticky MONTH column instead of leaving
-  // leftover dead space.
+  // Re-measure the MONTH column after each render — its width drives the
+  // sticky left offsets of the TOTALS group and any pinned brand groups.
   useEffect(() => {
-    const scrollEl = scrollRef.current
-    const monthEl  = monthColRef.current
-    if (!scrollEl || !monthEl) return
-    const headerRows = scrollEl.querySelectorAll('thead tr')
-    const lastRow = headerRows[headerRows.length - 1]
-    const lastTh = lastRow?.querySelector('th:last-child') as HTMLElement | null
-    if (!lastTh) return
-    const pad = scrollEl.clientWidth - monthEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
-    setMonthW(monthEl.offsetWidth)
+    const monthEl = monthColRef.current
+    if (monthEl) setMonthW(monthEl.offsetWidth)
   })
 
   const recordMap = useMemo(() => {
@@ -278,18 +271,62 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
         width: TOTALS_COL_W, minWidth: TOTALS_COL_W, maxWidth: TOTALS_COL_W,
         background: TOTALS_CELL_BG,
         borderLeft: border, borderRight: border, borderBottom,
-        boxShadow: scrolled && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+        boxShadow: scrolled && pinnedCount === 0 && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
       }}
     >
       {key === 'reg' ? (reg ?? '') : key === 'ftd' ? (ftd ?? '') : formatPct(conv)}
     </td>
   ))
 
+  // ── Pinned brand groups — frozen right after TOTALS, in pin order ────────
+  const orderedBrands = useMemo(() => {
+    const pinned = pinnedBrands
+      .map((n) => BRANDS.find((b) => b.name === n))
+      .filter((b): b is (typeof BRANDS)[number] => b != null)
+    return [...pinned, ...BRANDS.filter((b) => !pinnedBrands.includes(b.name))]
+  }, [pinnedBrands])
+  const pinnedCount = orderedBrands.filter((b) => pinnedBrands.includes(b.name)).length
+  const pinnedStart = monthW + colsPerBrand * TOTALS_COL_W
+  const mIdx = (k: FtdMetric) => activeMetrics.findIndex((m) => m.key === k)
+
+  // Sticky style for a pinned brand's cell; {} when the brand isn't pinned.
+  // brandPos is the brand's index in orderedBrands (pinned brands sort first).
+  const pinStyle = (brandPos: number, colIdx: number, z: number): CSSProperties =>
+    brandPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: pinnedStart + (brandPos * colsPerBrand + colIdx) * TOTALS_COL_W,
+          zIndex: z,
+          width: TOTALS_COL_W, minWidth: TOTALS_COL_W, maxWidth: TOTALS_COL_W,
+          boxShadow: scrolled && brandPos === pinnedCount - 1 && colIdx === colsPerBrand - 1
+            ? '4px 0 8px -2px rgba(0,0,0,0.18)'
+            : undefined,
+        }
+      : {}
+
+  // Group-header (colSpan) variant of pinStyle.
+  const pinHeaderStyle = (brandPos: number): CSSProperties =>
+    brandPos < pinnedCount
+      ? {
+          left: pinnedStart + brandPos * colsPerBrand * TOTALS_COL_W,
+          zIndex: 7,
+          minWidth: colsPerBrand * TOTALS_COL_W,
+          boxShadow: scrolled && brandPos === pinnedCount - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+        }
+      : {}
+
+  // Alpha brand tints turn transparent over scrolled content — pinned cells
+  // need an opaque equivalent (tint composited over white).
+  const cellBg = (brandPos: number, tint: string): CSSProperties =>
+    brandPos < pinnedCount
+      ? { backgroundColor: '#FFFFFF', backgroundImage: `linear-gradient(${tint}, ${tint})` }
+      : { background: tint }
+
   return (
-    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff' }}>
+    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff', color: '#0F172A' }}>
       <table
         className="w-max min-w-full"
-        style={{ borderCollapse: 'collapse', fontSize: '12px', marginRight: scrollRightPad > 0 ? scrollRightPad : undefined }}
+        style={{ borderCollapse: 'collapse', fontSize: '12px' }}
       >
         <thead>
           <tr>
@@ -314,30 +351,33 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                 left: monthW,
                 background: TOTALS_HEADER_BG,
                 borderLeft: border, borderRight: border, borderBottom: border,
-                boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
               }}
             >
               Totals
             </th>
-            {BRANDS.map((b) => (
+            {orderedBrands.map((b, bi) => (
               <th
                 key={b.name}
                 colSpan={colsPerBrand}
                 className="sticky top-0 z-[6] px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
-                style={{ background: BRAND_LOGO_COLORS[b.name] ?? b.color, borderLeft: border, borderRight: border }}
+                style={{ background: BRAND_LOGO_COLORS[b.name] ?? b.color, borderLeft: border, borderRight: border, ...pinHeaderStyle(bi) }}
               >
-                {b.abbr}
+                <span className="inline-flex items-center gap-1">
+                  {b.abbr}
+                  <PinButton pinned={bi < pinnedCount} onToggle={() => togglePin(b.name)} />
+                </span>
               </th>
             ))}
           </tr>
 
           <tr>
-            {BRANDS.map((b) => (
+            {orderedBrands.map((b, bi) => (
               <th
                 key={b.name}
                 colSpan={colsPerBrand}
                 className="sticky top-[29px] z-[6] px-2 py-1 text-center text-[10px] font-mono"
-                style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border }}
+                style={{ background: STAGS_BG, borderLeft: border, borderRight: border, borderBottom: border, ...pinHeaderStyle(bi) }}
               >
                 <EditableCell
                   value={stagsMap.get(b.name) ?? ''}
@@ -360,19 +400,19 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                   width: TOTALS_COL_W, minWidth: TOTALS_COL_W, maxWidth: TOTALS_COL_W,
                   background: TOTALS_SUBHEAD_BG,
                   borderLeft: border, borderRight: border, borderBottom: border,
-                  boxShadow: scrolled && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                  boxShadow: scrolled && pinnedCount === 0 && i === colsPerBrand - 1 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
                 }}
               >
                 {label}
               </th>
             ))}
-            {BRANDS.map((b) => (
+            {orderedBrands.map((b, bi) => (
               <Fragment key={b.name}>
-                {activeMetrics.map(({ key, label }) => (
+                {activeMetrics.map(({ key, label }, mi) => (
                   <th
                     key={`${b.name}-${key}`}
                     className="sticky top-[52px] z-[6] px-2 py-1 text-center text-[12px] font-bold whitespace-nowrap"
-                    style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border }}
+                    style={{ background: SUBHEAD_BG, borderLeft: border, borderRight: border, borderBottom: border, ...pinStyle(bi, mi, 7) }}
                   >
                     {label}
                   </th>
@@ -406,26 +446,20 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
               {totalsCells(grandTotals.reg, grandTotals.ftd, grandTotals.conv, 'font-bold', `2px solid ${TABLE_BORDER}`)}
 
-              {BRANDS.map((b) => {
+              {orderedBrands.map((b, bi) => {
                 const bt = summary.perBrand[b.name]
                 const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                 return (
                   <Fragment key={b.name}>
-                    {activeKeys.has('reg') && (
-                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                        {bt.reg}
+                    {activeMetrics.map(({ key }, mi) => (
+                      <td
+                        key={key}
+                        className="px-2 py-1.5 text-center font-mono font-bold"
+                        style={{ ...cellBg(bi, tint), borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}`, ...pinStyle(bi, mi, 5) }}
+                      >
+                        {key === 'reg' ? bt.reg : key === 'ftd' ? bt.ftd : formatPct(averagePct(bt.convValues))}
                       </td>
-                    )}
-                    {activeKeys.has('ftd') && (
-                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                        {bt.ftd}
-                      </td>
-                    )}
-                    {activeKeys.has('conv') && (
-                      <td className="px-2 py-1.5 text-center font-mono font-bold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: `2px solid ${TABLE_BORDER}` }}>
-                        {formatPct(averagePct(bt.convValues))}
-                      </td>
-                    )}
+                    ))}
                   </Fragment>
                 )
               })}
@@ -467,26 +501,20 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                     )
                   })()}
 
-                  {BRANDS.map((b) => {
+                  {orderedBrands.map((b, bi) => {
                     const bt = yearAgg[b.name]
                     const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                     return (
                       <Fragment key={b.name}>
-                        {activeKeys.has('reg') && (
-                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                            {expanded ? '' : bt.reg}
+                        {activeMetrics.map(({ key }, mi) => (
+                          <td
+                            key={key}
+                            className="px-2 py-1.5 text-center font-mono font-semibold"
+                            style={{ ...cellBg(bi, tint), borderLeft: border, borderRight: border, borderBottom: border, ...pinStyle(bi, mi, 5) }}
+                          >
+                            {expanded ? '' : key === 'reg' ? bt.reg : key === 'ftd' ? bt.ftd : formatPct(averagePct(bt.convValues))}
                           </td>
-                        )}
-                        {activeKeys.has('ftd') && (
-                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                            {expanded ? '' : bt.ftd}
-                          </td>
-                        )}
-                        {activeKeys.has('conv') && (
-                          <td className="px-2 py-1.5 text-center font-mono font-semibold" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
-                            {expanded ? '' : formatPct(averagePct(bt.convValues))}
-                          </td>
-                        )}
+                        ))}
                       </Fragment>
                     )
                   })}
@@ -510,13 +538,13 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       return totalsCells(mt.reg, mt.ftd, ratioPct(mt.reg, mt.ftd), 'font-semibold', border)
                     })()}
 
-                    {BRANDS.map((b) => {
+                    {orderedBrands.map((b, bi) => {
                       const rec = recordMap.get(`${b.name}|${ym}`)
                       const tint = brandTint(BRAND_LOGO_COLORS[b.name] ?? b.color)
                       return (
                         <Fragment key={b.name}>
                           {activeKeys.has('reg') && (
-                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            <td className="px-2 py-1.5 text-center" style={{ ...cellBg(bi, tint), borderLeft: border, borderRight: border, borderBottom: border, ...pinStyle(bi, mIdx('reg'), 5) }}>
                               <EditableCell
                                 value={rec?.reg != null ? String(rec.reg) : ''}
                                 onSave={(next) => {
@@ -531,7 +559,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                             </td>
                           )}
                           {activeKeys.has('ftd') && (
-                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }}>
+                            <td className="px-2 py-1.5 text-center" style={{ ...cellBg(bi, tint), borderLeft: border, borderRight: border, borderBottom: border, ...pinStyle(bi, mIdx('ftd'), 5) }}>
                               <EditableCell
                                 value={rec?.ftd != null ? String(rec.ftd) : ''}
                                 onSave={(next) => {
@@ -546,7 +574,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                             </td>
                           )}
                           {activeKeys.has('conv') && (
-                            <td className="px-2 py-1.5 text-center" style={{ background: tint, borderLeft: border, borderRight: border, borderBottom: border }} title="Conversion % = FTD ÷ REG × 100, calculated automatically">
+                            <td className="px-2 py-1.5 text-center" style={{ ...cellBg(bi, tint), borderLeft: border, borderRight: border, borderBottom: border, ...pinStyle(bi, mIdx('conv'), 5) }} title="Conversion % = FTD ÷ REG × 100, calculated automatically">
                               {rec ? (
                                 formatPct(ratioPct(rec.reg, rec.ftd)) || <span className="opacity-30">—</span>
                               ) : (

@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot, SnapshotMeta } from '../types'
 import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
+import { PinButton } from '../components/PinButton'
+import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
@@ -28,6 +30,9 @@ const DATE_BAND_FG = '#FFFFFF'
 const HEADER_FG    = '#000000'
 const TABLE_BORDER = '#B0B7BD'
 const STICKY_KW_BG = '#FFFFFF'
+// Fixed column width for pinned LP blocks — sticky offsets must be
+// deterministic, matching the 90px min-width the country columns use.
+const PIN_COL_W    = 90
 
 // keyword → domain → country → record
 type Lookup = Record<string, Record<string, Record<string, import('../types').RankingRecord>>>
@@ -99,7 +104,7 @@ function BrandGrid({
             <button
               key={brand.name}
               onClick={() => onSelect(brand)}
-              className="flex flex-col justify-start bg-white border border-[#E2E8F0] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[#CBD5E1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+              className="flex flex-col justify-start bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
               <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]" style={{ background: c }} />
@@ -116,8 +121,8 @@ function BrandGrid({
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[15px] font-bold text-[#0F172A]">{brand.name}</div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">
+                  <div className="text-[15px] font-bold text-[var(--ink)]">{brand.name}</div>
+                  <div className="text-[11px] text-[var(--muted)] mt-0.5">
                     {brand.lpDomains.length} landing page{brand.lpDomains.length !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -137,25 +142,25 @@ function BrandGrid({
                     key={d}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onSelectDomain(brand, d) }}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left w-full bg-[#F8FAFC] transition-all duration-100 group/domain"
-                    style={{ borderColor: '#E2E8F0' }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left w-full bg-[var(--surface-2)] transition-all duration-100 group/domain"
+                    style={{ borderColor: 'var(--border)' }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = c + '90'
                       e.currentTarget.style.background = c + '0D'
                       e.currentTarget.style.boxShadow = `0 1px 6px ${c}25`
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#E2E8F0'
-                      e.currentTarget.style.background = '#F8FAFC'
+                      e.currentTarget.style.borderColor = 'var(--border)'
+                      e.currentTarget.style.background = 'var(--surface-2)'
                       e.currentTarget.style.boxShadow = ''
                     }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ color: '#94A3B8', flexShrink: 0 }}>
+                      style={{ color: 'var(--muted-2)', flexShrink: 0 }}>
                       <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
-                    <span className="text-[11px] truncate text-[#64748B] flex-1">{d}</span>
+                    <span className="text-[11px] truncate text-[var(--muted)] flex-1">{d}</span>
                     <svg
                       width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                       strokeLinecap="round" strokeLinejoin="round"
@@ -251,6 +256,10 @@ function BrandView({
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [showAllSnapshots, setShowAllSnapshots] = useState(false)
 
+  // Pinned LP blocks — shared across every snapshot matrix on the page,
+  // persisted per brand.
+  const [pinnedDomains, togglePinnedDomain] = usePinnedGroups(`lp-${brand.name}`)
+
   const [statsFilter, setStatsFilter] = useState<string>(
     () => searchParams.get('date') ?? 'all',
   )
@@ -316,7 +325,7 @@ function BrandView({
       <div className="flex items-center gap-3 px-7 pt-5 pb-3 shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[11px] text-[#64748B] hover:text-[#475569] transition-colors mr-1"
+          className="flex items-center gap-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--text-2)] transition-colors mr-1"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -324,7 +333,7 @@ function BrandView({
           All brands
         </button>
 
-        <h1 className="font-display text-[20px] tracking-wider text-[#0F172A] leading-none">{brand.name}</h1>
+        <h1 className="font-display text-[20px] tracking-wider text-[var(--ink)] leading-none">{brand.name}</h1>
 
         {brandSnapshots.length > 0 && (
           <div className="ml-auto">
@@ -342,7 +351,7 @@ function BrandView({
 
       {brandSnapshots.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 text-center gap-4 px-7 pb-7">
-          <p className="text-[14px] text-[#64748B] max-w-sm leading-relaxed">
+          <p className="text-[14px] text-[var(--muted)] max-w-sm leading-relaxed">
             No landing-page ranking data for {brand.name} yet. Import an LP Sites export to populate this view.
           </p>
         </div>
@@ -361,7 +370,7 @@ function BrandView({
 
           {/* Filter bar — sites + countries + keyword search */}
           <div className="flex items-center gap-1.5 px-7 pt-[10px] pb-[5px] shrink-0 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Landing pages
             </span>
             <LPSiteFilter
@@ -375,7 +384,7 @@ function BrandView({
 
             <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
 
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748B] mr-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
             </span>
             {COUNTRY_ORDER.map((c) => {
@@ -387,8 +396,8 @@ function BrandView({
                   className="px-3 py-1 rounded-full text-[12px] font-sans border transition-all"
                   style={
                     active
-                      ? { background: '#CBD5E1', color: '#0F172A', borderColor: 'transparent', fontWeight: 700 }
-                      : { background: 'white', color: '#475569', borderColor: '#E2E8F0' }
+                      ? { background: 'var(--border-strong)', color: 'var(--ink)', borderColor: 'transparent', fontWeight: 700 }
+                      : { background: 'var(--surface)', color: 'var(--text-2)', borderColor: 'var(--border)' }
                   }
                 >
                   {c}
@@ -421,11 +430,11 @@ function BrandView({
                   }, { replace: true })
                 }}
                 placeholder="Search keywords…"
-                className="pl-7 pr-3 py-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-full text-[12px] text-[#0F172A] outline-none w-44 placeholder:text-[#64748B] focus:border-[#CBD5E1] transition-colors"
+                className="pl-7 pr-3 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded-full text-[12px] text-[var(--ink)] outline-none w-44 placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] transition-colors"
               />
             </div>
 
-            <div className="ml-auto text-[11px] font-mono text-[#64748B]">
+            <div className="ml-auto text-[11px] font-mono text-[var(--muted)]">
               {brandSnapshots.length} date{brandSnapshots.length !== 1 ? 's' : ''} · {latestKeywordCount} keyword{latestKeywordCount !== 1 ? 's' : ''} in latest · {lpDomains.length} landing page{lpDomains.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -453,12 +462,14 @@ function BrandView({
                       kwFilter={kwFilter}
                       cardFilter={cardFilter}
                       isLatest={snap.id === latestSnap?.id}
+                      pinnedDomains={pinnedDomains}
+                      onTogglePin={togglePinnedDomain}
                     />
                   ))}
                   {hiddenCount > 0 && (
                     <button
                       onClick={() => setShowAllSnapshots(true)}
-                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[12px] font-semibold text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
                     >
                       <ChevronDown size={14} />
                       Show {hiddenCount} older snapshot{hiddenCount !== 1 ? 's' : ''}
@@ -468,7 +479,7 @@ function BrandView({
                     <button
                       onClick={onLoadOlder}
                       disabled={loadingOlder}
-                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] font-semibold text-[#475569] hover:border-[#CBD5E1] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[12px] font-semibold text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                       <ChevronDown size={14} />
                       {loadingOlder ? 'Loading…' : 'Load older snapshots from history'}
@@ -547,17 +558,17 @@ function StatsDateFilter({
 
   return (
     <div ref={ref} className="relative">
-      <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[#64748B]">
+      <span className="absolute -top-4 left-0 text-[9px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)]">
         Stats date
       </span>
 
       <div
         onClick={() => { if (!open) setOpen(true) }}
-        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] transition-colors cursor-text ${
-          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        className={`flex items-center gap-2 bg-[var(--surface)] border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[var(--ink)] transition-colors cursor-text ${
+          open ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
         }`}
       >
-        <CalendarDays size={13} strokeWidth={2.25} className="text-[#64748B] shrink-0" />
+        <CalendarDays size={13} strokeWidth={2.25} className="text-[var(--muted)] shrink-0" />
         {open ? (
           <input
             ref={searchRef}
@@ -566,7 +577,7 @@ function StatsDateFilter({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={label}
             aria-label="Search dates"
-            className="bg-transparent outline-none flex-1 min-w-0 text-[12px] text-[#0F172A] placeholder:text-[#94A3B8] font-medium"
+            className="bg-transparent outline-none flex-1 min-w-0 text-[12px] text-[var(--ink)] placeholder:text-[var(--muted-2)] font-medium"
           />
         ) : (
           <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
@@ -581,7 +592,7 @@ function StatsDateFilter({
           <ChevronDown
             size={13}
             strokeWidth={2.25}
-            className={`text-[#64748B] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+            className={`text-[var(--muted)] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
           />
         </button>
       </div>
@@ -589,7 +600,7 @@ function StatsDateFilter({
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
+          className="absolute right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[220px] animate-[modalIn_0.12s_ease]"
         >
           <div className="max-h-[260px] overflow-y-auto">
             {showAllOption && (
@@ -600,7 +611,7 @@ function StatsDateFilter({
               />
             )}
             {showAllOption && filteredSnapshots.length > 0 && (
-              <div className="border-t border-[#E2E8F0]" />
+              <div className="border-t border-[var(--border)]" />
             )}
             {filteredSnapshots.map((s) => (
               <DateOption
@@ -611,7 +622,7 @@ function StatsDateFilter({
               />
             ))}
             {!showAllOption && filteredSnapshots.length === 0 && (
-              <p className='px-3 py-3 text-[11px] text-[#94A3B8] text-center'>
+              <p className='px-3 py-3 text-[11px] text-[var(--muted-2)] text-center'>
                 No dates match “{query}”.
               </p>
             )}
@@ -621,7 +632,7 @@ function StatsDateFilter({
               type='button'
               onClick={onLoadOlder}
               disabled={loadingOlder}
-              className='w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#475569] border-t border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors disabled:opacity-50 disabled:cursor-wait'
+              className='w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[var(--text-2)] border-t border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50 disabled:cursor-wait'
             >
               <ChevronDown size={12} />
               {loadingOlder ? 'Loading…' : 'Load older history…'}
@@ -649,7 +660,7 @@ function DateOption({
       aria-selected={selected}
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-        selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+        selected ? 'bg-[var(--btn-ink)] text-white' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
       }`}
     >
       <span className="font-medium">{label}</span>
@@ -692,26 +703,26 @@ function LPSiteFilter({
     <div ref={ref} className="relative">
       <div
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 bg-white border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[#0F172A] cursor-pointer transition-colors ${
-          open ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+        className={`flex items-center gap-2 bg-[var(--surface)] border rounded-md pl-2.5 pr-2 py-1.5 text-[12px] text-[var(--ink)] cursor-pointer transition-colors ${
+          open ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
         }`}
       >
         <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
         <ChevronDown
           size={13}
           strokeWidth={2.25}
-          className={`text-[#64748B] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          className={`text-[var(--muted)] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         />
       </div>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]">
+        <div className="absolute left-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-20 min-w-[200px] animate-[modalIn_0.12s_ease]">
           <LPSiteOption
             label="All"
             selected={!resolvedFilter}
             onClick={() => { onSelect(''); setOpen(false) }}
           />
-          <div className="border-t border-[#E2E8F0]" />
+          <div className="border-t border-[var(--border)]" />
           {lpDomains.map((d) => (
             <LPSiteOption
               key={d}
@@ -740,7 +751,7 @@ function LPSiteOption({
       type="button"
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-        selected ? 'bg-[#0F172A] text-white' : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+        selected ? 'bg-[var(--btn-ink)] text-white' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
       }`}
     >
       <span className="font-medium truncate">{label}</span>
@@ -759,6 +770,8 @@ function SnapshotMatrix({
   kwFilter,
   cardFilter,
   isLatest,
+  pinnedDomains,
+  onTogglePin,
 }: {
   snapshot: Snapshot
   lpDomains: string[]
@@ -767,10 +780,13 @@ function SnapshotMatrix({
   kwFilter: string
   cardFilter: CardFilterKey | null
   isLatest: boolean
+  pinnedDomains: string[]
+  onTogglePin: (domainKey: string) => void
 }) {
   const scrollRef      = useRef<HTMLDivElement>(null)
   const keywordColRef  = useRef<HTMLTableCellElement>(null)
-  const [scrollRightPad, setScrollRightPad] = useState(0)
+  // Measured keyword-column width — pinned LP blocks stick right after it.
+  const [kwW, setKwW] = useState(120)
 
   const lpPaletteIndex = (lp: string) => {
     const idx = allLpDomains.findIndex((d) => d.toLowerCase() === lp.toLowerCase())
@@ -778,16 +794,8 @@ function SnapshotMatrix({
   }
 
   useEffect(() => {
-    const scrollEl = scrollRef.current
-    const kwEl     = keywordColRef.current
-    if (!scrollEl || !kwEl) return
-    const rows  = scrollEl.querySelectorAll('thead tr')
-    const lastTh = rows.length >= 2
-      ? (rows[1].querySelector('th:last-child') as HTMLElement | null)
-      : null
-    if (!lastTh) return
-    const pad = scrollEl.clientWidth - kwEl.offsetWidth - lastTh.offsetWidth
-    setScrollRightPad(Math.max(0, pad))
+    const kwEl = keywordColRef.current
+    if (kwEl) setKwW(kwEl.offsetWidth)
   })
 
   useEffect(() => {
@@ -807,6 +815,39 @@ function SnapshotMatrix({
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
   const colsPerBlock = visibleCountries.length
+
+  // ── LP blocks, pinned ones first — pinned blocks freeze beside the
+  //    keyword column. ──
+  const orderedLpDomains = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    const pinned = pinnedLower
+      .map((d) => lpDomains.find((lp) => lp.toLowerCase() === d))
+      .filter((lp): lp is string => lp != null)
+    return [...pinned, ...lpDomains.filter((lp) => !pinnedLower.includes(lp.toLowerCase()))]
+  }, [lpDomains, pinnedDomains])
+  const pinnedCount = useMemo(() => {
+    const pinnedLower = pinnedDomains.map((d) => d.toLowerCase())
+    return orderedLpDomains.filter((lp) => pinnedLower.includes(lp.toLowerCase())).length
+  }, [orderedLpDomains, pinnedDomains])
+
+  const pinStyle = (blockPos: number, colIdx: number, z: number): CSSProperties =>
+    blockPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + (blockPos * colsPerBlock + colIdx) * PIN_COL_W,
+          zIndex: z,
+          width: PIN_COL_W, minWidth: PIN_COL_W, maxWidth: PIN_COL_W,
+        }
+      : {}
+  const pinHeaderStyle = (blockPos: number): CSSProperties =>
+    blockPos < pinnedCount
+      ? {
+          position: 'sticky',
+          left: kwW + blockPos * colsPerBlock * PIN_COL_W,
+          zIndex: 6,
+          maxWidth: colsPerBlock * PIN_COL_W,
+        }
+      : {}
 
   const keywords = useMemo(() => {
     const seen = new Set<string>()
@@ -860,7 +901,7 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-white rounded-[6px] overflow-hidden text-black shrink-0 w-full"
+      className="bg-[#FFFFFF] rounded-[6px] overflow-hidden text-black shrink-0 w-full"
       style={{ border: borderStyle }}
     >
       <div
@@ -879,8 +920,7 @@ function SnapshotMatrix({
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto">
-        <table className="border-collapse text-[11px] w-max min-w-full"
-               style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}>
+        <table className="border-collapse text-[11px] w-max min-w-full">
 
           {/* Row 1 — LP domain block label */}
           <thead>
@@ -898,7 +938,7 @@ function SnapshotMatrix({
               >
                 Keyword
               </th>
-              {lpDomains.map((lp, idx) => {
+              {orderedLpDomains.map((lp, li) => {
                 const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <th
@@ -910,9 +950,13 @@ function SnapshotMatrix({
                       color: HEADER_FG,
                       borderRight: borderStyle,
                       borderBottom: borderStyle,
+                      ...pinHeaderStyle(li),
                     }}
                   >
-                    LP — <span>{lp}</span>
+                    <span className="inline-flex items-center gap-1.5 max-w-full">
+                      <span className="truncate">LP — {lp}</span>
+                      <PinButton pinned={li < pinnedCount} onToggle={() => onTogglePin(lp.toLowerCase())} />
+                    </span>
                   </th>
                 )
               })}
@@ -920,7 +964,7 @@ function SnapshotMatrix({
 
             {/* Row 2 — country sub-header */}
             <tr>
-              {lpDomains.map((lp, idx) => {
+              {orderedLpDomains.map((lp, li) => {
                 const palette = LP_PALETTE[lpPaletteIndex(lp)]
                 return (
                   <Fragment key={`lp-sub-${lp}`}>
@@ -931,9 +975,10 @@ function SnapshotMatrix({
                         style={{
                           background: palette.headerBg,
                           color: HEADER_FG,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderLeft: borderStyle,
                           borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(li, ci, 6),
                         }}
                       >
                         {c}
@@ -960,7 +1005,7 @@ function SnapshotMatrix({
                   {label}
                 </td>
 
-                {lpDomains.map((lp, idx) => {
+                {orderedLpDomains.map((lp, li) => {
                   const dk = lp.toLowerCase()
                   const palette = LP_PALETTE[lpPaletteIndex(lp)]
                   return visibleCountries.map((c, ci) => {
@@ -971,9 +1016,10 @@ function SnapshotMatrix({
                         className="px-2 py-1.5 text-center align-middle min-w-[90px]"
                         style={{
                           background: palette.cellBg,
-                          borderLeft: ci === 0 ? borderStyle : borderStyle,
+                          borderLeft: borderStyle,
                           borderRight: ci === visibleCountries.length - 1 ? borderStyle : undefined,
                           borderBottom: borderStyle,
+                          ...pinStyle(li, ci, 4),
                         }}
                       >
                         {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}

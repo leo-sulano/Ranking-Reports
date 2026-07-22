@@ -76,21 +76,21 @@ export function UploadModal({ onImport, onClose }: Props) {
       className="fixed inset-0 bg-[rgba(15,23,42,0.45)] backdrop-blur-md z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white border border-[#E2E8F0] rounded-[14px] w-[480px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease]">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[14px] w-[480px] max-w-[95vw] overflow-hidden shadow-[0_40px_80px_rgba(15,23,42,0.18)] animate-[modalIn_0.2s_ease]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#0F172A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-md bg-[var(--btn-ink)] flex items-center justify-center">
               <FileSpreadsheet size={15} strokeWidth={2.25} className="text-white" />
             </div>
-            <h2 className="font-display text-[18px] tracking-wider text-[#0F172A] leading-none">
+            <h2 className="font-display text-[18px] tracking-wider text-[var(--ink)] leading-none">
               Import Ranking Data
             </h2>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-7 h-7 flex items-center justify-center bg-[#F1F5F9] border border-[#E2E8F0] rounded-md text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] transition-all"
+            className="w-7 h-7 flex items-center justify-center bg-[var(--surface-3)] border border-[var(--border)] rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] transition-all"
           >
             <X size={14} strokeWidth={2.25} />
           </button>
@@ -101,7 +101,7 @@ export function UploadModal({ onImport, onClose }: Props) {
           {/* Category selector — custom dropdown so the highlight matches site theme */}
           <div ref={ddRef} className="relative">
             <label
-              className="block text-[10px] uppercase tracking-[0.1em] font-semibold text-[#64748B] mb-1.5"
+              className="block text-[10px] uppercase tracking-[0.1em] font-semibold text-[var(--muted)] mb-1.5"
             >
               Category
             </label>
@@ -110,22 +110,22 @@ export function UploadModal({ onImport, onClose }: Props) {
               onClick={() => setDdOpen((v) => !v)}
               aria-haspopup="listbox"
               aria-expanded={ddOpen}
-              className={`w-full flex items-center justify-between bg-white border rounded-md px-3 py-2.5 text-[13px] text-[#0F172A] outline-none transition-colors ${
-                ddOpen ? 'border-[#0F172A]' : 'border-[#CBD5E1] hover:border-[#0F172A]'
+              className={`w-full flex items-center justify-between bg-[var(--surface)] border rounded-md px-3 py-2.5 text-[13px] text-[var(--ink)] outline-none transition-colors ${
+                ddOpen ? 'border-[var(--ink)]' : 'border-[var(--border-strong)] hover:border-[var(--ink)]'
               }`}
             >
               <span className="font-medium">{activeCategory.label}</span>
               <ChevronDown
                 size={15}
                 strokeWidth={2.25}
-                className={`text-[#64748B] transition-transform duration-150 ${ddOpen ? 'rotate-180' : ''}`}
+                className={`text-[var(--muted)] transition-transform duration-150 ${ddOpen ? 'rotate-180' : ''}`}
               />
             </button>
 
             {ddOpen && (
               <div
                 role="listbox"
-                className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-[#E2E8F0] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-10 animate-[modalIn_0.12s_ease]"
+                className="absolute left-0 right-0 top-full mt-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[0_12px_32px_rgba(15,23,42,0.12)] overflow-hidden z-10 animate-[modalIn_0.12s_ease]"
               >
                 {CATEGORIES.map((c) => {
                   const selected = c.id === category
@@ -138,8 +138,8 @@ export function UploadModal({ onImport, onClose }: Props) {
                       onClick={() => { setCategory(c.id); setDdOpen(false) }}
                       className={`w-full flex items-center justify-between px-3 py-2.5 text-[13px] text-left transition-colors ${
                         selected
-                          ? 'bg-[#0F172A] text-white'
-                          : 'text-[#0F172A] hover:bg-[#F1F5F9]'
+                          ? 'bg-[var(--btn-ink)] text-white'
+                          : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
                       }`}
                     >
                       <span className="font-medium">{c.label}</span>
@@ -150,8 +150,8 @@ export function UploadModal({ onImport, onClose }: Props) {
               </div>
             )}
 
-            <p className="text-[11px] text-[#64748B] mt-1.5 leading-snug">
-              Data will only appear under <span className="font-semibold text-[#0F172A]">{activeCategory.label}</span>.
+            <p className="text-[11px] text-[var(--muted)] mt-1.5 leading-snug">
+              Data will only appear under <span className="font-semibold text-[var(--ink)]">{activeCategory.label}</span>.
             </p>
           </div>
 
@@ -159,8 +159,8 @@ export function UploadModal({ onImport, onClose }: Props) {
           <div
             className={`relative border-2 border-dashed rounded-[10px] p-9 text-center cursor-pointer transition-all ${
               dragging
-                ? 'border-[#0F172A] bg-[rgba(15,23,42,0.06)] scale-[1.005]'
-                : 'border-[#CBD5E1] bg-[#F8FAFC] hover:border-[#0F172A] hover:bg-[#F1F5F9]'
+                ? 'border-[var(--ink)] bg-[rgba(15,23,42,0.06)] scale-[1.005]'
+                : 'border-[var(--border-strong)] bg-[var(--surface-2)] hover:border-[var(--ink)] hover:bg-[var(--surface-3)]'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
@@ -174,14 +174,14 @@ export function UploadModal({ onImport, onClose }: Props) {
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
             />
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center">
-              <UploadCloud size={22} strokeWidth={1.75} className="text-[#0F172A]" />
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center">
+              <UploadCloud size={22} strokeWidth={1.75} className="text-[var(--ink)]" />
             </div>
-            <p className="text-[14px] font-semibold text-[#0F172A] mb-1">
+            <p className="text-[14px] font-semibold text-[var(--ink)] mb-1">
               Drop your file here or click to browse
             </p>
-            <p className="text-[12px] text-[#64748B]">Supports Excel and CSV formats</p>
-            <span className="inline-block mt-2.5 px-2.5 py-0.5 bg-white border border-[#E2E8F0] rounded-full font-mono text-[10px] text-[#64748B] tracking-wide">
+            <p className="text-[12px] text-[var(--muted)]">Supports Excel and CSV formats</p>
+            <span className="inline-block mt-2.5 px-2.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-full font-mono text-[10px] text-[var(--muted)] tracking-wide">
               .xlsx · .xls · .csv
             </span>
           </div>
@@ -189,10 +189,10 @@ export function UploadModal({ onImport, onClose }: Props) {
           {/* Parsing state */}
           {parsing && (
             <div className="space-y-2">
-              <div className="h-[3px] bg-[#F1F5F9] rounded-full overflow-hidden">
-                <div className="h-full bg-[#0F172A] rounded-full animate-[progressPulse_1.2s_ease-in-out_infinite]" />
+              <div className="h-[3px] bg-[var(--surface-3)] rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--btn-ink)] rounded-full animate-[progressPulse_1.2s_ease-in-out_infinite]" />
               </div>
-              <p className="text-center text-[12px] text-[#64748B]">Parsing data…</p>
+              <p className="text-center text-[12px] text-[var(--muted)]">Parsing data…</p>
             </div>
           )}
 

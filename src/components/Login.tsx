@@ -48,7 +48,7 @@ export function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#F8FAFC] relative px-4">
+    <div className="flex items-center justify-center min-h-screen bg-[var(--surface-2)] relative px-4">
       {/* Background grid, mirrors the main app */}
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-60"
@@ -61,21 +61,21 @@ export function Login() {
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 w-[380px] max-w-full bg-white border border-[#E2E8F0] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)]"
+        className="relative z-10 w-[380px] max-w-full bg-[var(--surface)] border border-[var(--border)] rounded-[14px] p-7 shadow-[0_40px_80px_rgba(15,23,42,0.18)]"
       >
         <div className="flex items-center gap-2.5 mb-1">
-          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[#0F172A] text-white">
+          <span className="grid place-items-center w-8 h-8 rounded-[9px] bg-[var(--btn-ink)] text-white">
             <Lock size={15} />
           </span>
-          <span className="font-display text-[20px] tracking-wider text-[#0F172A]">
+          <span className="font-display text-[20px] tracking-wider text-[var(--ink)]">
             Ranking Reports
           </span>
         </div>
-        <p className="text-[12px] font-mono text-[#64748B] mb-6">
+        <p className="text-[12px] font-mono text-[var(--muted)] mb-6">
           {mode === 'forgot' ? 'Enter your email and we’ll send you a reset link' : 'Sign in to access the dashboard'}
         </p>
 
-        <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+        <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
           Email
         </label>
         <input
@@ -84,13 +84,13 @@ export function Login() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+          className="w-full mb-4 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
           placeholder="you@optinetsolutions.com"
         />
 
         {mode === 'signin' && (
           <>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-[#64748B] mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-[var(--muted)] mb-1.5">
               Password
             </label>
             <input
@@ -99,13 +99,13 @@ export function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] text-[#0F172A] outline-none focus:border-[#0F172A] focus:bg-white transition-colors"
+              className="w-full mb-2 px-3 h-10 rounded-[9px] border border-[var(--border)] bg-[var(--surface-2)] text-[14px] text-[var(--ink)] outline-none focus:border-[var(--ink)] focus:bg-[var(--surface)] transition-colors"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={openForgot}
-              className="block ml-auto mb-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+              className="block ml-auto mb-3 text-[12px] font-mono text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
             >
               Forgot password?
             </button>
@@ -127,7 +127,7 @@ export function Login() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full h-10 rounded-[9px] bg-[#0F172A] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[#1E293B] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-10 rounded-[9px] bg-[var(--btn-ink)] text-white text-[13px] font-medium tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--btn-ink-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           <LogIn size={15} />
           {busy
@@ -139,7 +139,7 @@ export function Login() {
           <button
             type="button"
             onClick={backToSignIn}
-            className="w-full mt-3 text-[12px] font-mono text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="w-full mt-3 text-[12px] font-mono text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
           >
             Back to sign in
           </button>

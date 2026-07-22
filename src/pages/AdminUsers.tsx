@@ -91,7 +91,7 @@ export function AdminUsers() {
   const approved = rows.filter((r) => r.status === 'approved')
 
   const loadingView = (
-    <div className="flex-1 flex items-center justify-center h-full text-[#94A3B8] font-mono text-[12px] tracking-wider">
+    <div className="flex-1 flex items-center justify-center h-full text-[var(--muted-2)] font-mono text-[12px] tracking-wider">
       Loading users…
     </div>
   )
@@ -102,25 +102,25 @@ export function AdminUsers() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
-      <h2 className="font-display text-[16px] tracking-wider text-[#0F172A] mb-4">
+      <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] mb-4">
         Pending approval ({pending.length})
       </h2>
-      <div className="border border-[#E2E8F0] rounded-md overflow-hidden mb-8">
+      <div className="border border-[var(--border)] rounded-md overflow-hidden mb-8">
         {pending.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[#94A3B8] text-[12px]">No pending sign-ups.</p>
+          <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No pending sign-ups.</p>
         ) : (
           <div className="divide-y divide-[#F1F5F9]">
             {pending.map((r) => (
               <div key={r.userId} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <div className="text-[13px] font-semibold text-[#0F172A]">{r.email}</div>
-                  <div className="text-[11px] font-mono text-[#94A3B8]">Signed up {formatDate(r.createdAt)}</div>
+                  <div className="text-[13px] font-semibold text-[var(--ink)]">{r.email}</div>
+                  <div className="text-[11px] font-mono text-[var(--muted-2)]">Signed up {formatDate(r.createdAt)}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleSetStatus(r.userId, 'approved')}
                     disabled={busyUserId === r.userId}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold text-white bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold text-white bg-[var(--btn-ink)] hover:bg-[var(--btn-ink-hover)] disabled:opacity-50 transition-colors"
                   >
                     <Check size={13} strokeWidth={2.5} />
                     Approve
@@ -142,18 +142,18 @@ export function AdminUsers() {
         )}
       </div>
 
-      <h2 className="font-display text-[16px] tracking-wider text-[#0F172A] mb-4">
+      <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] mb-4">
         Approved ({approved.length})
       </h2>
-      <div className="border border-[#E2E8F0] rounded-md overflow-hidden">
+      <div className="border border-[var(--border)] rounded-md overflow-hidden">
         {approved.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[#94A3B8] text-[12px]">No approved users yet.</p>
+          <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No approved users yet.</p>
         ) : (
           <div className="divide-y divide-[#F1F5F9]">
             {approved.map((r) => (
               <div key={r.userId} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <div className="text-[13px] font-semibold text-[#0F172A] flex items-center gap-2">
+                  <div className="text-[13px] font-semibold text-[var(--ink)] flex items-center gap-2">
                     {r.email}
                     {r.isAdmin && (
                       <span className="text-[9px] uppercase tracking-wide font-bold text-white bg-[#8B5CF6] rounded px-1.5 py-0.5">
@@ -161,19 +161,19 @@ export function AdminUsers() {
                       </span>
                     )}
                     {r.userId === currentUserId && (
-                      <span className="text-[9px] uppercase tracking-wide font-bold text-[#94A3B8] bg-[#F1F5F9] rounded px-1.5 py-0.5">
+                      <span className="text-[9px] uppercase tracking-wide font-bold text-[var(--muted-2)] bg-[var(--surface-3)] rounded px-1.5 py-0.5">
                         You
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] font-mono text-[#94A3B8]">Signed up {formatDate(r.createdAt)}</div>
+                  <div className="text-[11px] font-mono text-[var(--muted-2)]">Signed up {formatDate(r.createdAt)}</div>
                 </div>
                 {r.userId !== currentUserId && (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleSetAdmin(r.userId, !r.isAdmin)}
                       disabled={busyUserId === r.userId}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] disabled:opacity-50 transition-colors"
                     >
                       {r.isAdmin ? <ShieldMinus size={13} strokeWidth={2.25} /> : <ShieldPlus size={13} strokeWidth={2.25} />}
                       {r.isAdmin ? 'Remove admin' : 'Make admin'}
@@ -181,7 +181,7 @@ export function AdminUsers() {
                     <button
                       onClick={() => handleSetStatus(r.userId, 'pending')}
                       disabled={busyUserId === r.userId}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:border-[#CBD5E1] disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] disabled:opacity-50 transition-colors"
                     >
                       <RotateCcw size={13} strokeWidth={2.25} />
                       Revoke

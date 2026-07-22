@@ -95,27 +95,27 @@ export function Sidebar({
       <aside
         className={
           isMobile
-            ? 'flex flex-col bg-white h-full w-[240px] border-r border-[#E5E4DF] overflow-hidden'
-            : 'flex flex-col bg-white h-full w-full border-r border-[#E5E4DF] overflow-hidden'
+            ? 'flex flex-col bg-[var(--surface)] h-full w-[240px] border-r border-[var(--border-2)] overflow-hidden'
+            : 'flex flex-col bg-[var(--surface)] h-full w-full border-r border-[var(--border-2)] overflow-hidden'
         }
       >
         {/* Logo */}
-        <div className="px-3 pt-5 pb-4 border-b border-[#EEEEE9] shrink-0 flex items-center gap-3">
+        <div className="px-3 pt-5 pb-4 border-b border-[var(--border-3)] shrink-0 flex items-center gap-3">
           <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#1e2a6e] text-white font-display text-[13px] tracking-wider shrink-0">
             RR
           </div>
           <div className={labelCls}>
-            <div className="font-display text-[14px] tracking-widest text-[#1e2a6e] leading-none">
+            <div className="font-display text-[14px] tracking-widest text-[var(--navy-text)] leading-none">
               RANKING REPORTS
             </div>
-            <div className="text-[9px] text-[#ABABAA] uppercase tracking-[0.12em] mt-1">
+            <div className="text-[9px] text-[var(--muted-3)] uppercase tracking-[0.12em] mt-1">
               Rooster Partners
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="px-2 pt-3 pb-3 border-b border-[#EEEEE9] space-y-0.5 shrink-0">
+        <nav className="px-2 pt-3 pb-3 border-b border-[var(--border-3)] space-y-0.5 shrink-0">
           {pages.map((p) => {
             const active = isActivePath(p.activePath ?? p.path)
             return (
@@ -124,18 +124,18 @@ export function Sidebar({
                 onClick={() => navigate(p.path)}
                 title={p.label}
                 className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-colors relative ${
-                  active ? 'bg-[#E8F6FD]' : 'hover:bg-[#F7F7F5]'
+                  active ? 'bg-[var(--active-tint)]' : 'hover:bg-[var(--hover)]'
                 }`}
                 style={active ? { borderLeft: '2px solid #1c9fe0', paddingLeft: '10px' } : {}}
               >
                 <span
                   className="w-[18px] flex items-center justify-center shrink-0"
-                  style={{ color: active ? '#1c9fe0' : '#ABABAA' }}
+                  style={{ color: active ? '#1c9fe0' : 'var(--muted-3)' }}
                 >
                   {p.icon}
                 </span>
                 <span
-                  className={`text-[12px] font-semibold text-glow ${labelCls} ${active ? 'text-[#1e2a6e]' : 'text-[#6B6B65]'}`}
+                  className={`text-[12px] font-semibold text-glow ${labelCls} ${active ? 'text-[var(--navy-text)]' : 'text-[var(--text-2)]'}`}
                 >
                   {p.label}
                 </span>
@@ -148,11 +148,11 @@ export function Sidebar({
         {hasBrandList ? (
           <div className={`flex-1 flex flex-col min-h-0 ${labelCls}`}>
             <div className="flex items-center gap-2 px-5 pt-4 pb-2 shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ABABAA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ABABAA] whitespace-nowrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)] whitespace-nowrap">
                 {isBPSitesRoute ? 'BP Sites' : 'LP Sites'}
               </span>
             </div>
@@ -172,10 +172,10 @@ export function Sidebar({
                         : `/lp-sites/${brandToSlug(brand.name)}`)
                     }}
                     className={`flex items-center w-full px-3 py-2 rounded-lg text-left transition-colors ${
-                      isActive ? 'bg-[#F7F7F5]' : 'hover:bg-[#F7F7F5]'
+                      isActive ? 'bg-[var(--hover)]' : 'hover:bg-[var(--hover)]'
                     }`}
                   >
-                    <div className="text-[12px] font-semibold text-glow text-[#1e2a6e] truncate whitespace-nowrap">
+                    <div className="text-[12px] font-semibold text-glow text-[var(--navy-text)] truncate whitespace-nowrap">
                       {brand.name}
                     </div>
                   </button>
@@ -188,7 +188,7 @@ export function Sidebar({
         )}
 
         {/* Footer */}
-        <div className="p-2 border-t border-[#EEEEE9] shrink-0">
+        <div className="p-2 border-t border-[var(--border-3)] shrink-0">
           <button
             onClick={onOpenUpload}
             title={writeGate.title ?? 'Import Data'}
@@ -203,7 +203,7 @@ export function Sidebar({
             <span className={labelCls}>Import Data</span>
           </button>
           {uploadDate && (
-            <p className={`text-center text-[10px] text-[#ABABAA] font-mono mt-2 ${labelCls}`}>
+            <p className={`text-center text-[10px] text-[var(--muted-3)] font-mono mt-2 ${labelCls}`}>
               Updated: {uploadDate}
             </p>
           )}
@@ -224,7 +224,7 @@ export function Sidebar({
         <button
           onClick={onToggleExpanded}
           title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          className="absolute -right-3 top-7 w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#E5E4DF] text-[#6B6B65] shadow-sm hover:text-[#1e2a6e] hover:border-[#1c9fe0] transition-colors"
+          className="absolute -right-3 top-7 w-6 h-6 flex items-center justify-center rounded-full bg-[var(--surface)] border border-[var(--border-2)] text-[var(--text-2)] shadow-sm hover:text-[var(--navy-text)] hover:border-[#1c9fe0] transition-colors"
         >
           {expanded ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
         </button>
