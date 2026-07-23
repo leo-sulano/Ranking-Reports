@@ -2,6 +2,8 @@
 -- Ranking Reports — AUTH LOCKDOWN (the "flip the switch" migration)
 -- ============================================================================
 -- ⚠️  DO NOT RUN THIS UNTIL YOU ARE READY TO REQUIRE LOGIN.
+-- ⚠️  SUPERSEDED: use auth-approved-lockdown.sql instead — it additionally
+--     requires user_access.status = 'approved', not just any session.
 --
 -- Today the dashboard is open: schema.sql grants the public `anon` role full
 -- read/write/delete on all data (policies use `using (true)`). Because the anon
