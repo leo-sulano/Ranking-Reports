@@ -78,10 +78,14 @@ function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd:
   const perBrand: Record<string, { reg: number; ftd: number; convValues: number[] }> = {}
   for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0, convValues: [] }
   for (const r of recs) {
-    perBrand[r.brand].reg += r.reg
-    perBrand[r.brand].ftd += r.ftd
+    // Rows for unknown brands (e.g. renamed in brands.ts but not yet migrated
+    // in the DB) are skipped — they must not crash the whole page.
+    const agg = perBrand[r.brand]
+    if (!agg) continue
+    agg.reg += r.reg
+    agg.ftd += r.ftd
     const pct = rawRatio(r.reg, r.ftd)
-    if (pct != null) perBrand[r.brand].convValues.push(pct)
+    if (pct != null) agg.convValues.push(pct)
   }
   return perBrand
 }
