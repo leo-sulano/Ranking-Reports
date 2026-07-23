@@ -25,22 +25,40 @@ export function AuthGate({ children }: { children: ReactNode }) {
     // Generation counter so a slow approval lookup for an old session can't
     // clobber the state of a newer one (e.g. quick sign-out/sign-in).
     let gen = 0
+    // Last user we resolved a verdict for. Repeat events for the same user
+    // (hourly TOKEN_REFRESHED, tab-refocus SIGNED_IN) re-check in the
+    // background instead of unmounting the app behind "Checking access…".
+    let lastUserId: string | null = null
+    let lastResolved = false
 
     const applySession = (s: Session | null) => {
       setSession(s)
       setChecked(true)
       const my = ++gen
-      setAccess('checking')
-      if (!s) return
+      if (!s) {
+        lastUserId = null
+        lastResolved = false
+        setAccess('checking')
+        return
+      }
+      const background = s.user.id === lastUserId && lastResolved
+      lastUserId = s.user.id
+      if (!background) setAccess('checking')
       getUserAccess(s.user.id)
         .then((a) => {
           if (cancelled || my !== gen) return
+          lastResolved = true
           setAccess(a?.status === 'approved' ? 'approved' : 'pending')
         })
         .catch(() => {
-          // Treat lookup failure as not-approved; the user can sign out/in.
           if (cancelled || my !== gen) return
-          setAccess('pending')
+          // Gating lookup fails closed. A background re-check keeps the
+          // existing verdict instead — RLS remains the enforcement boundary,
+          // so a transient network blip must not bounce an approved user.
+          if (!background) {
+            lastResolved = true
+            setAccess('pending')
+          }
         })
     }
 

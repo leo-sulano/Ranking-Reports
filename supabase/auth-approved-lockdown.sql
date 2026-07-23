@@ -16,6 +16,9 @@
 -- Safe to re-run: every statement is idempotent.
 -- To ROLL BACK (reads open to anon, writes to any authenticated user):
 --   re-run supabase/auth-write-lockdown.sql, then remove the env var.
+--   (Note: that file predates the "approved *" policy names, so they linger
+--   harmlessly after rollback — drop them by re-running this file's drop
+--   section if you want a clean policy list.)
 -- ============================================================================
 
 -- Approval check used by every data policy. SECURITY DEFINER so the check
@@ -56,10 +59,10 @@ drop policy if exists "approved write snapshots"  on public.snapshots;
 drop policy if exists "approved update snapshots" on public.snapshots;
 drop policy if exists "approved delete snapshots" on public.snapshots;
 
-create policy "approved read snapshots"   on public.snapshots for select to authenticated using (public.is_approved());
-create policy "approved write snapshots"  on public.snapshots for insert to authenticated with check (public.is_approved());
-create policy "approved update snapshots" on public.snapshots for update to authenticated using (public.is_approved()) with check (public.is_approved());
-create policy "approved delete snapshots" on public.snapshots for delete to authenticated using (public.is_approved());
+create policy "approved read snapshots"   on public.snapshots for select to authenticated using ((select public.is_approved()));
+create policy "approved write snapshots"  on public.snapshots for insert to authenticated with check ((select public.is_approved()));
+create policy "approved update snapshots" on public.snapshots for update to authenticated using ((select public.is_approved())) with check ((select public.is_approved()));
+create policy "approved delete snapshots" on public.snapshots for delete to authenticated using ((select public.is_approved()));
 
 -- ranking_records -------------------------------------------------------------
 drop policy if exists "anon read records"       on public.ranking_records;
@@ -75,10 +78,10 @@ drop policy if exists "approved write records"  on public.ranking_records;
 drop policy if exists "approved update records" on public.ranking_records;
 drop policy if exists "approved delete records" on public.ranking_records;
 
-create policy "approved read records"   on public.ranking_records for select to authenticated using (public.is_approved());
-create policy "approved write records"  on public.ranking_records for insert to authenticated with check (public.is_approved());
-create policy "approved update records" on public.ranking_records for update to authenticated using (public.is_approved()) with check (public.is_approved());
-create policy "approved delete records" on public.ranking_records for delete to authenticated using (public.is_approved());
+create policy "approved read records"   on public.ranking_records for select to authenticated using ((select public.is_approved()));
+create policy "approved write records"  on public.ranking_records for insert to authenticated with check ((select public.is_approved()));
+create policy "approved update records" on public.ranking_records for update to authenticated using ((select public.is_approved())) with check ((select public.is_approved()));
+create policy "approved delete records" on public.ranking_records for delete to authenticated using ((select public.is_approved()));
 
 -- ftd_records -----------------------------------------------------------------
 drop policy if exists "anon read ftd_records"       on public.ftd_records;
@@ -94,10 +97,10 @@ drop policy if exists "approved write ftd_records"  on public.ftd_records;
 drop policy if exists "approved update ftd_records" on public.ftd_records;
 drop policy if exists "approved delete ftd_records" on public.ftd_records;
 
-create policy "approved read ftd_records"   on public.ftd_records for select to authenticated using (public.is_approved());
-create policy "approved write ftd_records"  on public.ftd_records for insert to authenticated with check (public.is_approved());
-create policy "approved update ftd_records" on public.ftd_records for update to authenticated using (public.is_approved()) with check (public.is_approved());
-create policy "approved delete ftd_records" on public.ftd_records for delete to authenticated using (public.is_approved());
+create policy "approved read ftd_records"   on public.ftd_records for select to authenticated using ((select public.is_approved()));
+create policy "approved write ftd_records"  on public.ftd_records for insert to authenticated with check ((select public.is_approved()));
+create policy "approved update ftd_records" on public.ftd_records for update to authenticated using ((select public.is_approved())) with check ((select public.is_approved()));
+create policy "approved delete ftd_records" on public.ftd_records for delete to authenticated using ((select public.is_approved()));
 
 -- ftd_totals ------------------------------------------------------------------
 drop policy if exists "anon read ftd_totals"       on public.ftd_totals;
@@ -113,10 +116,10 @@ drop policy if exists "approved write ftd_totals"  on public.ftd_totals;
 drop policy if exists "approved update ftd_totals" on public.ftd_totals;
 drop policy if exists "approved delete ftd_totals" on public.ftd_totals;
 
-create policy "approved read ftd_totals"   on public.ftd_totals for select to authenticated using (public.is_approved());
-create policy "approved write ftd_totals"  on public.ftd_totals for insert to authenticated with check (public.is_approved());
-create policy "approved update ftd_totals" on public.ftd_totals for update to authenticated using (public.is_approved()) with check (public.is_approved());
-create policy "approved delete ftd_totals" on public.ftd_totals for delete to authenticated using (public.is_approved());
+create policy "approved read ftd_totals"   on public.ftd_totals for select to authenticated using ((select public.is_approved()));
+create policy "approved write ftd_totals"  on public.ftd_totals for insert to authenticated with check ((select public.is_approved()));
+create policy "approved update ftd_totals" on public.ftd_totals for update to authenticated using ((select public.is_approved())) with check ((select public.is_approved()));
+create policy "approved delete ftd_totals" on public.ftd_totals for delete to authenticated using ((select public.is_approved()));
 
 -- brand_stags -----------------------------------------------------------------
 drop policy if exists "anon read brand_stags"       on public.brand_stags;
@@ -132,7 +135,7 @@ drop policy if exists "approved write brand_stags"  on public.brand_stags;
 drop policy if exists "approved update brand_stags" on public.brand_stags;
 drop policy if exists "approved delete brand_stags" on public.brand_stags;
 
-create policy "approved read brand_stags"   on public.brand_stags for select to authenticated using (public.is_approved());
-create policy "approved write brand_stags"  on public.brand_stags for insert to authenticated with check (public.is_approved());
-create policy "approved update brand_stags" on public.brand_stags for update to authenticated using (public.is_approved()) with check (public.is_approved());
-create policy "approved delete brand_stags" on public.brand_stags for delete to authenticated using (public.is_approved());
+create policy "approved read brand_stags"   on public.brand_stags for select to authenticated using ((select public.is_approved()));
+create policy "approved write brand_stags"  on public.brand_stags for insert to authenticated with check ((select public.is_approved()));
+create policy "approved update brand_stags" on public.brand_stags for update to authenticated using ((select public.is_approved())) with check ((select public.is_approved()));
+create policy "approved delete brand_stags" on public.brand_stags for delete to authenticated using ((select public.is_approved()));
