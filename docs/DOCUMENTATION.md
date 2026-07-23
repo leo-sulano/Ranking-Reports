@@ -14,7 +14,7 @@
 - Tracks supplementary SEO metadata: Search Volume (SV), Global Search Volume (GSV), and Affiliate URLs (AFF)
 - Supports two asset categories: Brand Properties (BP Sites) and Landing Pages (LP Sites)
 
-**Brands tracked:** Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePLay, RocketSpin, PlayMojo, Rollero
+**Brands tracked:** Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePlay, RocketSpin, PlayMojo, Rollero
 
 **Countries tracked:** AU, CA, DE, IT, NZ
 
