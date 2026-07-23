@@ -42,6 +42,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         return
       }
       const background = s.user.id === lastUserId && lastResolved
+      if (s.user.id !== lastUserId) lastResolved = false // verdict never outlives its user
       lastUserId = s.user.id
       if (!background) setAccess('checking')
       getUserAccess(s.user.id)
