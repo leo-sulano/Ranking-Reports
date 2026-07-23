@@ -75,7 +75,7 @@ export function EditableCell({
           else if (e.key === 'Escape') { e.preventDefault(); cancel() }
         }}
         disabled={saving}
-        className={`w-full bg-white border border-[#0F172A] rounded-[3px] px-1 py-0.5 text-[11px] text-[#0F172A] outline-none ${inputClassName}`}
+        className={`w-full bg-[var(--mx-edit-bg)] border border-[var(--mx-ink-strong)] rounded-[3px] px-1 py-0.5 text-[11px] text-[var(--mx-ink-strong)] outline-none ${inputClassName}`}
       />
     )
   }
@@ -86,7 +86,7 @@ export function EditableCell({
       onClick={() => setEditing(true)}
       title={title}
       disabled={disabled}
-      className={`w-full text-center rounded-[2px] transition-colors cursor-text hover:bg-[rgba(15,23,42,0.06)] ${dimWhenDisabled ? 'disabled:opacity-40' : ''} disabled:cursor-not-allowed disabled:hover:bg-transparent ${className}`}
+      className={`w-full text-center rounded-[2px] transition-colors cursor-text hover:bg-[var(--mx-hover)] ${dimWhenDisabled ? 'disabled:opacity-40' : ''} disabled:cursor-not-allowed disabled:hover:bg-transparent ${className}`}
     >
       {value
         ? (renderDisplay ? renderDisplay(value) : value)

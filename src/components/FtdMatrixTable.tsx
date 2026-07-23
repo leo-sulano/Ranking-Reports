@@ -6,17 +6,17 @@ import { EditableCell } from './EditableCell'
 import { PinButton } from './PinButton'
 import type { FtdRecord, FtdRecordPatch, FtdTotals, BrandStags, WriteGate } from '../types'
 
-const TABLE_BORDER = '#B0B7BD'
-const STICKY_BG    = '#FFFFFF'
-const STAGS_BG     = '#F1F5F9'
-const SUBHEAD_BG   = '#F8FAFC'
+const TABLE_BORDER = 'var(--mx-border)'
+const STICKY_BG    = 'var(--mx-bg)'
+const STAGS_BG     = 'var(--mx-stags-bg)'
+const SUBHEAD_BG   = 'var(--mx-subhead-bg)'
 
 // TOTALS column group — mirrors the source sheet's green "Totals" block.
 // Fixed column width so the sticky left offsets are deterministic.
 const TOTALS_COL_W      = 58
-const TOTALS_HEADER_BG  = '#16A34A'
-const TOTALS_SUBHEAD_BG = '#D9EDDF'
-const TOTALS_CELL_BG    = '#EAF6EF' // solid (not alpha) — sticky cells overlay scrolled content
+const TOTALS_HEADER_BG  = 'var(--mx-totals-header-bg)'
+const TOTALS_SUBHEAD_BG = 'var(--mx-totals-subhead-bg)'
+const TOTALS_CELL_BG    = 'var(--mx-totals-cell-bg)' // solid (not alpha) — sticky cells overlay scrolled content
 
 export type FtdMetric = 'reg' | 'ftd' | 'conv'
 
@@ -78,10 +78,14 @@ function aggregateByBrand(recs: FtdRecord[]): Record<string, { reg: number; ftd:
   const perBrand: Record<string, { reg: number; ftd: number; convValues: number[] }> = {}
   for (const b of BRANDS) perBrand[b.name] = { reg: 0, ftd: 0, convValues: [] }
   for (const r of recs) {
-    perBrand[r.brand].reg += r.reg
-    perBrand[r.brand].ftd += r.ftd
+    // Rows for unknown brands (e.g. renamed in brands.ts but not yet migrated
+    // in the DB) are skipped — they must not crash the whole page.
+    const agg = perBrand[r.brand]
+    if (!agg) continue
+    agg.reg += r.reg
+    agg.ftd += r.ftd
     const pct = rawRatio(r.reg, r.ftd)
-    if (pct != null) perBrand[r.brand].convValues.push(pct)
+    if (pct != null) agg.convValues.push(pct)
   }
   return perBrand
 }
@@ -250,7 +254,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
 
   const border = `1px solid ${TABLE_BORDER}`
   const totalCols = 1 + colsPerBrand + BRANDS.length * colsPerBrand // month + totals + brands
-  const YEAR_ROW_BG = '#EDF0F4'
+  const YEAR_ROW_BG = 'var(--mx-year-row-bg)'
 
   // Sticky TOTALS body cells for one row. Pass null values to render the
   // group blank (expanded year rows, matching the blank brand cells).
@@ -319,11 +323,11 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
   // need an opaque equivalent (tint composited over white).
   const cellBg = (brandPos: number, tint: string): CSSProperties =>
     brandPos < pinnedCount
-      ? { backgroundColor: '#FFFFFF', backgroundImage: `linear-gradient(${tint}, ${tint})` }
+      ? { backgroundColor: 'var(--mx-bg)', backgroundImage: `linear-gradient(${tint}, ${tint})` }
       : { background: tint }
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: '#fff', color: '#0F172A' }}>
+    <div ref={scrollRef} className="overflow-x-auto rounded-xl border" style={{ borderColor: TABLE_BORDER, background: 'var(--mx-bg)', color: 'var(--mx-ink-strong)' }}>
       <table
         className="w-max min-w-full"
         style={{ borderCollapse: 'collapse', fontSize: '12px' }}
@@ -425,7 +429,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
         <tbody>
           {months.length === 0 && (
             <tr>
-              <td colSpan={totalCols} className="px-4 py-10 text-center text-[#94A3B8]">
+              <td colSpan={totalCols} className="px-4 py-10 text-center text-[var(--mx-faint)]">
                 No months tracked yet.
               </td>
             </tr>
@@ -484,7 +488,7 @@ export function FtdMatrixTable({ records, totals, stags, onEditRecord, onEditSta
                       <ChevronRight
                         size={12}
                         strokeWidth={2.5}
-                        className={`text-[#64748B] transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+                        className={`text-[var(--mx-muted)] transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
                       />
                       {year}
                     </div>

@@ -18,21 +18,21 @@ const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 // Cell colors are the Sheets "light * 3" tier the user specified; headers use
 // the matching "light * 1" tier so the same hue reads bolder on the header.
 
-const MAIN_HEADER_BG = '#B4A7D6'   // light purple 2 (softer)
-const MAIN_CELL_BG   = '#D9D2E9'   // light purple 3 — country position cells
+const MAIN_HEADER_BG = 'var(--mx-col-purple-h)'   // light purple 2 (softer)
+const MAIN_CELL_BG   = 'var(--mx-col-purple-c)'   // light purple 3 — country position cells
 
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#CCCCCC', cellBg: '#D9D9D9' }, // BP #1 — light grey 2 / 3
-  { headerBg: '#FFD966', cellBg: '#FFECB2' }, // BP #2 — light yellow 2 / 3
-  { headerBg: '#93C47D', cellBg: '#D9EAD3' }, // BP #3 — light green 2 / 3
-  { headerBg: '#C27BA0', cellBg: '#EAD1DC' }, // BP #4 — light magenta 2 / 3
+  { headerBg: 'var(--mx-col-grey-h)', cellBg: 'var(--mx-col-grey-c)' }, // BP #1 — light grey 2 / 3
+  { headerBg: 'var(--mx-col-yellow-h)', cellBg: 'var(--mx-col-yellow-c)' }, // BP #2 — light yellow 2 / 3
+  { headerBg: 'var(--mx-col-green-h)', cellBg: 'var(--mx-col-green-c)' }, // BP #3 — light green 2 / 3
+  { headerBg: 'var(--mx-col-magenta-h)', cellBg: 'var(--mx-col-magenta-c)' }, // BP #4 — light magenta 2 / 3
 ]
 
 const DATE_BAND_BG  = 'var(--band-date)'
 const DATE_BAND_FG  = '#FFFFFF'
-const HEADER_FG     = '#000000'   // black reads better on the softer pastel headers
-const TABLE_BORDER  = '#B0B7BD'
-const STICKY_KW_BG  = '#FFFFFF'
+const HEADER_FG     = 'var(--mx-ink)'   // black reads better on the softer pastel headers
+const TABLE_BORDER  = 'var(--mx-border)'
+const STICKY_KW_BG  = 'var(--mx-bg)'
 // Fixed column width for pinned domain groups — sticky offsets must be
 // deterministic, so pinned country columns are locked to the same 90px
 // the country sub-headers already use as their min-width.
@@ -530,7 +530,7 @@ function BrandView({
               onToggleDomain={handleToggleDomain}
             />
 
-            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+            <div className="w-px h-5 bg-[var(--mx-divider)] mx-1" />
 
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
@@ -553,7 +553,7 @@ function BrandView({
               )
             })}
 
-            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+            <div className="w-px h-5 bg-[var(--mx-divider)] mx-1" />
 
             <div className="relative">
               <svg
@@ -615,7 +615,7 @@ function BrandView({
                     setPosFilter('all')
                     setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('pos'); return p }, { replace: true })
                   }}
-                  className="ml-0.5 hover:text-[#312E81] leading-none"
+                  className="ml-0.5 hover:text-[var(--mx-chip-hover)] leading-none"
                   title="Clear position filter"
                 >
                   ×
@@ -1032,7 +1032,7 @@ function SiteOption({
       type="button"
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 text-[12px] text-left transition-colors ${
-        selected ? 'bg-[#F0F9FF] text-[var(--ink)]' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
+        selected ? 'bg-[var(--mx-selected-bg)] text-[var(--ink)]' : 'text-[var(--ink)] hover:bg-[var(--surface-3)]'
       }`}
     >
       <span className="font-medium truncate mr-2">{label}</span>
@@ -1277,7 +1277,7 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-[#FFFFFF] rounded-[6px] text-black shrink-0 w-full"
+      className="bg-[var(--mx-bg)] rounded-[6px] text-[var(--mx-ink)] shrink-0 w-full"
       style={{ border: borderStyle, overflow: 'clip' }}
     >
       {/* Date band */}
@@ -1289,7 +1289,7 @@ function SnapshotMatrix({
         {isLatest && (
           <span
             className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-[2px] rounded-[3px]"
-            style={{ background: '#16A34A', color: 'white' }}
+            style={{ background: 'var(--mx-totals-header-bg)', color: 'white' }}
           >
             Latest
           </span>
@@ -1334,7 +1334,7 @@ function SnapshotMatrix({
                 className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
                 style={{
                   background: STICKY_KW_BG,
-                  color: '#000',
+                  color: 'var(--mx-ink)',
                   borderRight: borderStyle,
                   borderBottom: borderStyle,
                   boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
@@ -1398,7 +1398,7 @@ function SnapshotMatrix({
                   className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
                   style={{
                     background: STICKY_KW_BG,
-                    color: '#000',
+                    color: 'var(--mx-ink)',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
                     boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
@@ -1426,7 +1426,7 @@ function SnapshotMatrix({
                           ...pinStyle(gi, ci, 4),
                         }}
                       >
-                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                       </td>
                     )
                   })
@@ -1451,11 +1451,11 @@ const CARD_MODAL_LABELS: Record<CardFilterKey, string> = {
 }
 
 const CARD_MODAL_ACCENTS: Record<CardFilterKey, string> = {
-  top3: '#0F172A',
+  top3: 'var(--mx-ink-strong)',
   improved: 'var(--pos)',
   dropped: 'var(--neg)',
-  unchanged: '#94A3B8',
-  notRanking: '#64748B',
+  unchanged: 'var(--mx-faint)',
+  notRanking: 'var(--mx-muted)',
 }
 
 type ModalEntry = { keyword: string; country: string; position: string; change: string; prevPos: number | 'NR' | null }
@@ -1572,7 +1572,7 @@ function StatsCardModal({
               <div key={domain}>
                 {/* Site header */}
                 <div
-                  className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#F1F5F9] cursor-pointer hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[var(--mx-divider-soft)] cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => { onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}`); onClose() }}
                 >
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
@@ -1603,7 +1603,7 @@ function StatsCardModal({
                           className="flex items-center gap-2 py-1.5 px-2.5 rounded-[6px] hover:bg-[var(--surface-2)] transition-colors cursor-pointer group/kw"
                           onClick={() => { const countries = [...new Set(sorted.map((e) => e.country))].join(','); onNavigate(`/bp-sites/${brandToSlug(brand.name)}/${domain}?kw=${encodeURIComponent(kwLabel)}&countries=${encodeURIComponent(countries)}&exact=1`); onClose() }}
                         >
-                          <span className="text-[12px] text-[#334155] flex-1 min-w-0 truncate group-hover/kw:underline">
+                          <span className="text-[12px] text-[var(--mx-ink-soft)] flex-1 min-w-0 truncate group-hover/kw:underline">
                             {kwLabel}
                           </span>
                           <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
@@ -1616,7 +1616,7 @@ function StatsCardModal({
                                   return <span style={{ color: accent }}>{typeof p === 'number' ? `#${p}` : 'NR'}</span>
                                 }
                                 if (prev === p || (prev === 'NR' && p === 'NR')) {
-                                  return <span style={{ color: '#000000' }}>{typeof p === 'number' ? p : 'NR'}</span>
+                                  return <span style={{ color: 'var(--mx-ink)' }}>{typeof p === 'number' ? p : 'NR'}</span>
                                 }
                                 const improved = p !== 'NR' && (prev === 'NR' || (typeof prev === 'number' && typeof p === 'number' && prev > p))
                                 const dirColor = improved ? 'var(--pos)' : 'var(--neg)'
@@ -1626,7 +1626,7 @@ function StatsCardModal({
                                 return (
                                   <>
                                     <span style={{ color: dirColor }}>{curDisplay} {arrow}</span>{' '}
-                                    <span style={{ color: '#000000' }}>{prevDisplay}</span>
+                                    <span style={{ color: 'var(--mx-ink)' }}>{prevDisplay}</span>
                                   </>
                                 )
                               })()
@@ -1637,7 +1637,7 @@ function StatsCardModal({
                                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
                                   style={{ background: accent + '18' }}
                                 >
-                                  <span className="font-normal" style={{ color: '#94A3B8' }}>{entry.country}</span>
+                                  <span className="font-normal" style={{ color: 'var(--mx-faint)' }}>{entry.country}</span>
                                   {positionNode}
                                 </span>
                               )
@@ -1702,7 +1702,7 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
     >
       <div
         className="bg-[var(--surface)] rounded-[12px] w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
-        style={{ borderTop: '3px solid #0F172A' }}
+        style={{ borderTop: '3px solid var(--mx-ink-strong)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -1740,15 +1740,15 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
             <ChartRow
               condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not in top 100"</span></>}
               badge="NOT RANKED"
-              badgeColor="#64748B"
+              badgeColor="var(--mx-muted)"
             />
           </div>
 
           {/* Divider */}
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-[#E2E8F0]"/>
+            <div className="flex-1 h-px bg-[var(--mx-divider)]"/>
             <span className="text-[10px] text-[var(--muted-2)] shrink-0">if ranked → continue</span>
-            <div className="flex-1 h-px bg-[#E2E8F0]"/>
+            <div className="flex-1 h-px bg-[var(--mx-divider)]"/>
           </div>
 
           {/* Step 2 */}

@@ -39,20 +39,20 @@ export function PosBadge({ record, crossSnapPrevPos }: Props) {
 
     if (crossSnapPrevPos === 'NR') {
       // Was not ranking, now is — entered rankings
-      color = '#15803D'
+      color = 'var(--mx-pos)'
       suffix = ' ↑'
     } else if (typeof crossSnapPrevPos === 'number') {
       if (crossSnapPrevPos > pos) {
         // Rank number decreased = position improved
-        color = '#15803D'
+        color = 'var(--mx-pos)'
         suffix = ` ↑ (${crossSnapPrevPos})`
       } else if (crossSnapPrevPos < pos) {
         // Rank number increased = position dropped
-        color = '#B91C1C'
+        color = 'var(--mx-neg)'
         suffix = ` ↓ (${crossSnapPrevPos})`
       } else {
         // Same position — unchanged, show in black
-        color = '#000000'
+        color = 'var(--mx-ink)'
       }
     }
     // crossSnapPrevPos === null → no previous data, no color
@@ -78,9 +78,9 @@ export function PosBadge({ record, crossSnapPrevPos }: Props) {
 
   const isUp   = !noActualMovement && (/[⇑↑]/.test(change) || /^\s*\+?\d+\s*$/.test(change))
   const isDown = !noActualMovement && (/[⇓↓]/.test(change) || /^\s*-\d+\s*$/.test(change))
-  const color  = isUp   ? '#15803D'
-               : isDown ? '#B91C1C'
-               : '#000000'
+  const color  = isUp   ? 'var(--mx-pos)'
+               : isDown ? 'var(--mx-neg)'
+               : 'var(--mx-ink)'
 
   let suffix = ''
   if (change && !noActualMovement) {
