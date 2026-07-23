@@ -35,7 +35,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 
 ### Brands
 
-Nine brands are registered in `src/lib/brands.ts`: Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePLay, RocketSpin, PlayMojo, Rollero. Each brand has a `mainDomain` (sorted first in domain filters) plus alias domains.
+Nine brands are registered in `src/lib/brands.ts`: Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePlay, RocketSpin, PlayMojo, Rollero. Each brand has a `mainDomain` (sorted first in domain filters) plus alias domains.
 
 ### Tailwind
 
