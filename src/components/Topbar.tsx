@@ -53,15 +53,23 @@ export function Topbar({ brandName, domain, session, onSignIn, onMenuToggle, the
         </button>
 
         {session ? (
-          <button
-            type="button"
-            onClick={() => { void signOut() }}
-            title="Sign out"
-            className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--border-2)] text-[12px] font-mono text-[var(--muted)] text-glow hover:border-[#7fd4f5] transition-colors"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
+          <div className="shrink-0 flex items-center gap-2 min-w-0">
+            <span
+              title={session.user.email ?? undefined}
+              className="hidden sm:inline text-[11px] font-mono text-[var(--muted)] max-w-[180px] truncate"
+            >
+              {session.user.email}
+            </span>
+            <button
+              type="button"
+              onClick={() => { void signOut() }}
+              title="Sign out"
+              className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--border-2)] text-[12px] font-mono text-[var(--muted)] text-glow hover:border-[#7fd4f5] transition-colors"
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
+          </div>
         ) : (
           <button
             type="button"
