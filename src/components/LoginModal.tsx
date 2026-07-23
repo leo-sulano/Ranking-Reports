@@ -200,9 +200,9 @@ export function LoginModal({
         {mode !== 'forgot' && (
           <>
             <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px bg-[#E2E8F0]" />
+              <div className="flex-1 h-px bg-[var(--border-3)]" />
               <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-2)]">or</span>
-              <div className="flex-1 h-px bg-[#E2E8F0]" />
+              <div className="flex-1 h-px bg-[var(--border-3)]" />
             </div>
 
             <button
