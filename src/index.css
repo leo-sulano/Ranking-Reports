@@ -10,8 +10,10 @@
    Light values on :root, dark overrides under .dark (toggled on <html> by
    the theme switch in the Topbar; initialized pre-render in main.tsx).
    The spreadsheet-style data matrices (BP/LP ranking tables, Reg & FTD
-   matrix) intentionally keep their own hardcoded light palette — they read
-   like an embedded Google Sheet in both themes. */
+   matrix, Countries) theme via the --mx-* tokens below: light values match
+   the client's Google Sheet exactly; dark values are navy-anchored solids.
+   Sticky matrix cells overlay scrolled content, so --mx-* backgrounds must
+   stay SOLID (no alpha) in both themes. */
 /* Color System v1 — anchored on the royal/navy blue. Values from
    design-audit/design_handoff_color_system/tokens.css (AA-checked). */
 :root {
@@ -62,6 +64,41 @@
   --warn-border:  #E7C489;
   /* Matrix date band — stays light in both themes */
   --band-date:    #3D5FA8;
+  /* Matrix (spreadsheet) tokens — light = the client sheet's exact palette */
+  --mx-bg:            #FFFFFF;  /* table + sticky cell background (SOLID) */
+  --mx-border:        #B0B7BD;
+  --mx-divider:       #E2E8F0;
+  --mx-divider-soft:  #F1F5F9;
+  --mx-subhead-bg:    #F8FAFC;
+  --mx-stags-bg:      #F1F5F9;
+  --mx-year-row-bg:   #EDF0F4;
+  --mx-selected-bg:   #F0F9FF;
+  --mx-ink:           #000000;  /* cell + header text */
+  --mx-ink-strong:    #0F172A;
+  --mx-ink-soft:      #334155;
+  --mx-muted:         #64748B;
+  --mx-faint:         #94A3B8;
+  --mx-dash:          #6B7280;  /* empty-cell dash */
+  --mx-hover:         rgba(15, 23, 42, 0.06);  /* non-sticky hover wash only */
+  --mx-edit-bg:       #FFFFFF;  /* EditableCell input */
+  --mx-chip-hover:    #312E81;
+  --mx-pos:           #15803D;
+  --mx-neg:           #B91C1C;
+  --mx-totals-header-bg:  #16A34A;
+  --mx-totals-subhead-bg: #D9EDDF;
+  --mx-totals-cell-bg:    #EAF6EF; /* SOLID — sticky */
+  --mx-group-bp:      #6B7280;
+  --mx-group-lp:      #0F766E;
+  /* Sheet column palette (header / cell pairs) */
+  --mx-col-purple-h:     #B4A7D6;  --mx-col-purple-c:     #D9D2E9;
+  --mx-col-grey-h:       #CCCCCC;  --mx-col-grey-c:       #D9D9D9;
+  --mx-col-yellow-h:     #FFD966;  --mx-col-yellow-c:     #FFECB2;
+  --mx-col-green-h:      #93C47D;  --mx-col-green-c:      #D9EAD3;
+  --mx-col-magenta-h:    #C27BA0;  --mx-col-magenta-c:    #EAD1DC;
+  --mx-col-cyan-h:       #76A5AF;  --mx-col-cyan-c:       #D0E0E3;
+  --mx-col-orange-h:     #E69138;  --mx-col-orange-c:     #F9CB9C;
+  --mx-col-cornflower-h: #6FA8DC;  --mx-col-cornflower-c: #C9DAF8;
+  --mx-col-blue-h:       #A4C2F4;  --mx-col-blue-c:       #D9E1F2;
 }
 .dark {
   /* Background & surfaces */
@@ -111,6 +148,41 @@
   --warn-border:  #7A5A26;
   /* Matrix date band — light in both themes; not theme-dependent */
   --band-date:    #3D5FA8;
+  /* Matrix tokens — navy-anchored dark solids */
+  --mx-bg:            #131A26;
+  --mx-border:        #3A4860;
+  --mx-divider:       #29354A;
+  --mx-divider-soft:  #1E2836;
+  --mx-subhead-bg:    #182130;
+  --mx-stags-bg:      #1F2937;
+  --mx-year-row-bg:   #1B2431;
+  --mx-selected-bg:   #13293C;
+  --mx-ink:           #E8EDF6;
+  --mx-ink-strong:    #F3F6FB;
+  --mx-ink-soft:      #B6C2D6;
+  --mx-muted:         #8EA1BA;
+  --mx-faint:         #6B7A90;
+  --mx-dash:          #78889C;
+  --mx-hover:         rgba(232, 237, 246, 0.08);
+  --mx-edit-bg:       #1F2937;
+  --mx-chip-hover:    #9DB4F0;
+  --mx-pos:           #35CE86;
+  --mx-neg:           #FF6B7A;
+  --mx-totals-header-bg:  #15532F;
+  --mx-totals-subhead-bg: #163524;
+  --mx-totals-cell-bg:    #112B1C;
+  --mx-group-bp:      #4A5568;
+  --mx-group-lp:      #0F5D57;
+  /* Column palette — same hues, desaturated + darkened */
+  --mx-col-purple-h:     #4A4066;  --mx-col-purple-c:     #322B45;
+  --mx-col-grey-h:       #3E4756;  --mx-col-grey-c:       #2A3140;
+  --mx-col-yellow-h:     #6B5A1E;  --mx-col-yellow-c:     #423A1A;
+  --mx-col-green-h:      #3D5B33;  --mx-col-green-c:      #283A24;
+  --mx-col-magenta-h:    #5C3A4D;  --mx-col-magenta-c:    #3D2A34;
+  --mx-col-cyan-h:       #2F4D53;  --mx-col-cyan-c:       #223438;
+  --mx-col-orange-h:     #6B4A1E;  --mx-col-orange-c:     #45331F;
+  --mx-col-cornflower-h: #2F4A66;  --mx-col-cornflower-c: #23334A;
+  --mx-col-blue-h:       #3A4C6E;  --mx-col-blue-c:       #283349;
 }
 
 /* Scrollbar */
