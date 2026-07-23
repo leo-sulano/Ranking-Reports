@@ -54,7 +54,7 @@ export function Login() {
         className="fixed inset-0 pointer-events-none z-0 opacity-60"
         style={{
           backgroundImage:
-            'linear-gradient(#E2E8F0 1px, transparent 1px), linear-gradient(90deg, #E2E8F0 1px, transparent 1px)',
+            'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />
