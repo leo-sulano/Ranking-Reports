@@ -14,22 +14,22 @@ const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 // LP block palette — recycle the Google-Sheets pastel tier used by BP so the
 // two pages feel like siblings. Each LP domain claims one block.
 const LP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#B4A7D6', cellBg: '#D9D2E9' }, // light purple 2 / 3
-  { headerBg: '#CCCCCC', cellBg: '#D9D9D9' }, // light grey 2 / 3
-  { headerBg: '#FFD966', cellBg: '#FFECB2' }, // light yellow 2 / 3
-  { headerBg: '#93C47D', cellBg: '#D9EAD3' }, // light green 2 / 3
-  { headerBg: '#C27BA0', cellBg: '#EAD1DC' }, // light magenta 2 / 3
-  { headerBg: '#76A5AF', cellBg: '#D0E0E3' }, // light cyan 2 / 3
-  { headerBg: '#E69138', cellBg: '#F9CB9C' }, // light orange 2 / 3
-  { headerBg: '#6FA8DC', cellBg: '#C9DAF8' }, // light cornflower 2 / 3
-  { headerBg: '#A4C2F4', cellBg: '#D9E1F2' }, // light blue 2 / 3
+  { headerBg: 'var(--mx-col-purple-h)', cellBg: 'var(--mx-col-purple-c)' }, // light purple 2 / 3
+  { headerBg: 'var(--mx-col-grey-h)', cellBg: 'var(--mx-col-grey-c)' }, // light grey 2 / 3
+  { headerBg: 'var(--mx-col-yellow-h)', cellBg: 'var(--mx-col-yellow-c)' }, // light yellow 2 / 3
+  { headerBg: 'var(--mx-col-green-h)', cellBg: 'var(--mx-col-green-c)' }, // light green 2 / 3
+  { headerBg: 'var(--mx-col-magenta-h)', cellBg: 'var(--mx-col-magenta-c)' }, // light magenta 2 / 3
+  { headerBg: 'var(--mx-col-cyan-h)', cellBg: 'var(--mx-col-cyan-c)' }, // light cyan 2 / 3
+  { headerBg: 'var(--mx-col-orange-h)', cellBg: 'var(--mx-col-orange-c)' }, // light orange 2 / 3
+  { headerBg: 'var(--mx-col-cornflower-h)', cellBg: 'var(--mx-col-cornflower-c)' }, // light cornflower 2 / 3
+  { headerBg: 'var(--mx-col-blue-h)', cellBg: 'var(--mx-col-blue-c)' }, // light blue 2 / 3
 ]
 
 const DATE_BAND_BG = 'var(--band-date)'
 const DATE_BAND_FG = '#FFFFFF'
-const HEADER_FG    = '#000000'
-const TABLE_BORDER = '#B0B7BD'
-const STICKY_KW_BG = '#FFFFFF'
+const HEADER_FG    = 'var(--mx-ink)'
+const TABLE_BORDER = 'var(--mx-border)'
+const STICKY_KW_BG = 'var(--mx-bg)'
 // Fixed column width for pinned LP blocks — sticky offsets must be
 // deterministic, matching the 90px min-width the country columns use.
 const PIN_COL_W    = 90
@@ -367,7 +367,7 @@ function BrandView({
               }}
             />
 
-            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+            <div className="w-px h-5 bg-[var(--mx-divider)] mx-1" />
 
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
@@ -390,7 +390,7 @@ function BrandView({
               )
             })}
 
-            <div className="w-px h-5 bg-[#E2E8F0] mx-1" />
+            <div className="w-px h-5 bg-[var(--mx-divider)] mx-1" />
 
             <div className="relative">
               <svg
@@ -886,7 +886,7 @@ function SnapshotMatrix({
 
   return (
     <div
-      className="bg-[#FFFFFF] rounded-[6px] overflow-hidden text-black shrink-0 w-full"
+      className="bg-[var(--mx-bg)] rounded-[6px] overflow-hidden text-[var(--mx-ink)] shrink-0 w-full"
       style={{ border: borderStyle }}
     >
       <div
@@ -897,7 +897,7 @@ function SnapshotMatrix({
         {isLatest && (
           <span
             className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-[2px] rounded-[3px]"
-            style={{ background: '#16A34A', color: 'white' }}
+            style={{ background: 'var(--mx-totals-header-bg)', color: 'white' }}
           >
             Latest
           </span>
@@ -916,7 +916,7 @@ function SnapshotMatrix({
                 className="sticky left-0 z-10 text-left px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap w-px"
                 style={{
                   background: STICKY_KW_BG,
-                  color: '#000',
+                  color: 'var(--mx-ink)',
                   borderRight: borderStyle,
                   borderBottom: borderStyle,
                 }}
@@ -982,7 +982,7 @@ function SnapshotMatrix({
                   className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
                   style={{
                     background: STICKY_KW_BG,
-                    color: '#000',
+                    color: 'var(--mx-ink)',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
                   }}
@@ -1007,7 +1007,7 @@ function SnapshotMatrix({
                           ...pinStyle(li, ci, 4),
                         }}
                       >
-                        {rec ? <PosBadge record={rec} /> : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        {rec ? <PosBadge record={rec} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                       </td>
                     )
                   })

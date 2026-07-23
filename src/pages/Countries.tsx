@@ -18,41 +18,41 @@ const COUNTRY_NAMES: Record<CountryCode, string> = {
   NZ: 'New Zealand',
 }
 
-const MAIN_HEADER_BG = '#B4A7D6'
-const MAIN_CELL_BG   = '#D9D2E9'
-const TABLE_BORDER   = '#B0B7BD'
-const STICKY_KW_BG   = '#FFFFFF'
+const MAIN_HEADER_BG = 'var(--mx-col-purple-h)'
+const MAIN_CELL_BG   = 'var(--mx-col-purple-c)'
+const TABLE_BORDER   = 'var(--mx-border)'
+const STICKY_KW_BG   = 'var(--mx-bg)'
 const DATE_BAND_BG   = 'var(--band-date)'
 const DATE_BAND_FG   = '#FFFFFF'
-const HEADER_FG      = '#000000'
+const HEADER_FG      = 'var(--mx-ink)'
 
 // Bold section-label backgrounds for the group header row
-const BP_GROUP_BG  = '#6B7280'   // solid slate — distinct from per-column palette
-const LP_GROUP_BG  = '#0F766E'   // teal — clearly different from BP
+const BP_GROUP_BG  = 'var(--mx-group-bp)'   // solid slate — distinct from per-column palette
+const LP_GROUP_BG  = 'var(--mx-group-lp)'   // teal — clearly different from BP
 const GROUP_FG     = '#FFFFFF'
 
 // Thicker left border that marks the start of the LP section
-const SECTION_DIVIDER = '3px solid #6B7280'
+const SECTION_DIVIDER = '3px solid var(--mx-group-bp)'
 
 // Same palette as BPSites — BP partner domains
 const BP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#CCCCCC', cellBg: '#D9D9D9' },
-  { headerBg: '#FFD966', cellBg: '#FFECB2' },
-  { headerBg: '#93C47D', cellBg: '#D9EAD3' },
-  { headerBg: '#C27BA0', cellBg: '#EAD1DC' },
+  { headerBg: 'var(--mx-col-grey-h)', cellBg: 'var(--mx-col-grey-c)' },
+  { headerBg: 'var(--mx-col-yellow-h)', cellBg: 'var(--mx-col-yellow-c)' },
+  { headerBg: 'var(--mx-col-green-h)', cellBg: 'var(--mx-col-green-c)' },
+  { headerBg: 'var(--mx-col-magenta-h)', cellBg: 'var(--mx-col-magenta-c)' },
 ]
 
 // Visually distinct palette for LP domains (cyan/orange/cornflower/lightblue)
 const LP_PALETTE: Array<{ headerBg: string; cellBg: string }> = [
-  { headerBg: '#76A5AF', cellBg: '#D0E0E3' },
-  { headerBg: '#E69138', cellBg: '#F9CB9C' },
-  { headerBg: '#6FA8DC', cellBg: '#C9DAF8' },
-  { headerBg: '#A4C2F4', cellBg: '#D9E1F2' },
-  { headerBg: '#76A5AF', cellBg: '#D0E0E3' },
-  { headerBg: '#E69138', cellBg: '#F9CB9C' },
-  { headerBg: '#6FA8DC', cellBg: '#C9DAF8' },
-  { headerBg: '#A4C2F4', cellBg: '#D9E1F2' },
-  { headerBg: '#76A5AF', cellBg: '#D0E0E3' },
+  { headerBg: 'var(--mx-col-cyan-h)', cellBg: 'var(--mx-col-cyan-c)' },
+  { headerBg: 'var(--mx-col-orange-h)', cellBg: 'var(--mx-col-orange-c)' },
+  { headerBg: 'var(--mx-col-cornflower-h)', cellBg: 'var(--mx-col-cornflower-c)' },
+  { headerBg: 'var(--mx-col-blue-h)', cellBg: 'var(--mx-col-blue-c)' },
+  { headerBg: 'var(--mx-col-cyan-h)', cellBg: 'var(--mx-col-cyan-c)' },
+  { headerBg: 'var(--mx-col-orange-h)', cellBg: 'var(--mx-col-orange-c)' },
+  { headerBg: 'var(--mx-col-cornflower-h)', cellBg: 'var(--mx-col-cornflower-c)' },
+  { headerBg: 'var(--mx-col-blue-h)', cellBg: 'var(--mx-col-blue-c)' },
+  { headerBg: 'var(--mx-col-cyan-h)', cellBg: 'var(--mx-col-cyan-c)' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -324,7 +324,7 @@ function CountryBrandTable({
       </div>
 
       {/* Scrollable table */}
-      <div ref={scrollRef} className="overflow-x-auto" style={{ background: '#fff' }}>
+      <div ref={scrollRef} className="overflow-x-auto" style={{ background: 'var(--mx-bg)' }}>
         <table
           className="border-collapse text-[12px] w-max min-w-full"
           style={scrollRightPad > 0 ? { marginRight: scrollRightPad } : undefined}
@@ -466,7 +466,7 @@ function CountryBrandTable({
                   className="sticky left-0 z-[5] px-3 py-2 font-semibold whitespace-nowrap"
                   style={{
                     background: STICKY_KW_BG,
-                    color: '#000',
+                    color: 'var(--mx-ink)',
                     borderRight: borderStyle,
                     borderBottom: borderStyle,
                     boxShadow: scrolled ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
@@ -492,7 +492,7 @@ function CountryBrandTable({
                     >
                       {rec
                         ? <PosBadge record={rec} crossSnapPrevPos={prevPos} />
-                        : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                     </td>
                   )
                 })()}
@@ -515,7 +515,7 @@ function CountryBrandTable({
                     >
                       {rec
                         ? <PosBadge record={rec} crossSnapPrevPos={prevPos} />
-                        : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                     </td>
                   )
                 })}
@@ -538,7 +538,7 @@ function CountryBrandTable({
                     >
                       {rec
                         ? <PosBadge record={rec} crossSnapPrevPos={prevPos} />
-                        : <span className="text-[#6B7280] text-[11px]">–</span>}
+                        : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                     </td>
                   )
                 })}
