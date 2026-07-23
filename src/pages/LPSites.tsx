@@ -72,7 +72,6 @@ export function LPSites() {
 
   return (
     <BrandGrid
-      snapshots={lpSnapshots}
       onSelect={(b) => navigate(`/lp-sites/${brandToSlug(b.name)}`)}
       onSelectDomain={(b, domain) => navigate(`/lp-sites/${brandToSlug(b.name)}/${domain}`)}
     />
@@ -82,11 +81,9 @@ export function LPSites() {
 // ─── Brand Grid — cards list LP domains (no MAIN marker) ──────────────────────
 
 function BrandGrid({
-  snapshots,
   onSelect,
   onSelectDomain,
 }: {
-  snapshots: Snapshot[]
   onSelect: (b: Brand) => void
   onSelectDomain: (b: Brand, domain: string) => void
 }) {
@@ -94,10 +91,6 @@ function BrandGrid({
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {BRANDS.map((brand, idx) => {
-          const domainSet = new Set(brand.lpDomains.map((d) => d.toLowerCase()))
-          const hasData = snapshots.some((s) =>
-            s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
-          )
           const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
@@ -126,14 +119,6 @@ function BrandGrid({
                     {brand.lpDomains.length} landing page{brand.lpDomains.length !== 1 ? 's' : ''}
                   </div>
                 </div>
-                {hasData && (
-                  <span
-                    className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: c + '20', color: c }}
-                  >
-                    Data
-                  </span>
-                )}
               </div>
 
               <div className="flex flex-col gap-1">

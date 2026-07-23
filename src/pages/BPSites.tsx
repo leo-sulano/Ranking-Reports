@@ -77,7 +77,6 @@ export function BPSites() {
 
   return (
     <BrandGrid
-      snapshots={bpSnapshots}
       onSelect={(b) => navigate(`/bp-sites/${brandToSlug(b.name)}`)}
       onSelectDomain={(b, domain) => {
         const base = `/bp-sites/${brandToSlug(b.name)}`
@@ -93,11 +92,9 @@ export function BPSites() {
 // ─── Brand Grid (unchanged from prior) ────────────────────────────────────────
 
 function BrandGrid({
-  snapshots,
   onSelect,
   onSelectDomain,
 }: {
-  snapshots: Snapshot[]
   onSelect: (b: Brand) => void
   onSelectDomain: (b: Brand, domain: string) => void
 }) {
@@ -105,10 +102,6 @@ function BrandGrid({
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {BRANDS.map((brand, idx) => {
-          const domainSet = new Set(brand.domains.map((d) => d.toLowerCase()))
-          const hasData = snapshots.some((s) =>
-            s.records.some((r) => domainSet.has(r.domain.toLowerCase())),
-          )
           const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
@@ -134,14 +127,6 @@ function BrandGrid({
                 <div className="min-w-0">
                   <div className="text-[15px] font-bold text-[var(--ink)]">{brand.name}</div>
                 </div>
-                {hasData && (
-                  <span
-                    className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: c + '20', color: c }}
-                  >
-                    Data
-                  </span>
-                )}
               </div>
 
               <div className="flex flex-col gap-1">
