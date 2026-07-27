@@ -7,10 +7,11 @@ import { requireEnv, verifyPortalAssertion, ensureUserExists, resolveAppOrigin }
  * SSO callback the dashboard portal redirects to with ?token=<portal JWT>.
  *
  * Flow: verify the portal token (JWKS + issuer + audience + expiry) →
- * JIT-provision the user in Supabase Auth → auto-approve them in user_access →
- * mint a magic link and bounce the browser through it. Supabase verifies the
- * link and redirects back to APP_URL with tokens in the URL hash, where the
- * browser client (detectSessionInUrl: true) picks up the session.
+ * JIT-provision the user in Supabase Auth → auto-approve them in user_access
+ * if this is their first arrival → mint a magic link and bounce the browser
+ * through it. Supabase verifies the link and redirects back to APP_URL with
+ * tokens in the URL hash, where the browser client (detectSessionInUrl: true)
+ * picks up the session.
  *
  * All failures land on `/?error=<step>` — the SPA has no /login route; the
  * unauthenticated app shell shows the login modal.
@@ -55,8 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     // 2) JIT-provision by email ("already registered" counts as success).
+    let isNewUser: boolean
     try {
-      await ensureUserExists(admin, email)
+      isNewUser = await ensureUserExists(admin, email)
     } catch (err) {
       console.error('[sso] user provisioning failed', err)
       res.redirect(302, `${origin}/?error=provision`)
@@ -75,15 +77,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    // 2b) Auto-approve in user_access (the auth.users trigger has already
-    // inserted a 'pending' row; this flips it without touching is_admin).
-    const { error: upsertErr } = await admin
-      .from('user_access')
-      .upsert({ user_id: link.user.id, email, status: 'approved' }, { onConflict: 'user_id' })
-    if (upsertErr) {
-      console.error('[sso] user_access upsert failed', upsertErr)
-      res.redirect(302, `${origin}/?error=access`)
-      return
+    // 2b) Auto-approve FIRST-TIME arrivals only (the auth.users trigger has
+    // already inserted a 'pending' row; this flips it without touching
+    // is_admin). Returning users are left exactly as an admin last set them —
+    // re-approving here would silently undo a revoke, since 'pending' is both
+    // the brand-new state and the revoked state. A revoked user still gets a
+    // session and lands on the awaiting-approval screen, because RLS gates on
+    // status = 'approved'.
+    if (isNewUser) {
+      const { error: upsertErr } = await admin
+        .from('user_access')
+        .upsert({ user_id: link.user.id, email, status: 'approved' }, { onConflict: 'user_id' })
+      if (upsertErr) {
+        console.error('[sso] user_access upsert failed', upsertErr)
+        res.redirect(302, `${origin}/?error=access`)
+        return
+      }
     }
 
     res.redirect(302, link.properties.action_link)
