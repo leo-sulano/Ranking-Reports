@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Tailwind's automatic source detection would otherwise scan docs/ and
+   generate real CSS from class-looking strings inside markdown specs and
+   plans — e.g. an old plan doc was still emitting divide-[#F3F2EE] and
+   hover:bg-[#F5F4EF] rules long after those hexes were gone from src/.
+   Detection already skips gitignored paths, so design-audit/ needs no
+   entry here; docs/ is committed, so it does. */
+@source not "../docs";
+
 @theme {
   --font-display: 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
