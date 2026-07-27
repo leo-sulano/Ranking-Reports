@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 
 # Build output
@@ -36,3 +36,7 @@ npm-debug.log*
 # Supabase CLI local cache
 supabase/.temp/
 .vercel
+
+# Local reference material — not part of the app source
+design-audit/
+docs/integrations/
