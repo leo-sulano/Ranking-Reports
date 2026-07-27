@@ -53,7 +53,11 @@ export function AdminUsers() {
       setBusyUserId(null)
       return
     }
-    setRows((prev) => prev.map((r) => (r.userId === userId ? { ...r, status } : r)))
+    setRows((prev) => prev.map((r) => (
+      r.userId === userId
+        ? { ...r, status, revokedAt: status === 'revoked' ? new Date().toISOString() : null }
+        : r
+    )))
     setBusyUserId(null)
     addToast(status === 'approved' ? '✓ User approved' : '✓ User access revoked')
   }, [addToast, requireAuth])
@@ -89,6 +93,9 @@ export function AdminUsers() {
 
   const pending  = rows.filter((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
+  // Revoked users are deliberately NOT in the pending queue — that queue should
+  // only ever hold genuine new sign-ups an admin has not yet ruled on.
+  const revoked  = rows.filter((r) => r.status === 'revoked')
 
   const loadingView = (
     <div className="flex-1 flex items-center justify-center h-full text-[var(--muted-2)] font-mono text-[12px] tracking-wider">
@@ -179,7 +186,7 @@ export function AdminUsers() {
                       {r.isAdmin ? 'Remove admin' : 'Make admin'}
                     </button>
                     <button
-                      onClick={() => handleSetStatus(r.userId, 'pending')}
+                      onClick={() => handleSetStatus(r.userId, 'revoked')}
                       disabled={busyUserId === r.userId}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--ink)] hover:border-[var(--border-strong)] disabled:opacity-50 transition-colors"
                     >
@@ -201,6 +208,53 @@ export function AdminUsers() {
           </div>
         )}
       </div>
+
+      {/* Only rendered when there is something to show — an empty "Revoked (0)"
+          block on every visit would be noise for the common case. */}
+      {revoked.length > 0 && (
+        <>
+          <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] mb-4 mt-8">
+            Revoked ({revoked.length})
+          </h2>
+          <div className="border border-[var(--border)] rounded-md overflow-hidden">
+            <div className="divide-y divide-[var(--border-3)]">
+              {revoked.map((r) => (
+                <div key={r.userId} className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <div className="text-[13px] font-semibold text-[var(--ink)] flex items-center gap-2">
+                      {r.email}
+                      <span className="text-[9px] uppercase tracking-wide font-bold text-[var(--neg)] bg-[var(--neg-surface)] border border-[var(--neg-border)] rounded px-1.5 py-0.5">
+                        Revoked
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-[var(--muted-2)]">
+                      {r.revokedAt ? `Revoked ${formatDate(r.revokedAt)}` : `Signed up ${formatDate(r.createdAt)}`}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSetStatus(r.userId, 'approved')}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold text-white bg-[var(--btn-ink)] hover:bg-[var(--btn-ink-hover)] disabled:opacity-50 transition-colors"
+                    >
+                      <Check size={13} strokeWidth={2.5} />
+                      Restore access
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(r.userId, r.email)}
+                      disabled={busyUserId === r.userId}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold text-[var(--neg)] border border-[var(--neg-border)] hover:bg-[var(--neg-surface)] disabled:opacity-50 transition-colors"
+                    >
+                      <Trash2 size={13} strokeWidth={2.25} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
