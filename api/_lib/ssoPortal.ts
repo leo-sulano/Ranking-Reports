@@ -46,13 +46,19 @@ export interface AdminUserCreator {
  * no confirmation mail fires), treating "already registered" as success.
  * Deliberately NOT listUsers()-based — that only returns the first page, so an
  * existing user beyond page 1 would be missed and re-created (which errors).
+ *
+ * @returns `true` when this call created the user, `false` when they already
+ * existed. The caller uses that to auto-approve first-time portal arrivals
+ * without re-approving a returning user an admin has since revoked — `pending`
+ * means both "brand new" and "revoked" in user_access, so the status column
+ * alone cannot tell them apart.
  */
-export async function ensureUserExists(admin: AdminUserCreator, email: string): Promise<void> {
+export async function ensureUserExists(admin: AdminUserCreator, email: string): Promise<boolean> {
   const { error } = await admin.auth.admin.createUser({ email, email_confirm: true })
-  if (!error) return
-  if (error.code === 'email_exists') return
+  if (!error) return true
+  if (error.code === 'email_exists') return false
   // Older GoTrue versions signal duplicates only via the message text.
-  if (/already (?:been )?registered|already exists/i.test(error.message)) return
+  if (/already (?:been )?registered|already exists/i.test(error.message)) return false
   throw new Error(error.message)
 }
 
