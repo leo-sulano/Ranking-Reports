@@ -159,15 +159,27 @@ create policy "auth delete brand_stags" on public.brand_stags for delete to auth
 -- (admin seeding, re-enabling signups). Table/trigger/RLS below are identical.
 -- ============================================================================
 
+-- 'revoked' is distinct from 'pending' on purpose: an admin taking access away
+-- must not look identical to a brand-new sign-up, either in the admin queue or
+-- to api/portal-callback.ts, which auto-approves first-time SSO arrivals.
 create table if not exists public.user_access (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   email      text not null,
-  status     text not null default 'pending' check (status in ('pending', 'approved')),
+  status     text not null default 'pending' check (status in ('pending', 'approved', 'revoked')),
   is_admin   boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
 );
 
 alter table public.user_access enable row level security;
+
+-- Migration for databases created before 'revoked' existed. Safe to re-run.
+-- NOTE: existing revoked users were stored as 'pending' and stay that way —
+-- the two states were indistinguishable, so they cannot be back-filled.
+alter table public.user_access drop constraint if exists user_access_status_check;
+alter table public.user_access
+  add constraint user_access_status_check check (status in ('pending', 'approved', 'revoked'));
+alter table public.user_access add column if not exists revoked_at timestamptz;
 
 -- Auto-provision a pending row for every new auth.users insert -----------------
 create or replace function public.handle_new_user()

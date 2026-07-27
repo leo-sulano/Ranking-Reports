@@ -154,7 +154,14 @@ export interface BrandStags {
   stags: string
 }
 
-export type UserAccessStatus = 'pending' | 'approved'
+/**
+ * 'pending'  — signed up, never approved yet
+ * 'approved' — has access
+ * 'revoked'  — an admin took access away. Distinct from 'pending' so a revoked
+ *              user is never mistaken for a new sign-up, and so the SSO portal
+ *              callback can tell "brand new" from "deliberately cut off".
+ */
+export type UserAccessStatus = 'pending' | 'approved' | 'revoked'
 
 export interface UserAccessRow {
   userId: string
@@ -162,6 +169,8 @@ export interface UserAccessRow {
   status: UserAccessStatus
   isAdmin: boolean
   createdAt: string
+  /** When access was last revoked; null unless status is 'revoked'. */
+  revokedAt: string | null
 }
 
 export type ParsedPosition = number | 'NR' | null

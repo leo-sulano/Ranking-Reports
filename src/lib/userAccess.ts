@@ -27,7 +27,7 @@ export async function getUserAccess(userId: string): Promise<UserAccessSelf | nu
 export async function listUserAccess(): Promise<UserAccessRow[]> {
   const { data, error } = await supabase
     .from('user_access')
-    .select('user_id, email, status, is_admin, created_at')
+    .select('user_id, email, status, is_admin, created_at, revoked_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((r) => ({
@@ -36,12 +36,20 @@ export async function listUserAccess(): Promise<UserAccessRow[]> {
     status: r.status as UserAccessStatus,
     isAdmin: r.is_admin as boolean,
     createdAt: r.created_at as string,
+    revokedAt: (r.revoked_at as string | null) ?? null,
   }))
 }
 
-/** Approve or revoke a user. RLS only allows this for an admin caller. */
+/**
+ * Approve or revoke a user. RLS only allows this for an admin caller.
+ *
+ * revoked_at is stamped on revoke and cleared on any other transition, so a
+ * user who is revoked, restored, then revoked again shows the latest date
+ * rather than a stale one.
+ */
 export async function updateUserStatus(userId: string, status: UserAccessStatus): Promise<void> {
-  const { error } = await supabase.from('user_access').update({ status }).eq('user_id', userId)
+  const patch = { status, revoked_at: status === 'revoked' ? new Date().toISOString() : null }
+  const { error } = await supabase.from('user_access').update(patch).eq('user_id', userId)
   if (error) throw error
 }
 
