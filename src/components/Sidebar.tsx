@@ -101,7 +101,7 @@ export function Sidebar({
       >
         {/* Logo */}
         <div className="px-3 pt-5 pb-4 border-b border-[var(--border-3)] shrink-0 flex items-center gap-3">
-          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#1e2a6e] text-white font-display text-[13px] tracking-wider shrink-0">
+          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--brand-navy)] text-white font-display text-[13px] tracking-wider shrink-0">
             RR
           </div>
           <div className={labelCls}>
@@ -126,11 +126,11 @@ export function Sidebar({
                 className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left transition-colors relative ${
                   active ? 'bg-[var(--active-tint)]' : 'hover:bg-[var(--hover)]'
                 }`}
-                style={active ? { borderLeft: '2px solid #1c9fe0', paddingLeft: '10px' } : {}}
+                style={active ? { borderLeft: '2px solid var(--brand-blue)', paddingLeft: '10px' } : {}}
               >
                 <span
                   className="w-[18px] flex items-center justify-center shrink-0"
-                  style={{ color: active ? '#1c9fe0' : 'var(--muted-3)' }}
+                  style={{ color: active ? 'var(--brand-blue)' : 'var(--muted-3)' }}
                 >
                   {p.icon}
                 </span>
@@ -224,7 +224,7 @@ export function Sidebar({
         <button
           onClick={onToggleExpanded}
           title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          className="absolute -right-3 top-7 w-6 h-6 flex items-center justify-center rounded-full bg-[var(--surface)] border border-[var(--border-2)] text-[var(--text-2)] shadow-sm hover:text-[var(--navy-text)] hover:border-[#1c9fe0] transition-colors"
+          className="absolute -right-3 top-7 w-6 h-6 flex items-center justify-center rounded-full bg-[var(--surface)] border border-[var(--border-2)] text-[var(--text-2)] shadow-sm hover:text-[var(--navy-text)] hover:border-[var(--brand-blue)] transition-colors"
         >
           {expanded ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
         </button>

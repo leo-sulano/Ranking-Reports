@@ -212,7 +212,7 @@ export function Home() {
             onClick={ctx.onOpenUpload}
             disabled={ctx.writeGate.disabled}
             title={ctx.writeGate.title}
-            className="px-5 py-1.5 bg-[#1e2a6e] text-white text-[13px] font-semibold rounded-xl hover:bg-[#1c9fe0] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-glow-light"
+            className="px-5 py-1.5 bg-[var(--brand-navy)] text-white text-[13px] font-semibold rounded-xl hover:bg-[var(--brand-blue)] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-glow-light"
           >
             Import data
           </button>
@@ -230,7 +230,7 @@ export function Home() {
 
           {/* Keywords — navy card */}
           <div
-            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[#1e2a6e] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
+            className="relative rounded-xl px-4 sm:px-6 py-4 sm:py-5 overflow-hidden bg-[var(--brand-navy)] cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all duration-150 select-none"
             onClick={() => setMetricModal('keywords')}
           >
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 bg-[var(--surface)]" />
@@ -426,9 +426,9 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
     <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border-3)]">
       {/* Brand accent bars — navy / blue / light-blue */}
       <div className="flex flex-col w-[3px] h-[15px] rounded-sm overflow-hidden shrink-0">
-        <div className="flex-1 bg-[#1e2a6e]" />
-        <div className="flex-1 bg-[#1c9fe0]" />
-        <div className="flex-1 bg-[#7fd4f5]" />
+        <div className="flex-1 bg-[var(--brand-navy)]" />
+        <div className="flex-1 bg-[var(--brand-blue)]" />
+        <div className="flex-1 bg-[var(--brand-light)]" />
       </div>
       <div>
         <h2 className="text-[13px] font-[600] text-[var(--navy-text)] leading-none">{title}</h2>
@@ -669,8 +669,8 @@ type MetricDetails = {
 }
 
 const METRIC_META = {
-  keywords: { title: 'Keywords', subtitle: 'All tracked keywords', color: '#1e2a6e', light: false },
-  brands:   { title: 'Brands',   subtitle: 'Active brands in snapshot', color: '#1c9fe0', light: false },
+  keywords: { title: 'Keywords', subtitle: 'All tracked keywords', color: 'var(--brand-navy)', light: false },
+  brands:   { title: 'Brands',   subtitle: 'Active brands in snapshot', color: 'var(--brand-blue)', light: false },
 }
 
 function MetricModal({

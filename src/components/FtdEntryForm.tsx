@@ -129,7 +129,7 @@ export function FtdEntryForm({ records, totals, onEditRecord, onEditTotals, onCl
             <div className="grid grid-cols-4 gap-2 px-3 py-2 bg-[var(--surface-2)] text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               <span>Brand</span><span className="text-center">REG</span><span className="text-center">FTD</span><span className="text-center">Conv%</span>
             </div>
-            <div className="divide-y divide-[#F1F5F9] max-h-[280px] overflow-y-auto">
+            <div className="divide-y divide-[var(--border-3)] max-h-[280px] overflow-y-auto">
               {BRANDS.map((b) => (
                 <div key={b.name} className="grid grid-cols-4 gap-2 px-3 py-1.5 items-center">
                   <span className="text-[12px] font-semibold text-[var(--ink)] truncate">{b.name}</span>

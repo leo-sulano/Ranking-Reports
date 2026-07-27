@@ -18,9 +18,9 @@ export function Topbar({ brandName, domain, session, onSignIn, onMenuToggle, the
     <header className="h-16 min-h-[64px] shrink-0 flex flex-col bg-[var(--surface)] border-b border-[var(--border-2)]">
       {/* Brand accent strip — navy / blue / light-blue */}
       <div className="flex h-[3px] shrink-0">
-        <div className="flex-1 bg-[#1e2a6e]" />
-        <div className="flex-1 bg-[#1c9fe0]" />
-        <div className="flex-1 bg-[#7fd4f5]" />
+        <div className="flex-1 bg-[var(--brand-navy)]" />
+        <div className="flex-1 bg-[var(--brand-blue)]" />
+        <div className="flex-1 bg-[var(--brand-light)]" />
       </div>
       <div className="flex-1 flex items-center gap-2 sm:gap-4 px-3 sm:px-7">
         {/* Hamburger — mobile only */}
@@ -47,7 +47,7 @@ export function Topbar({ brandName, domain, session, onSignIn, onMenuToggle, the
           type="button"
           onClick={onToggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-2)] text-[var(--muted)] hover:text-[var(--ink)] hover:border-[#7fd4f5] transition-colors"
+          className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-2)] text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--brand-light)] transition-colors"
         >
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
@@ -64,7 +64,7 @@ export function Topbar({ brandName, domain, session, onSignIn, onMenuToggle, the
               type="button"
               onClick={() => { void signOut() }}
               title="Sign out"
-              className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--border-2)] text-[12px] font-mono text-[var(--muted)] text-glow hover:border-[#7fd4f5] transition-colors"
+              className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--border-2)] text-[12px] font-mono text-[var(--muted)] text-glow hover:border-[var(--brand-light)] transition-colors"
             >
               <LogOut size={14} />
               Sign out

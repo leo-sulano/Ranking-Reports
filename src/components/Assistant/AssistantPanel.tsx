@@ -74,7 +74,7 @@ export function AssistantPanel({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && (
           <>
-            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[var(--muted)]'}`}>
+            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[var(--warn)]' : 'text-[var(--muted)]'}`}>
               {emptyState}
             </p>
             {ready && (
@@ -124,7 +124,7 @@ export function AssistantPanel({
       {/* Voice error */}
       {voiceError && (
         <div className="px-4 pb-1 shrink-0">
-          <p className="text-[11px] text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[6px] px-2 py-1">
+          <p className="text-[11px] text-[var(--warn)] bg-[var(--warn-surface)] border border-[var(--warn-border)] rounded-[6px] px-2 py-1">
             {voiceError}
           </p>
         </div>

@@ -69,7 +69,7 @@ export function Log() {
         {entries.length === 0 ? (
           <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No activity yet.</p>
         ) : (
-          <div className="divide-y divide-[#F1F5F9]">
+          <div className="divide-y divide-[var(--border-3)]">
             {entries.map((e) => {
               const actionStyle = ACTION_STYLES[e.action]
               return (
@@ -87,7 +87,7 @@ export function Log() {
                       </span>
                       <span className="text-[13px] font-semibold text-[var(--ink)]">{e.email}</span>
                     </div>
-                    <div className="text-[12px] text-[#334155] break-words">{e.summary}</div>
+                    <div className="text-[12px] text-[var(--text-2)] break-words">{e.summary}</div>
                   </div>
                   <div className="text-[11px] font-mono text-[var(--muted-2)] whitespace-nowrap shrink-0">
                     {formatDateTime(e.createdAt)}

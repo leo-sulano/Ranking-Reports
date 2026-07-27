@@ -109,7 +109,7 @@ export function AdminUsers() {
         {pending.length === 0 ? (
           <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No pending sign-ups.</p>
         ) : (
-          <div className="divide-y divide-[#F1F5F9]">
+          <div className="divide-y divide-[var(--border-3)]">
             {pending.map((r) => (
               <div key={r.userId} className="flex items-center justify-between px-4 py-3">
                 <div>
@@ -149,7 +149,7 @@ export function AdminUsers() {
         {approved.length === 0 ? (
           <p className="px-4 py-6 text-center text-[var(--muted-2)] text-[12px]">No approved users yet.</p>
         ) : (
-          <div className="divide-y divide-[#F1F5F9]">
+          <div className="divide-y divide-[var(--border-3)]">
             {approved.map((r) => (
               <div key={r.userId} className="flex items-center justify-between px-4 py-3">
                 <div>
