@@ -113,7 +113,7 @@ export function Login() {
         )}
 
         {mode === 'forgot' && resetSent && (
-          <p className="mb-4 text-[12px] text-[#166534] bg-[var(--pos-surface)] border border-[var(--pos-border)] rounded-[9px] px-3 py-2">
+          <p className="mb-4 text-[12px] text-[var(--pos)] bg-[var(--pos-surface)] border border-[var(--pos-border)] rounded-[9px] px-3 py-2">
             If that email is registered, a reset link is on its way — check your inbox.
           </p>
         )}

@@ -86,7 +86,7 @@ export function AskAI() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-3 max-w-3xl w-full mx-auto">
         {messages.length === 0 && (
           <>
-            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[#B45309]' : 'text-[var(--muted)]'}`}>
+            <p className={`text-[13px] mt-2 ${reachable === false ? 'text-[var(--warn)]' : 'text-[var(--muted)]'}`}>
               {emptyState}
             </p>
             {ready && (
@@ -133,7 +133,7 @@ export function AskAI() {
         </button>
 
         {voiceError && (
-          <p className="text-[11px] text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[6px] px-3 py-1.5">
+          <p className="text-[11px] text-[var(--warn)] bg-[var(--warn-surface)] border border-[var(--warn-border)] rounded-[6px] px-3 py-1.5">
             {voiceError}
           </p>
         )}

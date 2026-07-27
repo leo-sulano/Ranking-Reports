@@ -278,7 +278,7 @@ function BrandRow({
   onToggle: () => void
 }) {
   const brand = BRAND_BY_NAME[node.name]
-  const color = brand?.color ?? '#94A3B8'
+  const color = brand?.color ?? 'var(--muted-3)'
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
@@ -298,7 +298,7 @@ function BrandRow({
           <span className="text-[13px] font-semibold text-[var(--ink)] truncate">{node.name}</span>
           <span className="text-[10px] font-mono text-[var(--muted)] shrink-0">
             {node.domains.length} site{node.domains.length !== 1 ? 's' : ''}
-            <span className="mx-1 text-[#CBD5E1]">·</span>
+            <span className="mx-1 text-[var(--border-strong)]">·</span>
             {node.keywords.toLocaleString()} keyword{node.keywords !== 1 ? 's' : ''}
           </span>
         </div>
