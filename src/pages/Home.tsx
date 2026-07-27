@@ -321,7 +321,7 @@ export function Home() {
                           </div>
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--ink-2)] cursor-pointer hover:text-[#1E40AF] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--ink-2)] cursor-pointer hover:text-[var(--info)] hover:underline"
                           onClick={() => row.p1 > 0 && setKwModal({ brand: row.brand, tier: 'p1', records: row.records })}
                           title={row.p1 > 0 ? 'View P1 keywords' : undefined}
                         >
@@ -335,7 +335,7 @@ export function Home() {
                           {row.t3 || <span className="text-[var(--border-strong)] no-underline">—</span>}
                         </td>
                         <td
-                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--navy-text)] cursor-pointer hover:text-[#18225a] hover:underline"
+                          className="px-3 py-0 text-right font-mono text-[13px] tabular-nums font-medium text-[var(--navy-text)] cursor-pointer hover:text-[var(--ink-2)] hover:underline"
                           onClick={() => row.t10 > 0 && setKwModal({ brand: row.brand, tier: 'top10', records: row.records })}
                           title={row.t10 > 0 ? 'View Top-10 keywords' : undefined}
                         >
@@ -469,7 +469,7 @@ function MoverGroup({
                 onClick={() => setExpanded(isOpen ? null : m.domain)}
                 className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-[var(--hover)] transition-colors cursor-pointer"
               >
-                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? '#ABABAA' }} />
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brand?.color ?? 'var(--muted-3)' }} />
                 <div className="min-w-0 flex-1">
                   <div className="text-[12px] font-medium text-[var(--ink-2)] truncate leading-snug">{m.domain}</div>
                   <div className="font-mono text-[10px] text-[var(--muted-3)] truncate mt-0.5">
@@ -606,7 +606,7 @@ function KeywordModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[#F5F4EF] hover:text-[var(--ink-2)] transition-colors shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[var(--hover)] hover:text-[var(--ink-2)] transition-colors shrink-0"
           >
             ×
           </button>
@@ -628,18 +628,18 @@ function KeywordModal({
                   <span className="ml-auto text-[10px] text-[var(--muted-3)]">{group.totalKw} kw</span>
                 </div>
                 {/* Keyword rows */}
-                <div className="divide-y divide-[#F3F2EE]">
+                <div className="divide-y divide-[var(--border-3)]">
                   {group.keywords.map(({ keyword, entries }) => (
                     <div
                       key={keyword}
-                      className="flex items-center justify-between gap-4 py-2 hover:bg-[#FAF9F5] -mx-1 px-1 rounded transition-colors cursor-pointer group"
+                      className="flex items-center justify-between gap-4 py-2 hover:bg-[var(--hover)] -mx-1 px-1 rounded transition-colors cursor-pointer group"
                       onClick={() => {
                         const countriesParam = entries.map((e) => e.country).join(',')
                         navigate(`/bp-sites/${brandToSlug(brand.name)}/${group.domain}?kw=${encodeURIComponent(keyword)}&countries=${countriesParam}&exact=1`)
                         onClose()
                       }}
                     >
-                      <span className="text-[12px] text-[#1A1A1A] group-hover:underline">{keyword}</span>
+                      <span className="text-[12px] text-[var(--ink-2)] group-hover:underline">{keyword}</span>
                       <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
                         {entries.map(({ country, pos }) => (
                           <span
@@ -703,21 +703,21 @@ function MetricModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[#F5F4EF] hover:text-[var(--ink-2)] transition-colors shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-[18px] leading-none text-[var(--muted-3)] hover:bg-[var(--hover)] hover:text-[var(--ink-2)] transition-colors shrink-0"
           >×</button>
         </div>
 
         {/* List */}
         <div className="overflow-y-auto flex-1 px-5 py-3">
           {type === 'keywords' && (
-            <div className="divide-y divide-[#F3F2EE]">
+            <div className="divide-y divide-[var(--border-3)]">
               {details.keywords.map(({ kw, count, brandSlug }) => (
                 <div
                   key={kw}
-                  className={`flex items-center justify-between gap-4 py-2 rounded-lg px-2 -mx-2 transition-colors ${brandSlug ? 'cursor-pointer hover:bg-[#F5F4EF]' : ''}`}
+                  className={`flex items-center justify-between gap-4 py-2 rounded-lg px-2 -mx-2 transition-colors ${brandSlug ? 'cursor-pointer hover:bg-[var(--hover)]' : ''}`}
                   onClick={() => brandSlug && onNavigate(`/bp-sites/${brandSlug}?kw=${encodeURIComponent(kw)}`)}
                 >
-                  <span className="text-[13px] text-[#1A1A1A]">{kw}</span>
+                  <span className="text-[13px] text-[var(--ink-2)]">{kw}</span>
                   <span className="font-mono text-[11px] text-[var(--muted-3)] shrink-0">{count} record{count !== 1 ? 's' : ''}</span>
                 </div>
               ))}
@@ -725,11 +725,11 @@ function MetricModal({
           )}
 
           {type === 'brands' && (
-            <div className="divide-y divide-[#F3F2EE]">
+            <div className="divide-y divide-[var(--border-3)]">
               {details.brands.map(({ brand, count }) => (
                 <div
                   key={brand.name}
-                  className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-[#F5F4EF] rounded-lg px-2 -mx-2 transition-colors"
+                  className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-[var(--hover)] rounded-lg px-2 -mx-2 transition-colors"
                   onClick={() => onNavigate(`/bp-sites/${brandToSlug(brand.name)}`)}
                 >
                   <div className="w-[3px] h-6 rounded-full shrink-0" style={{ background: brand.color }} />
