@@ -143,6 +143,15 @@ export function Home() {
     })
   }, [ctx.snapshots])
 
+  // Portfolio-wide totals for the leaderboard footer band
+  const leaderboardTotals = useMemo(
+    () => leaderboard.reduce(
+      (acc, row) => ({ p1: acc.p1 + row.p1, t3: acc.t3 + row.t3, t10: acc.t10 + row.t10 }),
+      { p1: 0, t3: 0, t10: 0 }
+    ),
+    [leaderboard]
+  )
+
   const movers = useMemo(() => {
     type KwMover = { record: RankingRecord; delta: number; newEntry?: boolean }
     type SiteMover = { domain: string; brand: string; count: number; keywords: KwMover[] }
@@ -251,12 +260,12 @@ export function Home() {
 
           {/* Brand Leaderboard */}
           <section
-            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
+            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
             style={{ animation: 'fadeUp 0.35s ease 0.1s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full h-full text-left">
                 <thead>
                   <tr className="border-b border-[var(--border-3)]">
                     <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)] w-10">#</th>
@@ -336,6 +345,24 @@ export function Home() {
                     )
                   })}
                 </tbody>
+                {leaderboard.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t border-[var(--border-3)] bg-[var(--surface-2)]">
+                      <td colSpan={2} className="pl-5 pr-2 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)]">
+                        All brands
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[13px] tabular-nums font-semibold text-[var(--ink-2)]">
+                        {leaderboardTotals.p1}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[13px] tabular-nums font-semibold text-[var(--neg)]">
+                        {leaderboardTotals.t3}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[13px] tabular-nums font-semibold text-[var(--navy-text)]">
+                        {leaderboardTotals.t10}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </section>
@@ -368,27 +395,6 @@ export function Home() {
           </section>
 
         </div>
-
-        {/* ── Navigate ─────────────────────────────────────────────────────── */}
-        <section
-          className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
-          style={{ animation: 'fadeUp 0.35s ease 0.18s both' }}
-        >
-          <SectionHeader title="Navigate" subtitle="Jump into a workspace" />
-          <div className="grid grid-cols-2 gap-3 p-5">
-            <NavCard label="BP Sites"    hint="Brand × keyword matrix"        onClick={() => navigate('/bp-sites')} bgColor="var(--active-tint)" borderColor="#1c9fe0" />
-            <NavCard label="LP Sites"    hint="Landing page keyword matrix"   onClick={() => navigate('/lp-sites')} bgColor="var(--surface-2)" borderColor="#1e2a6e" />
-            <NavCard
-              label="Import Data"
-              hint="Upload an XLSX snapshot"
-              onClick={ctx.onOpenUpload}
-              bgColor="var(--active-tint)"
-              borderColor="#1e2a6e"
-              disabled={ctx.writeGate.disabled}
-              title={ctx.writeGate.title}
-            />
-          </div>
-        </section>
 
       </div>
 
@@ -506,29 +512,6 @@ function MoverGroup({
         })}
       </ul>
     </div>
-  )
-}
-
-function NavCard({
-  label, hint, onClick, highlight, bgColor, borderColor, disabled = false, title,
-}: { label: string; hint: string; onClick: () => void; highlight?: boolean; bgColor?: string; borderColor?: string; disabled?: boolean; title?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className="group text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
-      style={{
-        background:  bgColor ?? (highlight ? 'var(--active-tint)' : 'var(--surface-2)'),
-        borderColor: borderColor ?? (highlight ? '#7FD4F5' : 'var(--border-2)'),
-      }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] font-semibold text-glow text-[var(--navy-text)] leading-tight">{label}</span>
-        <span className="text-[var(--muted-3)] text-[13px] transition-all duration-150 group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100 shrink-0">→</span>
-      </div>
-      <div className="text-[11px] text-[var(--muted-3)] mt-1.5">{hint}</div>
-    </button>
   )
 }
 
