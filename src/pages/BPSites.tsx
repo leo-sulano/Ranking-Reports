@@ -105,9 +105,22 @@ function BrandGrid({
           const c = BRAND_LOGO_COLORS[brand.name] ?? brand.color
 
           return (
-            <button
+            // Card is a div, not a button: it contains the per-domain buttons,
+            // and a <button> inside a <button> is invalid DOM (React logs it).
+            // The key guard matters — a keydown on a domain button bubbles up
+            // here, so without it Enter would open the domain AND the brand.
+            <div
               key={brand.name}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelect(brand)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelect(brand)
+                }
+              }}
               className="flex flex-col justify-start bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-5 text-left cursor-pointer relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               style={{ animationDelay: `${idx * 40}ms`, animation: 'fadeUp 0.25s ease both' }}
             >
@@ -185,7 +198,7 @@ function BrandGrid({
                   )
                 })}
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
