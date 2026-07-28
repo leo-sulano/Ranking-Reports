@@ -1,11 +1,11 @@
 const STEPS: Array<{ title: string; desc: string }> = [
   {
     title: 'Upload your data',
-    desc: 'Click "Import Data," pick a category, and drop in your ranking export (.xlsx/.xls/.csv). This file contains Rooster BP Sites ranking data extracted from a ranking-tracking system/software.',
+    desc: 'Click "Import Data," choose BP Sites or LP Sites as the category, and drop in your ranking export (.xlsx/.xls/.csv) extracted from a ranking-tracking system/software.',
   },
   {
     title: 'Pick a brand',
-    desc: 'Select a brand from the sidebar to see its full ranking table; until then, the Home page shows an overview of all brands.',
+    desc: 'Select a brand from the BP Sites or LP Sites sidebar list to see its full ranking table; until then, the Home page shows an overview of all brands.',
   },
   {
     title: 'Read the table',
@@ -13,11 +13,23 @@ const STEPS: Array<{ title: string; desc: string }> = [
   },
   {
     title: 'Filter what you see',
-    desc: 'Narrow the table by country, domain, or keyword using the filters above it.',
+    desc: 'Narrow the table by country, domain, or keyword using the filters above it — every filter combination is saved to the URL so it\'s bookmarkable and shareable.',
   },
   {
     title: 'Track over time',
     desc: 'Upload new reports as they come in; each becomes a dated snapshot so you can compare rankings across dates.',
+  },
+  {
+    title: 'Check Reg & FTD Metrics',
+    desc: 'Use the Reg & FTD Metrics page to log and review monthly registration and first-time-deposit numbers per brand, alongside computed conversion rates.',
+  },
+  {
+    title: 'Ask AI',
+    desc: 'Open Ask AI to ask plain-English questions about your ranking data — biggest drops, top improvers, keywords that fell off — and get an answer generated from your current snapshots.',
+  },
+  {
+    title: 'Review the Activity Log',
+    desc: 'The Activity Log page records every upload, edit, and delete across the dashboard, so you can see who changed what and when.',
   },
 ]
 
