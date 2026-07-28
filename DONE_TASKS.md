@@ -330,3 +330,12 @@ All completed tasks since the beginning of the project, ordered chronologically.
 **Label:** Feature
 
 ---
+
+## July 28, 2026
+
+**Task Title:** How It Works — Cover Reg & FTD Metrics, Ask AI, Activity Log
+**Task Description:** Updated the "How It Works" help page to reflect the dashboard's current feature set. Revised the upload and brand-selection steps to mention the BP Sites/LP Sites category split and bookmarkable URL filters, and added three steps that were missing entirely: Reg & FTD Metrics, Ask AI, and the Activity Log.
+**Date Completed:** July 28, 2026
+**Label:** Feature
+
+---
