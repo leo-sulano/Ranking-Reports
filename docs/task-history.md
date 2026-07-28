@@ -745,3 +745,20 @@ Wrote a design spec and shipped previous-position display with direction color (
 Polished `activityLog` to use `getSession` over `getUser` for determining the active user, and fixed spec examples to match the shipped summary wording.
 
 ---
+
+## Task 65: Auth Pages - Match Grid Background to Main App
+
+**Date:** 2026-07-28
+**PMS Task ID:** cms4g9wj4000j04jpkxssbx6b
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Login and ResetPassword screens hardcoded the background grid overlay as `#E2E8F0` at
+`opacity-60`, diverging from the main app grid (`App.tsx`), which uses the
+`var(--grid-line)` token at `opacity-30`. This made the auth pages visibly heavier and
+differently colored, and it did not adapt for dark mode. Updated both pages to reference
+`var(--grid-line)` at `opacity-30`, matching the main app exactly in both themes. Committed
+and pushed to `main` (`0ea6ecb`).
+
+---
