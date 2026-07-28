@@ -51,7 +51,7 @@ export function Login() {
     <div className="flex items-center justify-center min-h-screen bg-[var(--surface-2)] relative px-4">
       {/* Background grid, mirrors the main app */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-60"
+        className="fixed inset-0 pointer-events-none z-0 opacity-30"
         style={{
           backgroundImage:
             'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
