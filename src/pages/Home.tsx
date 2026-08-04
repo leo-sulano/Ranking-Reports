@@ -191,8 +191,8 @@ export function Home() {
     }
 
     return {
-      climbers: climbers.sort((a, b) => b.count - a.count).slice(0, 3),
-      droppers: droppers.sort((a, b) => b.count - a.count).slice(0, 3),
+      climbers: climbers.sort((a, b) => b.count - a.count).slice(0, 10),
+      droppers: droppers.sort((a, b) => b.count - a.count).slice(0, 10),
     }
   }, [records])
 
