@@ -762,3 +762,24 @@ differently colored, and it did not adapt for dark mode. Updated both pages to r
 and pushed to `main` (`0ea6ecb`).
 
 ---
+
+## Task 66: Top Movers Top-10 + Leaderboard Row Height Fix
+
+**Date:** 2026-08-04
+**PMS Task ID:** cmsemz34c000404kzh62vnglr
+**Column:** Review/QA
+**Label:** UI
+**Assignee:** Leo Sulano
+
+Expanded the Home page's Top Movers widget to list up to 10 climbers and 10 droppers
+(previously capped at 3 each) by bumping the `.slice(0, 3)` calls to `.slice(0, 10)` in
+`src/pages/Home.tsx`. Committed and pushed to `main` (`b5afb93`).
+
+Separately, fixed a Brand Leaderboard row-height regression: commit `819d34e` (Navigate
+panel removal) had added `flex flex-col` / `flex-1` / `h-full` to the leaderboard section,
+table wrapper, and table so the table would stretch to fill the card's full height. With
+Top Movers now taller (10 items vs. 3), this stretched leaderboard rows even further beyond
+their compact, content-driven height. Removed the `flex-1`/`h-full` classes so rows return
+to their natural height. Committed and pushed to `main`.
+
+---
