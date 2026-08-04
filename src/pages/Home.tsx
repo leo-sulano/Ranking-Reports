@@ -260,12 +260,12 @@ export function Home() {
 
           {/* Brand Leaderboard */}
           <section
-            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
+            className="bg-[var(--surface)] rounded-2xl border border-[var(--border-2)] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden"
             style={{ animation: 'fadeUp 0.35s ease 0.1s both' }}
           >
             <SectionHeader title="Brand Leaderboard" subtitle="Ranked by Top-10 keyword count" />
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full h-full text-left">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-[var(--border-3)]">
                     <th className="pl-5 pr-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-3)] w-10">#</th>
