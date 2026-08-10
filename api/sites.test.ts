@@ -1,7 +1,15 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import handler from './sites.js'
+import handler, { config } from './sites.js'
+
+// The handler resolves the caller's Supabase token through supabase-js. Stub
+// the SDK so the tests never touch the network; `getUserMock` is what each
+// test drives to make a token valid, invalid or unreachable.
+const getUserMock = vi.hoisted(() => vi.fn())
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({ auth: { getUser: getUserMock } }),
+}))
 
 type MockRes = VercelResponse & {
   status: ReturnType<typeof vi.fn>
@@ -10,8 +18,13 @@ type MockRes = VercelResponse & {
   setHeader: ReturnType<typeof vi.fn>
 }
 
-function makeReq(method: string, query: Record<string, string | string[]>): VercelRequest {
-  return { method, query } as unknown as VercelRequest
+/** A signed-in caller. Pass `headers: {}` explicitly to test the anonymous case. */
+function makeReq(
+  method: string,
+  query: Record<string, string | string[]>,
+  headers: Record<string, string> = { authorization: 'Bearer good-token' },
+): VercelRequest {
+  return { method, query, headers } as unknown as VercelRequest
 }
 
 function makeRes(): MockRes {
@@ -24,18 +37,25 @@ function makeRes(): MockRes {
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
-let originalKey: string | undefined
+const savedEnv: Record<string, string | undefined> = {}
+const MANAGED_ENV = ['SITES_API_KEY', 'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY']
 
 beforeEach(() => {
-  originalKey = process.env.SITES_API_KEY
-  process.env.SITES_API_KEY = 'bpn_test'
+  for (const name of MANAGED_ENV) savedEnv[name] = process.env[name]
+  process.env.SITES_API_KEY       = 'bpn_test'
+  process.env.SUPABASE_URL        = 'https://project.supabase.co'
+  process.env.SUPABASE_ANON_KEY   = 'anon_test'
+  getUserMock.mockReset()
+  getUserMock.mockResolvedValue({ data: { user: { id: 'user-1', email: 'a@b.co' } }, error: null })
   fetchMock = vi.fn(async () => new Response('{"ok":true,"data":[]}', { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
 })
 
 afterEach(() => {
-  if (originalKey === undefined) delete process.env.SITES_API_KEY
-  else process.env.SITES_API_KEY = originalKey
+  for (const name of MANAGED_ENV) {
+    if (savedEnv[name] === undefined) delete process.env[name]
+    else process.env[name] = savedEnv[name]
+  }
   vi.unstubAllGlobals()
 })
 
@@ -43,6 +63,73 @@ afterEach(() => {
 function calledUrl(): URL {
   return new URL(String(fetchMock.mock.calls[0][0]))
 }
+
+describe('api/sites function config', () => {
+  it('raises maxDuration above the fetch timeout so our own 504 can fire', () => {
+    // Vercel's default is 10s (Hobby) / 15s (Pro) — below the 45s fetch
+    // timeout — so without this the platform kills the function first.
+    expect(config.maxDuration).toBeGreaterThan(45)
+  })
+})
+
+describe('api/sites auth gate', () => {
+  it('rejects a request with no Authorization header with 401', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }, {}), res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json.mock.calls[0][0].error).toMatch(/sign in/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a malformed Authorization header with 401', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer' }), res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a garbage token with 401 and never reaches the upstream', async () => {
+    getUserMock.mockResolvedValue({ data: { user: null }, error: { message: 'invalid JWT' } })
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer garbage' }), res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json.mock.calls[0][0].error).toMatch(/expired|not valid/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when Supabase itself cannot be reached', async () => {
+    getUserMock.mockRejectedValue(new Error('network down'))
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('500s when the server has no Supabase config to verify tokens against', async () => {
+    delete process.env.SUPABASE_URL
+    delete process.env.VITE_SUPABASE_URL
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json.mock.calls[0][0].error).toContain('SUPABASE_URL')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('proxies through for a valid token, passing it to Supabase verbatim', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer good-token' }), res)
+    expect(getUserMock).toHaveBeenCalledWith('good-token')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(200)
+  })
+
+  it('never forwards the caller session to the upstream — only the API key', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer bpn_test')
+  })
+})
 
 describe('api/sites', () => {
   it('rejects non-GET with 405', async () => {
@@ -63,6 +150,13 @@ describe('api/sites', () => {
   it('rejects an unsupported action with 400', async () => {
     const res = makeRes()
     await handler(makeReq('GET', { action: 'history' }), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects `domains` too — only `results` has a caller', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'domains' }), res)
     expect(res.status).toHaveBeenCalledWith(400)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -104,6 +198,8 @@ describe('api/sites', () => {
     const res = makeRes()
     await handler(makeReq('GET', { action: 'results' }), res)
     expect(res.status).toHaveBeenCalledWith(504)
-    expect(res.json.mock.calls[0][0].error).toContain('30 seconds')
+    // Must stay under the function's own maxDuration, or the platform kills
+    // the request before this 504 can be written.
+    expect(res.json.mock.calls[0][0].error).toContain('45 seconds')
   })
 })

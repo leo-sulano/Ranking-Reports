@@ -1,10 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { bearerToken, createTokenResolver, resolveUser } from './_lib/requestAuth.js'
 
 const UPSTREAM = 'https://3213211.xyz/bpn-panel-cc/api/ranks.php'
 
-const ALLOWED_ACTIONS = new Set(['results', 'domains'])
+// `results` is the only action any caller uses. `domains` was allowed too, but
+// it widened the surface for nothing.
+const ALLOWED_ACTIONS = new Set(['results'])
 const MAX_LIMIT   = 1000
-const TIMEOUT_MS  = 30_000
+
+/**
+ * Vercel kills a function at `maxDuration` (10s Hobby / 15s Pro by default),
+ * which is *below* the timeout this handler used to set — so the crafted 504
+ * could never fire and the caller got a platform error instead. Raise the
+ * ceiling explicitly and keep the fetch timeout comfortably under it, so a slow
+ * upstream always comes back as our own 504.
+ */
+export const config = { maxDuration: 60 }
+const TIMEOUT_MS = 45_000
 
 /** Vercel gives repeated query params as an array; take the first. */
 function first(raw: unknown): string | undefined {
@@ -21,6 +33,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ ok: false, error: 'Method not allowed' })
+  }
+
+  // Authenticate BEFORE anything else. Without this the endpoint is a public
+  // read of every row the key can see (including other projects' data) and a
+  // free proxy against the vendor's quota. Every other read in this app is
+  // gated by Supabase, so this one is too — the browser sends the caller's
+  // access token and we resolve it server-side.
+  const token = bearerToken(req.headers?.authorization)
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Sign in to sync — this request carried no Supabase session',
+    })
+  }
+
+  let resolver
+  try {
+    resolver = createTokenResolver(process.env)
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: (err as Error).message })
+  }
+
+  const user = await resolveUser(resolver, token)
+  if (!user) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Your session is not valid or has expired — sign in again and retry',
+    })
   }
 
   const key = process.env.SITES_API_KEY
@@ -63,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(504).json({
       ok: false,
       error: timedOut
-        ? 'The sites service did not respond within 30 seconds'
+        ? `The sites service did not respond within ${TIMEOUT_MS / 1000} seconds`
         : `Could not reach the sites service: ${(err as Error).message}`,
     })
   }

@@ -1,6 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { fetchAllRows, SitesApiError } from './sitesApi'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { fetchAllRows, fetchProxyPage, parsePageBody, SitesApiError } from './sitesApi'
 import type { ApiRow } from './sitesNormalize'
+
+// fetchProxyPage reads the caller's session to attach a bearer token. The
+// module-level client would otherwise need real env vars to construct.
+const getSessionMock = vi.hoisted(() => vi.fn())
+vi.mock('./supabase', () => ({
+  supabase: { auth: { getSession: getSessionMock } },
+}))
 
 /** n placeholder rows — only the count matters to the pager. */
 function page(n: number): ApiRow[] {
@@ -61,5 +68,100 @@ describe('fetchAllRows', () => {
   it('aborts rather than looping forever if offset stops advancing', async () => {
     const fetchPage = vi.fn().mockResolvedValue(page(10))
     await expect(fetchAllRows(fetchPage, undefined, 10)).rejects.toThrow(/exceeded/)
+  })
+})
+
+// parsePageBody owns every word the user reads when a sync fails, so each
+// response shape is pinned to its message.
+describe('parsePageBody', () => {
+  const ok = { ok: true, status: 200 }
+
+  it('returns the data array on a well-formed success', () => {
+    expect(parsePageBody(ok, { ok: true, data: page(2) })).toHaveLength(2)
+  })
+
+  it('surfaces the server error text on a non-2xx status', () => {
+    expect(() => parsePageBody({ ok: false, status: 504 }, { ok: false, error: 'The sites service did not respond within 45 seconds' }))
+      .toThrow('The sites service did not respond within 45 seconds')
+  })
+
+  it('names SITES_API_KEY verbatim when the server has no key', () => {
+    // The one message that tells an operator exactly what to fix — it must
+    // reach the toast unaltered.
+    try {
+      parsePageBody({ ok: false, status: 500 }, { ok: false, error: 'SITES_API_KEY is not configured on the server' })
+      throw new Error('expected parsePageBody to throw')
+    } catch (err) {
+      expect((err as SitesApiError).message).toBe('SITES_API_KEY is not configured on the server')
+      expect((err as SitesApiError).status).toBe(500)
+    }
+  })
+
+  it('keeps the 401 status so the caller can recognise a rejected session', () => {
+    try {
+      parsePageBody({ ok: false, status: 401 }, { ok: false, error: 'Your session is not valid or has expired — sign in again and retry' })
+      throw new Error('expected parsePageBody to throw')
+    } catch (err) {
+      expect((err as SitesApiError).status).toBe(401)
+    }
+  })
+
+  it('falls back to the status code when the body carries no usable error', () => {
+    expect(() => parsePageBody({ ok: false, status: 502 }, null)).toThrow('HTTP 502')
+    expect(() => parsePageBody({ ok: false, status: 502 }, { ok: false, error: '  ' })).toThrow('HTTP 502')
+  })
+
+  it('rejects a 200 whose envelope says ok:false', () => {
+    expect(() => parsePageBody(ok, { ok: false, error: 'nope' })).toThrow('nope')
+  })
+
+  it('rejects a success with no data array', () => {
+    expect(() => parsePageBody(ok, { ok: true })).toThrow(/no data array/)
+    expect(() => parsePageBody(ok, { ok: true, data: 'not-an-array' })).toThrow(/no data array/)
+  })
+})
+
+describe('fetchProxyPage', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    getSessionMock.mockReset()
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: 'jwt-123' } } })
+    fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, data: page(1) }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('sends the caller session as a bearer token', async () => {
+    await fetchProxyPage(0)
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer jwt-123')
+  })
+
+  it('still calls the proxy when signed out, letting the server write the 401', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null } })
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: false, error: 'Sign in to sync — this request carried no Supabase session' }), { status: 401 }),
+    )
+    await expect(fetchProxyPage(0)).rejects.toThrow(/Sign in to sync/)
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.headers).toBeUndefined()
+  })
+
+  it('wraps a network throw in a SitesApiError naming the service', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(fetchProxyPage(0)).rejects.toThrow(/Could not reach the sites service: Failed to fetch/)
+  })
+
+  it('lets an abort through untouched so a cancel is not reported as a failure', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError')
+    fetchMock.mockRejectedValueOnce(abort)
+    await expect(fetchProxyPage(0, AbortSignal.abort())).rejects.toBe(abort)
+  })
+
+  it('treats a non-JSON body as an unexpected payload rather than crashing', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('<!doctype html>', { status: 200 }))
+    await expect(fetchProxyPage(0)).rejects.toThrow(/no data array/)
   })
 })

@@ -1330,6 +1330,13 @@ This cannot be done from the repo. Tell the user, verbatim:
 > **Preview** (Settings → Environment Variables). Use the same value as `.env`.
 > Do not add a `VITE_` prefix. The Sync button returns a 500 naming the variable
 > until this is done.
+>
+> No other variable needs adding. `/api/sites` verifies the caller's Supabase
+> session before proxying, and reads the project URL and ANON key from
+> `SUPABASE_URL` / `SUPABASE_ANON_KEY`, falling back to the `VITE_SUPABASE_URL`
+> / `VITE_SUPABASE_ANON_KEY` that Vercel already holds for the client build. Set
+> the unprefixed names only if you want them decoupled — and never with a
+> `VITE_` prefix.
 
 - [ ] **Step 6: Open the PR and record it on the PMS board**
 

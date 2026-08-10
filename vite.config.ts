@@ -16,10 +16,17 @@ function sitesApiDevServer(mode: string): PluginOption {
     apply: 'serve',
     configureServer(server) {
       // Vite only puts VITE_-prefixed vars on import.meta.env, and puts
-      // nothing on process.env. The handler reads process.env.SITES_API_KEY,
-      // so load the unprefixed var explicitly and assign it.
+      // nothing on process.env. The handler reads process.env directly — for
+      // the API key and for the Supabase config it verifies caller tokens
+      // against — so copy those across explicitly.
       const env = loadEnv(mode, process.cwd(), '')
-      if (env.SITES_API_KEY) process.env.SITES_API_KEY = env.SITES_API_KEY
+      for (const name of [
+        'SITES_API_KEY',
+        'SUPABASE_URL', 'VITE_SUPABASE_URL',
+        'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY',
+      ]) {
+        if (env[name]) process.env[name] = env[name]
+      }
 
       server.middlewares.use('/api/sites', async (req, res) => {
         try {
@@ -40,8 +47,13 @@ function sitesApiDevServer(mode: string): PluginOption {
             send(body: string) { res.end(body); return shim },
           }
 
-          await mod.default({ method: req.method, query }, shim)
+          // Headers must be forwarded: the handler authenticates the caller
+          // from `Authorization`, so dropping them would 401 every dev sync.
+          await mod.default({ method: req.method, query, headers: req.headers }, shim)
         } catch (err) {
+          // This middleware exists to be debugged by hand; a JSON 500 in the
+          // browser with no stack in the terminal defeats the whole point.
+          console.error('[dev] /api/sites failed', err)
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json; charset=utf-8')
           res.end(JSON.stringify({ ok: false, error: `Dev proxy failed: ${(err as Error).message}` }))
