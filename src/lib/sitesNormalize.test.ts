@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   canonicalDomain, positionToString, changeToString, checkedAtDate,
-  normalizeCountry, reduceLatest, normalizeRows, type ApiRow,
+  reduceLatest, normalizeRows, type ApiRow,
 } from './sitesNormalize'
+// The sync uses the parser's normalizer rather than its own — the two must not
+// diverge, because applyCarryForward byte-compares the country it produces.
+import { normalizeCountry } from './parser'
 
 /** A valid row with sane defaults; override only what a test cares about. */
 function row(over: Partial<ApiRow> = {}): ApiRow {
@@ -68,13 +71,25 @@ describe('checkedAtDate', () => {
   })
 })
 
-describe('normalizeCountry', () => {
+describe('normalizeCountry (shared with the xlsx parser)', () => {
   it('maps through COUNTRY_LABELS', () => {
     expect(normalizeCountry('AU')).toBe('AU')
     expect(normalizeCountry('Germany')).toBe('DE')
   })
   it('keeps an unmapped value rather than dropping it, uppercased', () => {
     expect(normalizeCountry('fr')).toBe('FR')
+  })
+  it('folds case on full country names, as an uploaded file would', () => {
+    // The sync's own copy returned 'AUSTRALIA' here. Carry-forward keys on
+    // this string without case-folding it, so the mismatch would have split
+    // synced and uploaded rows into two countries.
+    expect(normalizeCountry('australia')).toBe('AU')
+    expect(normalizeCountry('new zealand')).toBe('NZ')
+  })
+  it('tolerates the null/undefined the API can send', () => {
+    expect(normalizeCountry(null)).toBe('')
+    expect(normalizeCountry(undefined)).toBe('')
+    expect(normalizeCountry('  ')).toBe('')
   })
 })
 

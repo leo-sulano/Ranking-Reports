@@ -1,6 +1,13 @@
 import type { RankingRecord } from '../types'
 import type { UnknownDomain } from './parser'
-import { COUNTRY_LABELS, DOMAIN_TO_BRAND } from './brands'
+// One implementation for both ingest paths. See its doc comment: carry-forward
+// keys on a byte-compared country, so a second, subtly different normalizer
+// here would break GSV/SV/AFF inheritance between synced and uploaded
+// snapshots. Project 0 returns codes COUNTRY_LABELS already maps to
+// themselves, and an unrecognised value is uppercased and kept rather than
+// dropped — it surfaces in the summary's Countries count.
+import { normalizeCountry } from './parser'
+import { DOMAIN_TO_BRAND } from './brands'
 
 /**
  * One row as the Ranks API actually returns it. Types are deliberately loose:
@@ -59,18 +66,6 @@ export function checkedAtDate(s: string | null | undefined): string {
   if (!s) return ''
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim())
   return m ? `${m[1]}-${m[2]}-${m[3]}` : ''
-}
-
-/**
- * Project 0 returns real country codes (AU/CA/DE/IT/NZ), which COUNTRY_LABELS
- * already maps to itself. An unrecognised value is kept rather than dropped —
- * silently discarding it would hide a real change upstream. It surfaces in the
- * import summary's Countries count.
- */
-export function normalizeCountry(raw: string | null | undefined): string {
-  const t = (raw ?? '').trim()
-  if (!t) return ''
-  return COUNTRY_LABELS[t] ?? COUNTRY_LABELS[t.toUpperCase()] ?? t.toUpperCase()
 }
 
 /**
