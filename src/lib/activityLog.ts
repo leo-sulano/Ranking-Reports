@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type LogAction  = 'upload' | 'edit' | 'delete'
+export type LogAction  = 'upload' | 'sync' | 'edit' | 'delete'
 export type LogSection = 'bp-sites' | 'lp-sites' | 'ftds'
 
 export interface ActivityLogEntry {

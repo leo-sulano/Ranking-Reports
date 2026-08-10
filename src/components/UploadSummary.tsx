@@ -8,6 +8,8 @@ export interface UploadSummaryData {
   displayDate:    string
   records:        RankingRecord[]
   unknownDomains: UnknownDomain[]
+  /** Where the records came from. Defaults to 'upload' for the xlsx path. */
+  source?:        'upload' | 'sync'
 }
 
 interface Props {
@@ -101,7 +103,7 @@ function aggregate(records: RankingRecord[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function UploadSummary({ data, onClose }: Props) {
-  const { displayDate, records, unknownDomains } = data
+  const { displayDate, records, unknownDomains, source = 'upload' } = data
   const { brands, domainCount, countryCount } = useMemo(
     () => aggregate(records),
     [records],
@@ -130,10 +132,10 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] shrink-0">
           <div>
             <h2 className="font-display text-[18px] tracking-wider text-[var(--ink)] leading-none">
-              Import Summary
+              {source === 'sync' ? 'Sync Summary' : 'Import Summary'}
             </h2>
             <p className="text-[11px] text-[var(--muted)] mt-1.5">
-              {displayDate} · {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} uploaded
+              {displayDate} · {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} {source === 'sync' ? 'synced' : 'uploaded'}
             </p>
           </div>
           <button
@@ -149,7 +151,7 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="px-6 py-5 overflow-y-auto">
           {/* Stats cards */}
           <div className="grid grid-cols-4 gap-3 mb-5">
-            <Stat label="Uploaded"  value={records.length} />
+            <Stat label={source === 'sync' ? 'Synced' : 'Uploaded'} value={records.length} />
             <Stat label="Brands"    value={brands.length} />
             <Stat label="Domains"   value={domainCount} />
             <Stat label="Countries" value={countryCount} />
@@ -170,7 +172,7 @@ export function UploadSummary({ data, onClose }: Props) {
 
             {brands.length === 0 ? (
               <p className="text-[12px] text-[var(--muted)] py-3 text-center bg-[var(--surface-2)] border border-[var(--border)] rounded-md">
-                No matching brands in this upload.
+                No matching brands in this {source === 'sync' ? 'sync' : 'upload'}.
               </p>
             ) : (
               <div className="space-y-2">

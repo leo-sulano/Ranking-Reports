@@ -20,9 +20,10 @@ function formatDateTime(iso: string): string {
 }
 
 const ACTION_STYLES: Record<LogAction, { label: string; bg: string; fg: string }> = {
-  upload: { label: 'Upload', bg: 'var(--pos-surface)', fg: 'var(--pos)' },
+  upload: { label: 'Upload', bg: 'var(--pos-surface)',  fg: 'var(--pos)' },
+  sync:   { label: 'Sync',   bg: 'var(--info-surface)', fg: 'var(--info)' },
   edit:   { label: 'Edit',   bg: 'var(--info-surface)', fg: 'var(--info)' },
-  delete: { label: 'Delete', bg: 'var(--neg-surface)', fg: 'var(--neg)' },
+  delete: { label: 'Delete', bg: 'var(--neg-surface)',  fg: 'var(--neg)' },
 }
 
 const SECTION_LABELS: Record<LogSection, string> = {

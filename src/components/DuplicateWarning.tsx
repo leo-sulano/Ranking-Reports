@@ -2,6 +2,8 @@ import type { Snapshot, WriteGate } from '../types'
 
 export interface DuplicateWarningData {
   existing: Snapshot
+  /** Where the incoming records came from. Defaults to 'upload'. */
+  source?:  'upload' | 'sync'
 }
 
 interface Props {
@@ -12,7 +14,7 @@ interface Props {
 }
 
 export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) {
-  const { existing } = data
+  const { existing, source = 'upload' } = data
 
   return (
     <div
@@ -28,7 +30,7 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
           </div>
           <div>
             <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] leading-tight">
-              File already imported
+              {source === 'sync' ? 'Snapshot already exists' : 'File already imported'}
             </h2>
             <p className="text-[11px] text-[var(--muted)] mt-0.5">
               A snapshot for this date already exists
@@ -39,7 +41,11 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
         {/* Body */}
         <div className="px-6 py-4 space-y-3">
           <p className="text-[13px] text-[var(--text-2)] leading-relaxed">
-            The file you uploaded has a <code className="font-mono text-[var(--ink)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded border border-[var(--border)]">Last Check</code> date that matches an existing snapshot. Duplicate uploads are not allowed.
+            {source === 'sync' ? (
+              <>The Ranks API returned a batch whose newest check date matches an existing snapshot. Replacing it will overwrite any manual edits stored on that snapshot.</>
+            ) : (
+              <>The file you uploaded has a <code className="font-mono text-[var(--ink)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded border border-[var(--border)]">Last Check</code> date that matches an existing snapshot. Duplicate uploads are not allowed.</>
+            )}
           </p>
 
           <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-3">
@@ -58,7 +64,7 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
           </div>
 
           <p className="text-[12px] text-[var(--muted)] leading-relaxed">
-            To re-import, delete the existing snapshot first — or click <span className="text-[var(--neg)] font-semibold">Delete &amp; replace</span> below.
+            To {source === 'sync' ? 're-sync' : 're-import'}, delete the existing snapshot first — or click <span className="text-[var(--neg)] font-semibold">Delete &amp; replace</span> below.
           </p>
         </div>
 

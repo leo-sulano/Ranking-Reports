@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AiIcon } from './Assistant/AiIcon'
-import { ChevronsLeft, ChevronsRight, CircleHelp, DollarSign, History, Users } from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, CircleHelp, DollarSign, History, RefreshCw, Users } from 'lucide-react'
 import { BRANDS, brandToSlug } from '../lib/brands'
 import type { WriteGate } from '../types'
 
@@ -45,6 +45,8 @@ const ADMIN_PAGE: { path: string; label: string; icon: ReactNode; activePath?: s
 interface Props {
   uploadDate: string | null
   onOpenUpload: () => void
+  onSyncFromApi: () => void
+  syncing: boolean
   activeBPBrand: string | null
   onSelectBPBrand: (name: string | null) => void
   mobileOpen?: boolean
@@ -58,6 +60,8 @@ interface Props {
 export function Sidebar({
   uploadDate,
   onOpenUpload,
+  onSyncFromApi,
+  syncing,
   activeBPBrand,
   onSelectBPBrand,
   mobileOpen = false,
@@ -189,6 +193,15 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="p-2 border-t border-[var(--border-3)] shrink-0">
+          <button
+            onClick={onSyncFromApi}
+            title={writeGate.title ?? 'Pull the latest BP rankings from the Ranks API'}
+            disabled={writeGate.disabled || syncing}
+            className="w-full flex items-center gap-3 px-3 py-2 mb-2 bg-transparent border border-[var(--border-2)] text-[var(--text-2)] rounded-lg text-[12px] font-bold transition-all hover:border-[var(--brand-blue)] hover:text-[var(--ink)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={18} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+            <span className={labelCls}>{syncing ? 'Syncing…' : 'Sync from API'}</span>
+          </button>
           <button
             onClick={onOpenUpload}
             title={writeGate.title ?? 'Import Data'}
