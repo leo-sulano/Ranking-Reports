@@ -205,7 +205,9 @@ export function Sidebar({
           <button
             onClick={onOpenUpload}
             title={writeGate.title ?? 'Import Data'}
-            disabled={writeGate.disabled}
+            // Also disabled during a sync: the overlay hides this button but
+            // does not trap focus, so Tab still reaches it.
+            disabled={writeGate.disabled || syncing}
             className="w-full flex items-center gap-3 px-3 py-2 bg-[var(--btn-ink)] text-white rounded-lg text-[12px] font-bold transition-all hover:bg-[var(--btn-ink-hover)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-glow-light"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">

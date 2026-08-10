@@ -97,12 +97,29 @@ describe('parsePageBody', () => {
     }
   })
 
-  it('keeps the 401 status so the caller can recognise a rejected session', () => {
+  it('tags our own 401 with code `unauthenticated`, keeping the server wording', () => {
     try {
-      parsePageBody({ ok: false, status: 401 }, { ok: false, error: 'Your session is not valid or has expired — sign in again and retry' })
+      parsePageBody(
+        { ok: false, status: 401 },
+        { ok: false, code: 'unauthenticated', error: 'Your session is not valid or has expired — sign in again and retry' },
+      )
       throw new Error('expected parsePageBody to throw')
     } catch (err) {
       expect((err as SitesApiError).status).toBe(401)
+      expect((err as SitesApiError).code).toBe('unauthenticated')
+      expect((err as SitesApiError).message).toMatch(/sign in again/)
+    }
+  })
+
+  it('leaves code null on an upstream 401, which means the API key was rejected', () => {
+    // The proxy passes the vendor's 401 through verbatim; only the absence of
+    // our own code tells the caller to blame SITES_API_KEY.
+    try {
+      parsePageBody({ ok: false, status: 401 }, { ok: false, error: 'Invalid API key' })
+      throw new Error('expected parsePageBody to throw')
+    } catch (err) {
+      expect((err as SitesApiError).status).toBe(401)
+      expect((err as SitesApiError).code).toBeNull()
     }
   })
 

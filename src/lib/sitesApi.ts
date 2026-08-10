@@ -9,10 +9,18 @@ const MAX_ROWS = 100_000
 
 export class SitesApiError extends Error {
   status: number | null
-  constructor(message: string, status: number | null = null) {
+  /**
+   * The proxy's own machine-readable reason, when it set one. Today only
+   * `'unauthenticated'`, which distinguishes our 401 (the caller has no valid
+   * Supabase session) from an upstream 401 passed through with the same status
+   * (the vendor rejected `SITES_API_KEY`).
+   */
+  code: string | null
+  constructor(message: string, status: number | null = null, code: string | null = null) {
     super(message)
     this.name = 'SitesApiError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -62,14 +70,15 @@ function isAbort(err: unknown): boolean {
  * verbatim, so the message the server wrote is the message the user sees.
  */
 export function parsePageBody(res: { ok: boolean; status: number }, body: unknown): ApiRow[] {
-  const payload = body as { ok?: unknown; error?: unknown; data?: unknown } | null
+  const payload = body as { ok?: unknown; error?: unknown; data?: unknown; code?: unknown } | null
 
   if (!res.ok || payload?.ok === false) {
     const error =
       typeof payload?.error === 'string' && payload.error.trim()
         ? payload.error
         : `HTTP ${res.status}`
-    throw new SitesApiError(error, res.status)
+    const code = typeof payload?.code === 'string' ? payload.code : null
+    throw new SitesApiError(error, res.status, code)
   }
   if (!Array.isArray(payload?.data)) {
     throw new SitesApiError('Sites service returned an unexpected payload (no data array)', res.status)

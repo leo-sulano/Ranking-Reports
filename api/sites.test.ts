@@ -78,6 +78,9 @@ describe('api/sites auth gate', () => {
     await handler(makeReq('GET', { action: 'results' }, {}), res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json.mock.calls[0][0].error).toMatch(/sign in/i)
+    // Tagged so the client can tell it apart from an upstream 401, which is
+    // passed through with the same status but means the API key was rejected.
+    expect(res.json.mock.calls[0][0].code).toBe('unauthenticated')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

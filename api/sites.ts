@@ -44,6 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) {
     return res.status(401).json({
       ok: false,
+      // `code` separates OUR 401 from an upstream 401, which is passed through
+      // with the same status but means "the vendor rejected SITES_API_KEY".
+      // The client words those two very differently.
+      code: 'unauthenticated',
       error: 'Sign in to sync — this request carried no Supabase session',
     })
   }
@@ -59,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!user) {
     return res.status(401).json({
       ok: false,
+      code: 'unauthenticated',
       error: 'Your session is not valid or has expired — sign in again and retry',
     })
   }

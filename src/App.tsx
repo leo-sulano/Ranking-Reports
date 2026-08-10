@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react'
 import { Routes, Route, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
 import { ResetPassword } from './components/ResetPassword'
@@ -54,9 +54,15 @@ function Layout() {
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
   const [uploadSummary, setUploadSummary] = useState<UploadSummaryData | null>(null)
-  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[]; source: 'upload' | 'sync' }| null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[]; source: 'upload' | 'sync' } | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncProgress, setSyncProgress] = useState(0)
+  // Re-entrancy guard for the sync. A `syncing` state check cannot do this job:
+  // React has not committed setSyncing(true) by the time a second click lands,
+  // and the guard sits before an `await` anyway. A ref is set synchronously.
+  const syncRunningRef = useRef(false)
+  // Lets the overlay's Cancel button abort an in-flight sync.
+  const syncAbortRef = useRef<AbortController | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -273,20 +279,25 @@ function Layout() {
   // BP only. The API tracks none of the LP domains, so there is deliberately no
   // category argument — a sync can never write a half-empty LP snapshot.
   const handleSyncFromApi = useCallback(async () => {
-    if (syncing) return
+    // Claim the slot synchronously, before the first await — see syncRunningRef.
+    if (syncRunningRef.current) return
+    syncRunningRef.current = true
 
-    // Gate before doing any work. A cancelled sign-in just means no sync;
-    // there is nothing to surface as an error.
-    try {
-      await requireAuth(() => true)
-    } catch {
-      return
-    }
+    const controller = new AbortController()
+    syncAbortRef.current = controller
 
-    setSyncing(true)
-    setSyncProgress(0)
     try {
-      const rows = await fetchSitesRows(setSyncProgress)
+      // Gate before doing any work. A cancelled sign-in just means no sync;
+      // there is nothing to surface as an error.
+      const allowed = await requireAuth(() => true).then(() => true, () => false)
+      if (!allowed) return
+
+      setSyncing(true)
+      setSyncProgress(0)
+
+      const rows = await fetchSitesRows(setSyncProgress, controller.signal)
+      // Cancelled while the final page was in flight. Nothing is written.
+      if (controller.signal.aborted) return
       const { records, unknownDomains, rawDate } = normalizeRows(rows)
 
       // Everything filtered out. This is what you see when brands.ts and the
@@ -313,21 +324,39 @@ function Layout() {
       addToast(
         `✓ Synced ${records.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
       )
-      reportUnknownDomains(unknownDomains)
+      // Deliberately NO reportUnknownDomains here. ~60% of every sync is other
+      // projects' rows, by design and forever, so a warning toast would make
+      // every successful sync look like a failure. The sync summary reports
+      // them neutrally instead. The xlsx path keeps the warning: there, an
+      // unrecognised domain really does mean the file is wrong.
     } catch (err) {
-      // A 401 means the key itself was rejected — name the variable so the fix
-      // is obvious, rather than showing the upstream's generic wording.
+      // Cancelling is a choice, not a failure.
+      if (controller.signal.aborted) {
+        addToast('Sync cancelled — nothing was saved.', 'warning')
+        return
+      }
+      // A 401 is either our proxy refusing the caller (code 'unauthenticated',
+      // already worded for a human) or the vendor rejecting the key, passed
+      // through with the upstream's generic wording — name the variable there
+      // so the fix is obvious.
       const msg =
-        err instanceof SitesApiError && err.status === 401
+        err instanceof SitesApiError && err.status === 401 && err.code !== 'unauthenticated'
           ? 'the Ranks API rejected the key — check SITES_API_KEY on the server.'
           : err instanceof Error
             ? err.message
             : String(err)
       addToast(`Sync failed: ${msg}`, 'error')
     } finally {
+      syncRunningRef.current = false
+      syncAbortRef.current = null
       setSyncing(false)
     }
-  }, [addToast, persistOneSnapshot, reportUnknownDomains, requireAuth, state.snapshots, syncing])
+  }, [addToast, persistOneSnapshot, requireAuth, state.snapshots])
+
+  /** Abort an in-flight sync. The handler's finally clears `syncing`. */
+  const handleCancelSync = useCallback(() => {
+    syncAbortRef.current?.abort()
+  }, [])
 
   const handleReplaceDuplicate = useCallback(async () => {
     if (!duplicateWarning) return
@@ -361,7 +390,9 @@ function Layout() {
     addToast(
       `✓ ${source === 'sync' ? 'Synced' : 'Imported'} ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
     )
-    reportUnknownDomains(unknownDomains)
+    // Upload only — for a sync the foreign rows are expected, not a warning.
+    // See the note in handleSyncFromApi.
+    if (source !== 'sync') reportUnknownDomains(unknownDomains)
   }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains, requireAuth])
 
   // ── Inline-edit GSV / SV / AFF ────────────────────────────────────────────
@@ -620,6 +651,16 @@ function Layout() {
             <p className="text-center text-[12px] text-[var(--muted-3)]">
               {syncProgress.toLocaleString()} rows fetched…
             </p>
+            {/* Without this a hung proxy leaves an uncancellable modal over
+                the whole app. Aborting writes no snapshot. */}
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleCancelSync}
+                className="px-4 py-1.5 bg-transparent border border-[var(--border-2)] text-[var(--text-2)] rounded-md text-[12px] font-semibold hover:border-[var(--border-strong)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
