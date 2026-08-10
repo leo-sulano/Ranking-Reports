@@ -128,9 +128,10 @@ echoes the request URL — that URL is built from secret-bearing config.
 | `country` mapped through `COUNTRY_LABELS`; unmapped values kept as-is and surfaced in the summary | Project 0 already returns the exact five codes. Silently dropping an unrecognised country would hide a real change upstream. |
 | `language` ignored | Redundant here. |
 | Keep the newest `checked_at` per (domain, keyword, country) | Guard, per above. |
-| Empty `checked_at` -> the batch's newest date | 24 empty values observed on the BIF side. |
+| Empty `checked_at` -> the record's `date` stays `''` | Adopted from BIF's corrected normalizer. Stamping an undated row with the batch date destroys the only signal separating "never crawled" from "crawled, found nothing". `''` also matches what `normalizeDate` produces for a blank xlsx cell and round-trips through `date text not null default ''`. No empty values were observed in the BP set, but 46 of 1,727 rows on the BIF side had them. |
 | Per-record `date` is that row's own `checked_at` date as `yyyy-MM-dd` | Matches `normalizeDate`'s output for xlsx records. |
-| Snapshot `rawDate` = newest `checked_at` date in the filtered batch | A batch straddles dates: 1,100 rows on 2026-08-04, 9 on 2026-07-29. |
+| Snapshot `rawDate` = newest `checked_at` date **among the kept rows** | A batch straddles dates: 1,100 rows on 2026-08-04, 9 on 2026-07-29. Computed after filtering, so a foreign domain's later timestamp can never date a snapshot that does not contain it. |
+| `url_found` discarded | `RankingRecord` has no such field and `ranking_records` has no such column. Adding one is out of scope. |
 | `change` rendered signed: `+2`, `-3`, `0`; `''` when null | Matches `parseChange`'s expectations. |
 | `searchVolume` / `affiliateUrl` / `globalSearchVolume` -> `''` | Not supplied by the API. `applyCarryForward` inherits them from the prior snapshot, which is what it was built for. |
 | Page until a page is shorter than `limit` | `meta.total` is untrustworthy. |
