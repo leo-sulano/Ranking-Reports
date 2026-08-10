@@ -113,8 +113,12 @@ write path is new.
 | `.env.example` | Document `SITES_API_KEY` as server-only. |
 | `docs/integrations/sites-api.md` | Append the observed-behaviour table above. |
 
-`api/sites.ts` accepts only `action=results` and `action=domains`, clamps
-`limit` to 1–1000 and `offset` to a non-negative integer, times out at 30s,
+`api/sites.ts` requires a valid Supabase session — the browser sends its access
+token and the handler validates it server-side, 401ing on a missing or rejected
+token, so the proxy is not an open read path onto the vendor's data or quota. It
+accepts only `action=results`, clamps
+`limit` to 1–1000 and `offset` to a non-negative integer, times out at 45s under
+a 60s `maxDuration`,
 passes the upstream status through, sets `Cache-Control: no-store`, and never
 echoes the request URL — that URL is built from secret-bearing config.
 

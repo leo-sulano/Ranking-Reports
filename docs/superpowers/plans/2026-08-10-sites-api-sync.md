@@ -10,6 +10,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-10-sites-api-sync-design.md`
 
+> **Superseded in places.** The task code blocks below are the plan as written,
+> kept as the execution record. A whole-branch review after Task 5 added a
+> Supabase-session gate on `api/sites.ts`, dropped `action=domains`, raised the
+> timeout under an explicit `maxDuration`, and added a Cancel button. Where a
+> code block here disagrees with the shipped code, the shipped code and the spec
+> are current.
+
 ## Global Constraints
 
 - **No new npm dependencies.** Everything needed is already installed.
