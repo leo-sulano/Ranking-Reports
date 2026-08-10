@@ -133,3 +133,23 @@ under both `domains` and `lpDomains`. LP Sites therefore stays xlsx-only.
 56 of the 1,109 BP rows carry `project_id: 18` on five domains shared with
 BIF-Dashboard. They are kept: their keywords all exist in the project-0
 vocabulary, and they fill keys project 0 did not check that week.
+
+### Our proxy is not public
+
+`GET /api/sites` requires the caller's Supabase access token in an
+`Authorization: Bearer` header and verifies it server-side
+(`api/_lib/requestAuth.ts`) before forwarding anything. Without the gate the
+endpoint would hand any anonymous visitor all 2,826 rows — including the 1,687
+that belong to other projects — and let them burn the vendor's quota through
+our key.
+
+Only `action=results` is allowed; anything else is a 400. Two 401 shapes exist
+and mean different things:
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 401 | `unauthenticated` | *We* rejected the caller — no session, or an expired/invalid token. |
+| 401 | absent | The *vendor* rejected `SITES_API_KEY`, passed through verbatim. |
+
+`maxDuration` is raised to 60s so the handler's own 45s timeout can produce a
+504 rather than being killed by the platform's 10s/15s default first.

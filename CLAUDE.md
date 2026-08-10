@@ -41,7 +41,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `src/types/index.ts` | All shared TypeScript types (`RankingRecord`, `Snapshot`, `Brand`, `AppState`). |
 | `src/App.tsx` | `Layout` holds all state and callback handlers; passes everything to `RankingReports` via `RROutletContext`. Stub pages (BP Sites, Screenshots, GMB, FTDs) exist but are not implemented. |
 | `src/lib/sitesNormalize.ts` | Ranks API row → `RankingRecord`. Encodes the endpoint's observed quirks (`position: 0` means NR). |
-| `api/sites.ts` | Serverless proxy holding `SITES_API_KEY`; the browser never sees the key or the upstream URL. |
+| `api/sites.ts` | Serverless proxy holding `SITES_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. |
 
 ### Brands
 

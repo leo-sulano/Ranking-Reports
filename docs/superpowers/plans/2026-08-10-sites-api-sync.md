@@ -307,10 +307,16 @@ export default defineConfig(({ mode }) => ({
 Run `npm run dev` in one terminal, then in another:
 
 ```bash
-curl -s "http://localhost:5173/api/sites?action=domains&limit=5" | head -c 200
+curl -s "http://localhost:5173/api/sites?action=results&limit=5" | head -c 200
 ```
 
-Expected: a JSON body starting `{"ok":true,"meta":{...`. If you get `<!doctype html>`, the middleware did not mount. If you get the 500 naming `SITES_API_KEY`, the key is missing from `.env`.
+Expected (post-review): a **401** naming the missing session — curl sends no
+Supabase token, and the endpoint is no longer public. That response proves the
+middleware mounted. If you get `<!doctype html>`, it did not. To see real rows,
+click **Sync from API** in the signed-in browser instead. If the browser gets
+the 500 naming `SITES_API_KEY`, the key is missing from `.env`.
+
+`action=domains` is rejected with a 400 — `results` is the only allowed action.
 
 Stop the dev server when done.
 
