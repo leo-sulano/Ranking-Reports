@@ -1,11 +1,7 @@
 import { supabase } from './supabase'
 import type { ApiRow } from './sitesNormalize'
-
-/** The upstream caps `limit` at 1000. */
-export const PAGE_SIZE = 1000
-
-/** Hard stop for the pagination loop — far above any real dataset (2,826 today). */
-const MAX_ROWS = 100_000
+export { PAGE_SIZE, fetchAllRows } from '../../api/_lib/ranksPaging.js'
+import { PAGE_SIZE, fetchAllRows } from '../../api/_lib/ranksPaging.js'
 
 export class SitesApiError extends Error {
   status: number | null
@@ -24,36 +20,6 @@ export class SitesApiError extends Error {
     this.name = 'SitesApiError'
     this.status = status
     this.code = code
-  }
-}
-
-/**
- * Page until a page comes back shorter than requested.
- *
- * Deliberately ignores the response's `meta.total`: the live endpoint reported
- * `total: 135` for a request that returned 154 rows, so terminating on a count
- * would silently truncate. Page length is the only trustworthy signal.
- *
- * A failure on any page rejects — callers must not persist a partial batch.
- */
-export async function fetchAllRows(
-  fetchPage: (offset: number) => Promise<ApiRow[]>,
-  onProgress?: (rows: number) => void,
-  pageSize: number = PAGE_SIZE,
-): Promise<ApiRow[]> {
-  const all: ApiRow[] = []
-  let offset = 0
-  for (;;) {
-    const pageRows = await fetchPage(offset)
-    all.push(...pageRows)
-    onProgress?.(all.length)
-    if (pageRows.length < pageSize) return all
-    offset += pageSize
-    if (all.length >= MAX_ROWS) {
-      throw new SitesApiError(
-        `Sites API pagination exceeded ${MAX_ROWS} rows — aborting to avoid an unbounded loop`,
-      )
-    }
   }
 }
 

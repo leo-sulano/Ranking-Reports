@@ -2,13 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
 } from './_lib/requestAuth.js'
-
-const UPSTREAM = 'https://3213211.xyz/bpn-panel-cc/api/ranks.php'
-
-// `results` is the only action any caller uses. `domains` was allowed too, but
-// it widened the surface for nothing.
-const ALLOWED_ACTIONS = new Set(['results'])
-const MAX_LIMIT   = 1000
+import { ALLOWED_ACTIONS, MAX_LIMIT, buildRanksUrl, clampInt, fetchRanksPage } from './_lib/ranks.js'
 
 /**
  * Vercel kills a function at `maxDuration` (10s Hobby / 15s Pro by default),
@@ -23,12 +17,6 @@ const TIMEOUT_MS = 45_000
 /** Vercel gives repeated query params as an array; take the first. */
 function first(raw: unknown): string | undefined {
   return Array.isArray(raw) ? (raw[0] as string | undefined) : (raw as string | undefined)
-}
-
-function clampInt(raw: unknown, min: number, max: number, fallback: number): number {
-  const n = Number(first(raw))
-  if (!Number.isFinite(n)) return fallback
-  return Math.min(max, Math.max(min, Math.trunc(n)))
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -97,19 +85,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: `Unsupported action "${action}"` })
   }
 
-  // Deliberately NO project_id. The Rooster set is project 0, and the upstream
-  // treats 0 as falsy — passing it returns every project rather than filtering.
-  // DOMAIN_TO_BRAND on the client is the authoritative filter.
-  const url = new URL(UPSTREAM)
-  url.searchParams.set('action', action)
-  url.searchParams.set('limit',  String(clampInt(req.query.limit,  1, MAX_LIMIT,   MAX_LIMIT)))
-  url.searchParams.set('offset', String(clampInt(req.query.offset, 0, 10_000_000,  0)))
+  const limit  = clampInt(req.query.limit,  1, MAX_LIMIT,  MAX_LIMIT)
+  const offset = clampInt(req.query.offset, 0, 10_000_000, 0)
+  const url = buildRanksUrl(action, limit, offset)
 
   try {
-    const upstream = await fetch(url, {
-      headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
+    const upstream = await fetchRanksPage(key, url, TIMEOUT_MS)
     const body = await upstream.text()
 
     // Surface the upstream status so the client can tell a revoked key (401)
