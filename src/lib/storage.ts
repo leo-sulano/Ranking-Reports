@@ -1,4 +1,4 @@
-import type { Snapshot, SnapshotMeta, RankingRecord } from '../types'
+import type { Snapshot, SnapshotMeta, RankingRecord, SnapshotSource } from '../types'
 import type { CategoryId } from './categories'
 import { DEFAULT_CATEGORY } from './categories'
 import { formatDisplayDate } from './parser'
@@ -166,7 +166,7 @@ export async function loadOlderSnapshots(metaEntries: SnapshotMeta[]): Promise<S
  *
  * Records are batched in 500-row chunks to stay well under PostgREST limits.
  */
-export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
+export async function upsertSnapshot(snapshot: Snapshot, source: SnapshotSource): Promise<void> {
   const { error: eDelRecs } = await supabase
     .from('ranking_records')
     .delete()
@@ -181,6 +181,7 @@ export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
     raw_date:     snapshot.rawDate,
     display_date: snapshot.displayDate,
     category:     snapshot.category,
+    source,
   })
   if (eIns) throw eIns
 
@@ -237,4 +238,14 @@ export async function updateRecordFields(
   if (matcher.country) q = q.eq('country', matcher.country)
   const { error } = await q
   if (error) throw error
+
+  // A hand edit makes this snapshot human work, whatever created it. Without
+  // this, the scheduled sync would happily replace a button-synced snapshot
+  // that someone had since typed a GSV value onto, and the "never destroys a
+  // snapshot a person edited" guarantee would be nominal only.
+  const { error: eSrc } = await supabase
+    .from('snapshots')
+    .update({ source: 'upload' })
+    .eq('id', snapshotId)
+  if (eSrc) throw eSrc
 }
