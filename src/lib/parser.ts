@@ -1,7 +1,11 @@
 import * as XLSX from 'xlsx'
 import type { RankingRecord } from '../types'
 import type { CategoryId } from './categories'
-import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS, normalizeCountry } from './brands'
+// Re-exported so `src/lib/sitesNormalize.ts` (and its test) can keep
+// `import { normalizeCountry } from './parser'` unchanged — an `import`
+// alone doesn't re-export a name.
+export { normalizeCountry }
 
 export interface UnknownDomain {
   domain: string
@@ -55,41 +59,6 @@ export function parseXlsx(buffer: ArrayBuffer, category: CategoryId = 'bp-sites'
     snapshots:      flat.records.length > 0 ? [{ rawDate, records: flat.records }] : [],
     unknownDomains: flat.unknownDomains,
   }
-}
-
-/**
- * Coerce a country cell to a 2-letter code:
- *   "Australia"   → "AU"
- *   "australia"   → "AU"
- *   "AU"          → "AU"
- *   "au"          → "AU"
- *   "ZZ"          → "ZZ"   (unknown → uppercased pass-through so it still
- *                            matches itself in lookups)
- *
- * Shared with the API sync (`src/lib/sitesNormalize.ts`) and NOT to be
- * duplicated: `applyCarryForward` keys on `${domain}|${keyword}|${country}`
- * with the country NOT case-folded, so any divergence between the two ingest
- * paths silently breaks GSV/SV/AFF carry-forward between an uploaded and a
- * synced snapshot, and adds a phantom entry to the country filter.
- */
-export function normalizeCountry(raw: unknown): string {
-  const s = String(raw ?? '').trim()
-  if (!s) return ''
-
-  // Try the literal value (handles "Australia", "AU", etc.)
-  const direct = COUNTRY_LABELS[s]
-  if (direct) return direct
-
-  // Try lowercased/normalized variants of full names
-  const norm = s.toLowerCase().replace(/\s+/g, ' ')
-  for (const [key, code] of Object.entries(COUNTRY_LABELS)) {
-    if (key.toLowerCase() === norm) return code
-  }
-
-  // Already a 2-letter code in some other case? Uppercase it.
-  if (s.length === 2) return s.toUpperCase()
-
-  return s.toUpperCase()
 }
 
 // Format a JS Date as "yyyy-MM-dd" using its LOCAL components. Avoids the

@@ -1,211 +1,20 @@
-import type { Brand } from '../types'
+// Brand data now lives in api/_lib/brands.ts so the serverless functions can
+// import it too — api/ cannot import from src/, but src/ can import from api/.
+// This file stays the frontend's import site, so no consumer changed.
+export type { Brand } from '../../api/_lib/brands.js'
+export {
+  BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS,
+  normalizeCountry,
+} from '../../api/_lib/brands.js'
 
-export const BRANDS: Brand[] = [
-  {
-    name: 'Lucky 7even',
-    abbr: 'L7',
-    color: '#F59E0B',
-    mainDomain: 'lucky7even.com',
-    domains: [
-      'lucky7even.com',
-      'lucky7evencasino.com',
-      'lucky7evencasino.io',
-      'lucky7evencasino.org',
-      'lucky7seven.com',
-    ],
-    lpDomains: [
-      'lucky7even.club',
-      'lucky7evencasino.org',
-      'lucky7seven.net',
-      'lucky7seven.org',
-    ],
-  },
-  {
-    name: 'RoosterBet',
-    abbr: 'RB',
-    color: '#EF4444',
-    mainDomain: 'rooster.bet',
-    domains: [
-      'rooster.bet',
-      'roosters.bet',
-      'roostersbet.com',
-      'casinoroosters.com',
-    ],
-    lpDomains: [
-      'roosterbet.club',
-      'roosterbet.io',
-      'roosterbet.info',
-    ],
-  },
-  {
-    name: 'LuckyVibe',
-    abbr: 'LV',
-    color: '#10B981',
-    mainDomain: 'luckyvibe.com',
-    domains: [
-      'luckyvibe.com',
-      'luckyvibe.io',
-      'casinoluckyvibe.com',
-      'luckyvibecasino.com',
-    ],
-    lpDomains: [
-      'luckyvibe.net',
-      'casino-luckyvibe.com',
-      'casinos-luckyvibe.com',
-      'casinosluckyvibe.com',
-      'luckyvibe-casino.com',
-      'luckyvibe.casino',
-      'luckyvibe.club',
-      'luckyvibescasino.com',
-    ],
-  },
-  {
-    name: 'SpinsUp',
-    abbr: 'SU',
-    color: '#8B5CF6',
-    mainDomain: 'spinsup.com',
-    domains: [
-      'spinsup.com',
-      'spinsup.io',
-      'spinsupcasino.com',
-      'casinospinsup.com',
-    ],
-    lpDomains: [
-      'spinsupcasinos.com',
-      'casino-spinsup.com',
-      'spinsup-casino.com',
-      'spinsup.casino',
-      'spinsup.club',
-      'spinsupcasino.net',
-      'spinsupcasino.org',
-    ],
-  },
-  {
-    name: 'Spinjo',
-    abbr: 'SJ',
-    color: '#38BDF8',
-    mainDomain: 'spinjo.com',
-    domains: [
-      'spinjo.com',
-      'spinjo.io',
-      'spinjocasino.com',
-      'casinospinjo.com',
-    ],
-    lpDomains: [
-      'spinjo.club',
-      'spinjos.casino',
-      'spinjo.it.com',
-      'spinjo.info',
-      'spinjocasino.net',
-    ],
-  },
-  {
-    name: 'FortunePlay',
-    abbr: 'FP',
-    color: '#EC4899',
-    mainDomain: 'fortuneplay.com',
-    domains: [
-      'fortuneplay.com',
-      'fortuneplay.casino',
-      'fortuneplay.io',
-      'fortuneplaycasino.net',
-    ],
-    lpDomains: [
-      'fortuneplay.club',
-      'fortuneplaylive.com',
-      'fortuneplaycasino.org',
-    ],
-  },
-  {
-    name: 'RocketSpin',
-    abbr: 'RS',
-    color: '#F97316',
-    mainDomain: 'rocketspin.com',
-    domains: [
-      'rocketspin.com',
-      'rocketspin.io',
-      'rocketspincasino.com',
-      'casinorocketspin.com',
-    ],
-    lpDomains: [
-      'casino-rocketspin.com',
-      'casinosrocketspin.com',
-      'rocketspin-casino.com',
-      'rocketspin.casino',
-      'rocketspin.club',
-      'rocketspincasinos.com',
-      'rocketspins.net',
-      'rocketspinscasino.com',
-    ],
-  },
-  {
-    name: 'PlayMojo',
-    abbr: 'PM',
-    color: '#14B8A6',
-    mainDomain: 'playmojo.com',
-    domains: [
-      'playmojo.com',
-      'playmojo.io',
-      'playmojocasino.com',
-      'casinoplaymojo.com',
-    ],
-    lpDomains: [
-      'casino-playmojo.com',
-      'casinosplaymojo.com',
-      'playmojo-casino.com',
-      'playmojo.casino',
-      'playmojo.club',
-      'playmojo.net',
-      'playmojo.org',
-      'playmojocasinos.com',
-      'playmojos.com',
-    ],
-  },
-  {
-    name: 'Rollero',
-    abbr: 'RO',
-    color: '#84CC16',
-    mainDomain: 'rollero.com',
-    domains: [
-      'rollero.com',
-      'rollero.io',
-      'rollerocasino.com',
-      'casinorollero.com',
-    ],
-    lpDomains: [
-      'rollero.net',
-      'rollerocasinos.com',
-      'rolleros.casino',
-      'rolleroscasino.com',
-      'casino-rollero.com',
-      'casinosrollero.com',
-      'rollero-casino.com',
-      'rollero.casino',
-      'rollero.club',
-    ],
-  },
-]
-
-export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
-  BRANDS.map((b) => [b.name, b]),
-)
+import { BRANDS } from '../../api/_lib/brands.js'
 
 export function brandToSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-export const BRAND_BY_SLUG: Record<string, Brand> = Object.fromEntries(
-  BRANDS.map((b) => [brandToSlug(b.name), b]),
-)
-
-// domain (lowercase) → brand name. BP/MAIN domains only.
-export const DOMAIN_TO_BRAND: Record<string, string> = {}
-BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
-
-// Landing-page domain → brand name. Kept separate from DOMAIN_TO_BRAND so the
-// BP and LP namespaces don't bleed across category-tagged uploads.
-export const LP_DOMAIN_TO_BRAND: Record<string, string> = {}
-BRANDS.forEach((b) => b.lpDomains.forEach((d) => { LP_DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
+export const BRAND_BY_SLUG: Record<string, import('../../api/_lib/brands.js').Brand> =
+  Object.fromEntries(BRANDS.map((b) => [brandToSlug(b.name), b]))
 
 // Logo-accurate brand colors — sampled from each brand's actual favicon
 // (public/Brand-Favicon/), distinct from Brand.color (the generic value used
@@ -236,17 +45,4 @@ export const BRAND_FAVICONS: Record<string, string> = {
   'RocketSpin':  '/Brand-Favicon/rocketspin.webp',
   'PlayMojo':    '/Brand-Favicon/playmojo.webp',
   'Rollero':     '/Brand-Favicon/rollero.webp',
-}
-
-export const COUNTRY_LABELS: Record<string, string> = {
-  Australia: 'AU',
-  Canada: 'CA',
-  Germany: 'DE',
-  Italy: 'IT',
-  'New Zealand': 'NZ',
-  AU: 'AU',
-  CA: 'CA',
-  DE: 'DE',
-  IT: 'IT',
-  NZ: 'NZ',
 }

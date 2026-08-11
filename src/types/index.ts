@@ -33,16 +33,7 @@ export interface SnapshotMeta {
   displayDate: string
 }
 
-export interface Brand {
-  name: string
-  abbr: string
-  color: string
-  mainDomain: string
-  domains: string[]
-  // Landing-page domains for the same brand. Tracked separately from `domains`
-  // (BP / MAIN) so the BP and LP namespaces stay independent during parse + display.
-  lpDomains: string[]
-}
+export type { Brand } from '../../api/_lib/brands.js'
 
 export type SortDir = 'asc' | 'desc'
 
