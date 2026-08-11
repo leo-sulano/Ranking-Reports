@@ -1,11 +1,12 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   canonicalDomain, positionToString, changeToString, checkedAtDate,
   reduceLatest, normalizeRows, type ApiRow,
-} from './sitesNormalize'
+} from './sitesNormalize.js'
 // The sync uses the parser's normalizer rather than its own — the two must not
 // diverge, because applyCarryForward byte-compares the country it produces.
-import { normalizeCountry } from './parser'
+import { normalizeCountry } from './brands.js'
 
 /** A valid row with sane defaults; override only what a test cares about. */
 function row(over: Partial<ApiRow> = {}): ApiRow {
