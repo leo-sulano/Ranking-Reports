@@ -232,20 +232,30 @@ export async function updateRecordFields(
   if ('globalSearchVolume' in patch) dbPatch.global_search_volume = patch.globalSearchVolume ?? ''
   if (Object.keys(dbPatch).length === 0) return
 
+  // Order matters, do not swap these two writes.
+  //
+  // A hand edit makes this snapshot human work, whatever created it. Without
+  // the source write, the scheduled sync would happily replace a button-synced
+  // snapshot that someone had since typed a GSV value onto, and the "never
+  // destroys a snapshot a person edited" guarantee would be nominal only.
+  //
+  // It goes FIRST because neither write is transactional with the other. If the
+  // records patch failed second, the caller sees the throw and the snapshot is
+  // merely marked human-touched without having changed — harmless, and it errs
+  // toward protecting data exactly as decideWrite does. The reverse order fails
+  // the other way: the records would already hold the new value while the
+  // caller reports "Edit failed", skips its setState and logs nothing, so the
+  // UI shows the old value and the snapshot stays replaceable by the cron.
+  const { error: eSrc } = await supabase
+    .from('snapshots')
+    .update({ source: 'upload' })
+    .eq('id', snapshotId)
+  if (eSrc) throw eSrc
+
   let q = supabase.from('ranking_records').update(dbPatch).eq('snapshot_id', snapshotId)
   if (matcher.keyword) q = q.eq('keyword', matcher.keyword)
   if (matcher.domain)  q = q.eq('domain',  matcher.domain)
   if (matcher.country) q = q.eq('country', matcher.country)
   const { error } = await q
   if (error) throw error
-
-  // A hand edit makes this snapshot human work, whatever created it. Without
-  // this, the scheduled sync would happily replace a button-synced snapshot
-  // that someone had since typed a GSV value onto, and the "never destroys a
-  // snapshot a person edited" guarantee would be nominal only.
-  const { error: eSrc } = await supabase
-    .from('snapshots')
-    .update({ source: 'upload' })
-    .eq('id', snapshotId)
-  if (eSrc) throw eSrc
 }
