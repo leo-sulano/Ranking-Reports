@@ -183,12 +183,17 @@ Two manual steps, neither doable from the repo:
 2. Run `supabase/cron-sync.sql` in the Supabase SQL editor.
 
 **Step 2 must happen before this branch is deployed to production.** It is not
-optional groundwork for the cron alone: `src/lib/storage.ts` writes `source` on
-every snapshot insert and on every inline edit, so without the column the xlsx
-import, the Sync button and inline editing all fail with PostgREST `PGRST204`
-("column snapshots.source does not exist"). If the column exists but writes
-still 404 on it, PostgREST is holding a stale schema cache — refresh it with
-`notify pgrst, 'reload schema';`.
+optional groundwork for the cron alone — without the column the app does not
+work at all:
+
+- `loadSnapshotMeta` **selects** `source`, so the initial load fails outright
+  (PostgREST `42703`) and the dashboard renders no ranking data whatsoever.
+- `src/lib/storage.ts` **writes** `source` on every snapshot insert and every
+  inline edit, so the xlsx import, the Sync button and inline editing each fail
+  with PostgREST `PGRST204` ("column snapshots.source does not exist").
+
+If the column exists but reads or writes still fail on it, PostgREST is holding
+a stale schema cache — refresh it with `notify pgrst, 'reload schema';`.
 
 Step 1 has no such ordering constraint: a deployment without `CRON_SECRET` just
 401s the cron, and nothing else in the app touches it.
