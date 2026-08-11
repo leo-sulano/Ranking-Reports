@@ -25,15 +25,23 @@ export function buildRanksUrl(action: string, limit: number, offset: number): UR
   return url
 }
 
-/** One upstream request, with the key attached and a hard timeout. */
+/**
+ * One upstream request, with the key attached and a hard timeout.
+ *
+ * `signal` is combined with the per-page timeout rather than replacing it, so a
+ * caller paging in a loop can hand in one run-wide deadline (api/cron-sync.ts
+ * does) and still have each individual page bounded. Whichever fires first
+ * aborts the fetch.
+ */
 export function fetchRanksPage(
   key: string,
   url: URL,
   timeoutMs: number,
   signal?: AbortSignal,
 ): Promise<Response> {
+  const timeout = AbortSignal.timeout(timeoutMs)
   return fetch(url, {
     headers: { Authorization: `Bearer ${key}` },
-    signal: signal ?? AbortSignal.timeout(timeoutMs),
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
 }

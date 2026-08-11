@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { bearerToken } from './_lib/requestAuth.js'
+import { formatDisplayDate } from './_lib/displayDate.js'
 import { ALLOWED_ACTIONS, MAX_LIMIT, buildRanksUrl, fetchRanksPage } from './_lib/ranks.js'
 import { fetchAllRows, PAGE_SIZE } from './_lib/ranksPaging.js'
 import { normalizeRows, type ApiRow } from './_lib/sitesNormalize.js'
@@ -9,7 +10,21 @@ import {
 
 /** Hobby caps functions at 60s. A run is ~10-15s, so the headroom is real. */
 export const config = { maxDuration: 60 }
-const TIMEOUT_MS = 45_000
+
+/**
+ * One budget for ALL upstream pages combined, started at handler entry.
+ *
+ * A per-page timeout cannot protect this handler: three-plus sequential pages
+ * each granted their own ceiling can outlast maxDuration between them, and a
+ * platform kill runs neither the catch below nor logCronActivity — so the run
+ * would leave no activity_log row at all, which is the one thing /log is
+ * supposed to guarantee about the cron. 35s of fetching leaves ~25s for the
+ * four writes, which take ~2s, so the deadline always fires before Vercel does.
+ */
+const FETCH_BUDGET_MS = 35_000
+
+/** Per-page ceiling, so one wedged page cannot silently eat the whole budget. */
+const PAGE_TIMEOUT_MS = 20_000
 
 const CATEGORY = 'bp-sites'
 
@@ -21,31 +36,6 @@ interface RanksApiResponse {
   ok?:    boolean
   error?: string
   data?:  unknown
-}
-
-/**
- * '2026-08-04' → 'Aug 4, 2026'. Genuinely mirrors formatDisplayDate in
- * src/lib/parser.ts (including its ISO-literal and unparseable-input
- * handling) so cron-written snapshots carry the same label shape as the
- * other 89 upload/sync-written snapshots already in Supabase — both existing
- * write paths use that function, and a mismatch would be visible in
- * SnapshotTabs.tsx, BPSites.tsx and the date-text search filter.
- */
-function formatDisplayDate(raw: string): string {
-  if (!raw) return 'Unknown Date'
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
-  // YYYY-MM-DD literals: build a local Date so toLocaleDateString doesn't
-  // shift the displayed day across the UTC boundary.
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
-  if (iso) {
-    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
-    return d.toLocaleDateString('en-US', opts)
-  }
-  const d = new Date(raw)
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('en-US', opts)
-  }
-  return raw
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -83,13 +73,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: summary })
   }
 
+  // Started once, here, and shared by every page below — see FETCH_BUDGET_MS.
+  const deadline = AbortSignal.timeout(FETCH_BUDGET_MS)
+
   try {
     const action = 'results'
     if (!ALLOWED_ACTIONS.has(action)) throw new Error(`Unsupported action "${action}"`)
 
     const rows = await fetchAllRows(async (offset) => {
       const url = buildRanksUrl(action, Math.min(PAGE_SIZE, MAX_LIMIT), offset)
-      const upstream = await fetchRanksPage(key, url, TIMEOUT_MS)
+      const upstream = await fetchRanksPage(key, url, PAGE_TIMEOUT_MS, deadline)
       const body = (await upstream.json().catch(() => null)) as RanksApiResponse | null
       if (!upstream.ok || body?.ok === false) {
         throw new Error(body?.error ?? `the Ranks API returned HTTP ${upstream.status}`)
@@ -106,6 +99,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const summary = `Scheduled sync — 0 Rooster rows after filtering; nothing written (${unknownDomains.length} foreign domains)`
       await logCronActivity(admin, CATEGORY, summary)
       return res.status(200).json({ ok: true, outcome: 'empty', summary })
+    }
+
+    // normalizeRows returns '' when no kept row had a parseable checked_at,
+    // while still returning the records. Writing that would mint an id of
+    // `snap-bp-sites-` labelled 'Unknown Date', sorting below every real
+    // snapshot — and because the next run recomputes the same '' and finds its
+    // own source: 'sync' row, it would replace it rather than supersede it, so
+    // the junk snapshot never self-corrects. The upload path already refuses an
+    // empty rawDate (src/App.tsx); refuse it here for the same reason.
+    if (!rawDate) {
+      const summary = 'Scheduled sync — records carried no usable checked_at date; nothing written'
+      await logCronActivity(admin, CATEGORY, summary)
+      return res.status(200).json({ ok: true, outcome: 'undated', summary })
     }
 
     const id       = `snap-${CATEGORY}-${rawDate}`
@@ -134,7 +140,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await logCronActivity(admin, CATEGORY, summary)
     return res.status(200).json({ ok: true, outcome: decision, summary, records: records.length })
   } catch (err) {
-    const message = (err as Error).message
+    // A budget abort arrives as undici's bare "This operation was aborted",
+    // which in /log would read as an unexplained failure. Name the real cause.
+    const message = deadline.aborted
+      ? `the run exceeded its ${FETCH_BUDGET_MS / 1000}s fetch budget — the Ranks API did not finish responding in time`
+      : (err as Error).message
     const summary = `Scheduled sync failed: ${message}`
     await logCronActivity(admin, CATEGORY, summary)
     // Non-2xx so Vercel's own cron log agrees with the activity log rather than
