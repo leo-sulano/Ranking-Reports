@@ -182,6 +182,17 @@ Two manual steps, neither doable from the repo:
    random string. Until it exists the endpoint 401s everything.
 2. Run `supabase/cron-sync.sql` in the Supabase SQL editor.
 
+**Step 2 must happen before this branch is deployed to production.** It is not
+optional groundwork for the cron alone: `src/lib/storage.ts` writes `source` on
+every snapshot insert and on every inline edit, so without the column the xlsx
+import, the Sync button and inline editing all fail with PostgREST `PGRST204`
+("column snapshots.source does not exist"). If the column exists but writes
+still 404 on it, PostgREST is holding a stale schema cache — refresh it with
+`notify pgrst, 'reload schema';`.
+
+Step 1 has no such ordering constraint: a deployment without `CRON_SECRET` just
+401s the cron, and nothing else in the app touches it.
+
 `npx vercel build` should be run before merging to confirm the `api/_lib/`
 imports resolve — this project has hit that failure mode before.
 
