@@ -20,14 +20,16 @@ vi.mock('@supabase/supabase-js', () => ({
 }))
 
 type MockRes = VercelResponse & {
-  status: ReturnType<typeof vi.fn>
-  json:   ReturnType<typeof vi.fn>
+  status:     ReturnType<typeof vi.fn>
+  json:       ReturnType<typeof vi.fn>
+  setHeader:  ReturnType<typeof vi.fn>
 }
 
 function makeRes(): MockRes {
   const res: Partial<MockRes> = {}
-  res.status = vi.fn(() => res as MockRes)
-  res.json   = vi.fn(() => res as MockRes)
+  res.status    = vi.fn(() => res as MockRes)
+  res.json      = vi.fn(() => res as MockRes)
+  res.setHeader = vi.fn(() => res as MockRes)
   return res as MockRes
 }
 

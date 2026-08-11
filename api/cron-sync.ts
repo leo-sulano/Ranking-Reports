@@ -12,7 +12,6 @@ export const config = { maxDuration: 60 }
 const TIMEOUT_MS = 45_000
 
 const CATEGORY = 'bp-sites'
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 // Response.json() resolves to Promise<unknown> (undici-types, in effect here
 // because the api tsconfig has no DOM lib). Left as bare unknown, TS narrows
@@ -24,19 +23,34 @@ interface RanksApiResponse {
   data?:  unknown
 }
 
-/** '2026-08-04' → '4 Aug 26'. Mirrors formatDisplayDate in src/lib/parser.ts. */
-function formatDisplayDate(rawDate: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawDate)
-  if (!m) return rawDate
-  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1].slice(2)}`
+/**
+ * '2026-08-04' → 'Aug 4, 2026'. Genuinely mirrors formatDisplayDate in
+ * src/lib/parser.ts (including its ISO-literal and unparseable-input
+ * handling) so cron-written snapshots carry the same label shape as the
+ * other 89 upload/sync-written snapshots already in Supabase — both existing
+ * write paths use that function, and a mismatch would be visible in
+ * SnapshotTabs.tsx, BPSites.tsx and the date-text search filter.
+ */
+function formatDisplayDate(raw: string): string {
+  if (!raw) return 'Unknown Date'
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+  // YYYY-MM-DD literals: build a local Date so toLocaleDateString doesn't
+  // shift the displayed day across the UTC boundary.
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+    return d.toLocaleDateString('en-US', opts)
+  }
+  const d = new Date(raw)
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-US', opts)
+  }
+  return raw
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
-    // Optional chaining: the test double for VercelResponse stubs only
-    // status/json (it exists to exercise the auth gate, not header plumbing),
-    // so this stays a no-op there while still setting the header for real.
-    res.setHeader?.('Allow', 'GET')
+    res.setHeader('Allow', 'GET')
     return res.status(405).json({ ok: false, error: 'Method not allowed' })
   }
 
@@ -49,16 +63,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' })
   }
 
-  const key = process.env.SITES_API_KEY
-  if (!key) {
-    return res.status(500).json({ ok: false, error: 'SITES_API_KEY is not configured on the server' })
-  }
-
+  // Admin client first: every failure from here on has something to log
+  // with. This one stays genuinely unlogged — without a client there is
+  // nowhere to write the activity_log row.
   let admin
   try {
     admin = createAdminClient(process.env)
   } catch (err) {
     return res.status(500).json({ ok: false, error: (err as Error).message })
+  }
+
+  const key = process.env.SITES_API_KEY
+  if (!key) {
+    // Every run is supposed to leave exactly one activity_log row, /log being
+    // the cron's only history — so a misconfigured deployment must not fail
+    // silently twice a week.
+    const summary = 'Scheduled sync failed: SITES_API_KEY is not configured on the server'
+    await logCronActivity(admin, CATEGORY, summary)
+    return res.status(500).json({ ok: false, error: summary })
   }
 
   try {
