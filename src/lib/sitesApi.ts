@@ -10,10 +10,13 @@ const MAX_ROWS = 100_000
 export class SitesApiError extends Error {
   status: number | null
   /**
-   * The proxy's own machine-readable reason, when it set one. Today only
-   * `'unauthenticated'`, which distinguishes our 401 (the caller has no valid
-   * Supabase session) from an upstream 401 passed through with the same status
-   * (the vendor rejected `SITES_API_KEY`).
+   * The proxy's own machine-readable reason, when it set one:
+   * - `'unauthenticated'` (401) — no valid Supabase session. Distinguishes our
+   *   401 from an upstream 401 passed through with the same status, which means
+   *   the vendor rejected `SITES_API_KEY` and reads very differently.
+   * - `'unapproved'` (403) — a valid session whose account an admin has not
+   *   approved. Its `error` text is already user-facing, so callers surface it
+   *   verbatim rather than branching on the code.
    */
   code: string | null
   constructor(message: string, status: number | null = null, code: string | null = null) {

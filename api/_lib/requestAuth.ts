@@ -76,3 +76,79 @@ export async function resolveUser(resolver: TokenResolver, token: string): Promi
     return null
   }
 }
+
+/**
+ * The slice of supabase-js that `isApprovedUser` needs. Injectable for tests.
+ *
+ * `maybeSingle()` is typed as PromiseLike, not Promise: PostgREST returns a
+ * thenable builder rather than a real Promise, so requiring Promise here would
+ * make the live client structurally incompatible with this interface.
+ */
+export interface AccessResolver {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): PromiseLike<{
+          data:  { status?: string | null } | null
+          error: { message: string } | null
+        }>
+      }
+    }
+  }
+}
+
+/**
+ * A client that acts AS the caller, by forwarding their access token on every
+ * PostgREST request. That is what makes the approval check need no elevated
+ * privilege: `user_access` has a "self or admin read" RLS policy, so the caller
+ * can read exactly one row — their own — and nothing else.
+ */
+export function createAccessResolver(
+  env: Record<string, string | undefined>,
+  token: string,
+): AccessResolver {
+  const url     = env.SUPABASE_URL      ?? env.VITE_SUPABASE_URL
+  const anonKey = env.SUPABASE_ANON_KEY ?? env.VITE_SUPABASE_ANON_KEY
+  if (!url || !anonKey) {
+    throw new Error(
+      'Supabase auth is not configured on the server — set SUPABASE_URL (or VITE_SUPABASE_URL) ' +
+      'and SUPABASE_ANON_KEY (or VITE_SUPABASE_ANON_KEY)',
+    )
+  }
+  // Cast rather than structurally match: SupabaseClient's generics make a
+  // direct comparison against AccessResolver blow the instantiation depth
+  // limit (TS2589). AccessResolver is the narrow shape this module actually
+  // calls, and isApprovedUser is tested against it directly.
+  return createClient(url, anonKey, {
+    auth:   { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  }) as unknown as AccessResolver
+}
+
+/**
+ * Whether `userId` is an approved user.
+ *
+ * A valid session is NOT sufficient to use the sites proxy. Signup is
+ * self-serve and auto-provisions a `pending` row, so authentication alone would
+ * let anyone who can register read every row the vendor key can see. Unlike the
+ * app's other reads, this route touches no Supabase table of its own, so RLS
+ * never gets a chance to stop them — the check has to be explicit here.
+ *
+ * Fails CLOSED: a missing row, an unreadable row, a non-'approved' status or a
+ * network failure all deny. That is safe for existing users because every write
+ * policy in `user-approval.sql` already requires `status = 'approved'`, so
+ * nobody who can currently sync loses access.
+ */
+export async function isApprovedUser(resolver: AccessResolver, userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await resolver
+      .from('user_access')
+      .select('status')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error || !data) return false
+    return data.status === 'approved'
+  } catch {
+    return false
+  }
+}
