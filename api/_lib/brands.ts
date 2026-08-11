@@ -8,6 +8,11 @@
  * below, so the frontend's import site is unchanged.
  *
  * Nothing here may import from src/, or the serverless build breaks.
+ *
+ * SHIPS IN THE BROWSER BUNDLE — being under api/ does not make this server
+ * code. No secrets, no process.env, no node: imports. (Server-only neighbours,
+ * where those are fine: ranks.ts, snapshotStore.ts, requestAuth.ts,
+ * ssoPortal.ts.)
  */
 export interface Brand {
   name: string

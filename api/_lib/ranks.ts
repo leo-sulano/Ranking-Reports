@@ -1,3 +1,7 @@
+// SERVER-ONLY. Unlike brands.ts, sitesNormalize.ts and ranksPaging.ts in this
+// same directory, nothing in src/ may import this file — it holds the upstream
+// URL that api/sites.ts exists to keep out of the browser.
+
 /** The vendor endpoint. Defined once so the proxy and the cron cannot drift. */
 export const RANKS_UPSTREAM = 'https://3213211.xyz/bpn-panel-cc/api/ranks.php'
 

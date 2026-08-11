@@ -1,3 +1,7 @@
+// SHIPS IN THE BROWSER BUNDLE — src/lib/sitesApi.ts imports this, so being
+// under api/ does not make it server code. No secrets, no process.env, no
+// node: imports. (Server-only neighbours, where those are fine: ranks.ts,
+// snapshotStore.ts, requestAuth.ts, ssoPortal.ts.)
 import type { ApiRow } from './sitesNormalize.js'
 
 /** The upstream caps `limit` at 1000. */

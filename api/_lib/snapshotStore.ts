@@ -1,3 +1,11 @@
+// SERVER-ONLY. Unlike brands.ts, sitesNormalize.ts and ranksPaging.ts in this
+// same directory, nothing in src/ may import this file — it runs on the
+// service-role key.
+//
+// The "never overwrites human work" guarantee lives in the CALLER, not here:
+// decideWrite returns a verdict and writeSnapshot has no internal guard, so a
+// caller that writes on a 'skip' verdict destroys an uploaded snapshot with no
+// complaint from this module.
 import { createClient } from '@supabase/supabase-js'
 import type { SyncRecord } from './sitesNormalize.js'
 
@@ -74,6 +82,14 @@ export async function findSnapshot(
  * failure mid-insert leaves a partial snapshot. That risk already exists on the
  * upload path and is out of scope here; the run fails loudly and the next one
  * rewrites the same date.
+ *
+ * `snap.id` MUST be the id resolved by the same findSnapshot call that fed
+ * decideWrite, not one recomputed from (category, rawDate). This function
+ * deletes by id while findSnapshot matches on (category, raw_date), and the two
+ * only agree because every id happens to be `snap-${category}-${rawDate}` —
+ * snapshots.category is nullable and nothing enforces that convention, so a row
+ * that breaks it would be found by the lookup and missed by the delete,
+ * doubling the records under a live snapshot.
  */
 export async function writeSnapshot(
   admin: AdminClient,

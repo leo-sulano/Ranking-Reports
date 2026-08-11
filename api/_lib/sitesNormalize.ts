@@ -1,3 +1,8 @@
+// SHIPS IN THE BROWSER BUNDLE — src/lib/sitesNormalize.ts re-exports from here,
+// so being under api/ does not make this server code. No secrets, no
+// process.env, no node: imports. (Server-only neighbours, where those are fine:
+// ranks.ts, snapshotStore.ts, requestAuth.ts, ssoPortal.ts.)
+//
 // One implementation for both ingest paths. See its doc comment: carry-forward
 // keys on a byte-compared country, so a second, subtly different normalizer
 // here would break GSV/SV/AFF inheritance between synced and uploaded

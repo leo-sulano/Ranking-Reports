@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { decideWrite, chunk, writeSnapshot, RECORD_CHUNK } from './snapshotStore.js'
 import type { AdminClient } from './snapshotStore.js'
 
