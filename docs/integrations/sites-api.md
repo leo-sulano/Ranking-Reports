@@ -153,3 +153,15 @@ and mean different things:
 
 `maxDuration` is raised to 60s so the handler's own 45s timeout can produce a
 504 rather than being killed by the platform's 10s/15s default first.
+
+### Scheduled sync
+
+`api/cron-sync.ts` runs the same pull automatically at 04:00 UTC (12:00 PHT) on
+Wednesdays and Fridays, registered in `vercel.json`. It is gated by
+`CRON_SECRET` and fails closed while that variable is unset.
+
+It writes with the service-role key, because a cron has no user session for RLS
+to evaluate. It only ever replaces a snapshot whose `snapshots.source` is
+`'sync'` — one that a person uploaded, or has since edited inline, is skipped
+and the skip is logged. Every run writes one `activity_log` row, so `/log` is
+the cron's history.
