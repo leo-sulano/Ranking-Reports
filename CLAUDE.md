@@ -18,7 +18,15 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 
 ### Data Flow
 
-1. **Import** — User uploads an `.xlsx` file via `UploadModal`. `src/lib/parser.ts` (`parseXlsx`) reads it with the `xlsx` library, auto-detects the header row, and filters rows to only known brand domains using `DOMAIN_TO_BRAND`.
+1. **Import** — Two paths into the same `Snapshot` shape:
+   - **Sync from API** (BP Sites only) — `src/lib/sitesApi.ts` pages `/api/sites`
+     (a Vercel function in `api/sites.ts` holding `SITES_API_KEY`), and
+     `src/lib/sitesNormalize.ts` filters rows to `DOMAIN_TO_BRAND` and converts
+     them to `RankingRecord[]`. See `docs/integrations/sites-api.md`.
+   - **Import Data** — user uploads an `.xlsx` via `UploadModal`;
+     `src/lib/parser.ts` (`parseXlsx`) reads it, auto-detects the header row, and
+     filters to known brand domains. The only path for LP Sites, which the API
+     does not track.
 2. **Persist** — Parsed records are wrapped in a `Snapshot` (id, rawDate, displayDate, records[]) and saved to `localStorage` via `src/lib/storage.ts`. Multiple snapshots are supported; legacy flat-record format is migrated on first load.
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
 4. **Display** — `RankingReports` is either an `OverviewGrid` (all brands, no active brand selected) or a `RankingTable` (filtered to the active brand + country/domain/keyword filters).
@@ -32,6 +40,8 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `src/lib/storage.ts` | `localStorage` persistence under key `rr_snapshots`. Handles legacy migration from the old single-snapshot format. |
 | `src/types/index.ts` | All shared TypeScript types (`RankingRecord`, `Snapshot`, `Brand`, `AppState`). |
 | `src/App.tsx` | `Layout` holds all state and callback handlers; passes everything to `RankingReports` via `RROutletContext`. Stub pages (BP Sites, Screenshots, GMB, FTDs) exist but are not implemented. |
+| `src/lib/sitesNormalize.ts` | Ranks API row → `RankingRecord`. Encodes the endpoint's observed quirks (`position: 0` means NR). |
+| `api/sites.ts` | Serverless proxy holding `SITES_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. |
 
 ### Brands
 

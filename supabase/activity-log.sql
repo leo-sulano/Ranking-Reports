@@ -19,7 +19,7 @@ create table if not exists public.activity_log (
   created_at  timestamptz not null default now(),
   user_id     uuid references auth.users(id) on delete set null,
   email       text not null,
-  action      text not null,   -- 'upload' | 'edit' | 'delete'
+  action      text not null,   -- 'upload' | 'sync' | 'edit' | 'delete'
   section     text not null,   -- 'bp-sites' | 'lp-sites' | 'ftds'
   summary     text not null
 );

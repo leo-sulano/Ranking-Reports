@@ -65,8 +65,14 @@ export function parseXlsx(buffer: ArrayBuffer, category: CategoryId = 'bp-sites'
  *   "au"          → "AU"
  *   "ZZ"          → "ZZ"   (unknown → uppercased pass-through so it still
  *                            matches itself in lookups)
+ *
+ * Shared with the API sync (`src/lib/sitesNormalize.ts`) and NOT to be
+ * duplicated: `applyCarryForward` keys on `${domain}|${keyword}|${country}`
+ * with the country NOT case-folded, so any divergence between the two ingest
+ * paths silently breaks GSV/SV/AFF carry-forward between an uploaded and a
+ * synced snapshot, and adds a phantom entry to the country filter.
  */
-function normalizeCountry(raw: unknown): string {
+export function normalizeCountry(raw: unknown): string {
   const s = String(raw ?? '').trim()
   if (!s) return ''
 

@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import type { RankingRecord } from '../types'
 import type { UnknownDomain } from '../lib/parser'
 import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from '../lib/brands'
-import { ChevronDown, X, AlertCircle, Globe, Building2 } from 'lucide-react'
+import { ChevronDown, X, AlertCircle, Info, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
   displayDate:    string
   records:        RankingRecord[]
   unknownDomains: UnknownDomain[]
+  /** Where the records came from. Defaults to 'upload' for the xlsx path. */
+  source?:        'upload' | 'sync'
 }
 
 interface Props {
@@ -101,7 +103,7 @@ function aggregate(records: RankingRecord[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function UploadSummary({ data, onClose }: Props) {
-  const { displayDate, records, unknownDomains } = data
+  const { displayDate, records, unknownDomains, source = 'upload' } = data
   const { brands, domainCount, countryCount } = useMemo(
     () => aggregate(records),
     [records],
@@ -130,10 +132,10 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] shrink-0">
           <div>
             <h2 className="font-display text-[18px] tracking-wider text-[var(--ink)] leading-none">
-              Import Summary
+              {source === 'sync' ? 'Sync Summary' : 'Import Summary'}
             </h2>
             <p className="text-[11px] text-[var(--muted)] mt-1.5">
-              {displayDate} · {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} uploaded
+              {displayDate} · {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} {source === 'sync' ? 'synced' : 'uploaded'}
             </p>
           </div>
           <button
@@ -149,7 +151,7 @@ export function UploadSummary({ data, onClose }: Props) {
         <div className="px-6 py-5 overflow-y-auto">
           {/* Stats cards */}
           <div className="grid grid-cols-4 gap-3 mb-5">
-            <Stat label="Uploaded"  value={records.length} />
+            <Stat label={source === 'sync' ? 'Synced' : 'Uploaded'} value={records.length} />
             <Stat label="Brands"    value={brands.length} />
             <Stat label="Domains"   value={domainCount} />
             <Stat label="Countries" value={countryCount} />
@@ -159,6 +161,7 @@ export function UploadSummary({ data, onClose }: Props) {
             <UnknownDomainsPanel
               total={unknownTotal}
               domains={unknownDomains}
+              source={source}
             />
           )}
 
@@ -170,7 +173,7 @@ export function UploadSummary({ data, onClose }: Props) {
 
             {brands.length === 0 ? (
               <p className="text-[12px] text-[var(--muted)] py-3 text-center bg-[var(--surface-2)] border border-[var(--border)] rounded-md">
-                No matching brands in this upload.
+                No matching brands in this {source === 'sync' ? 'sync' : 'upload'}.
               </p>
             ) : (
               <div className="space-y-2">
@@ -204,46 +207,81 @@ export function UploadSummary({ data, onClose }: Props) {
 
 // ─── Pieces ───────────────────────────────────────────────────────────────────
 
+/** How many foreign domains a sync lists before collapsing into "+N more". */
+const SYNC_DOMAIN_CAP = 8
+
+/**
+ * The domains that were not imported.
+ *
+ * The two sources mean opposite things here, so they are presented as
+ * opposites:
+ *
+ * - **upload** — an unrecognised domain means the file has something
+ *   unexpected in it. Alarm styling, expanded, complete list.
+ * - **sync** — the endpoint returns every project's rows and ~60% of them are
+ *   other projects', on every sync, forever, by design. Dressing that up as an
+ *   error would make every successful sync look like a failure, so it reads as
+ *   a neutral note, collapsed, with the list capped.
+ */
 function UnknownDomainsPanel({
   total,
   domains,
+  source,
 }: {
   total:   number
   domains: UnknownDomain[]
+  source:  'upload' | 'sync'
 }) {
-  const [open, setOpen] = useState(true)
+  const isSync = source === 'sync'
+  const [open, setOpen] = useState(!isSync)
+  const [showAll, setShowAll] = useState(false)
+
+  const visible = isSync && !showAll ? domains.slice(0, SYNC_DOMAIN_CAP) : domains
+  const hidden  = domains.length - visible.length
+
+  const shell = isSync
+    ? 'mb-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden'
+    : 'mb-4 bg-[rgba(244,63,94,0.06)] border border-[rgba(244,63,94,0.3)] rounded-md overflow-hidden'
+  const headerHover = isSync ? 'hover:bg-[var(--hover)]' : 'hover:bg-[rgba(244,63,94,0.08)]'
+  const accent = isSync ? 'text-[var(--muted)]' : 'text-[var(--neg)]'
+  const listEdge = isSync ? 'border-t border-[var(--border)]' : 'border-t border-[rgba(244,63,94,0.25)]'
+  const rowEdge  = isSync ? 'border-t border-[var(--border)]' : 'border-t border-[var(--neg-surface)]'
 
   return (
-    <div className="mb-4 bg-[rgba(244,63,94,0.06)] border border-[rgba(244,63,94,0.3)] rounded-md overflow-hidden">
+    <div className={shell}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[rgba(244,63,94,0.08)] transition-colors"
+        className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${headerHover}`}
       >
-        <AlertCircle size={13} strokeWidth={2.25} className="text-[var(--neg)] shrink-0" />
-        <p className="text-[12px] text-[var(--neg)] leading-snug flex-1">
+        {isSync
+          ? <Info size={13} strokeWidth={2.25} className={`${accent} shrink-0`} />
+          : <AlertCircle size={13} strokeWidth={2.25} className={`${accent} shrink-0`} />}
+        <p className={`text-[12px] ${accent} leading-snug flex-1`}>
           <span className="font-semibold">
-            {total.toLocaleString()} record{total !== 1 ? 's' : ''}
+            {total.toLocaleString()} {isSync ? 'row' : 'record'}{total !== 1 ? 's' : ''}
           </span>{' '}
-          from {domains.length} domain{domains.length !== 1 ? 's' : ''} not in the Rooster brand list — skipped on import.
+          {isSync
+            ? <>from {domains.length} domain{domains.length !== 1 ? 's' : ''} on other projects — not tracked here.</>
+            : <>from {domains.length} domain{domains.length !== 1 ? 's' : ''} not in the Rooster brand list — skipped on import.</>}
         </p>
         <ChevronDown
           size={13}
           strokeWidth={2.25}
-          className={`text-[var(--neg)] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+          className={`${accent} shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
         />
       </button>
 
       {open && (
-        <div className="border-t border-[rgba(244,63,94,0.25)] bg-[var(--surface)]">
-          {domains.map((u, i) => (
+        <div className={`${listEdge} bg-[var(--surface)]`}>
+          {visible.map((u, i) => (
             <div
               key={u.domain}
-              className={`flex items-center justify-between px-3 py-1.5 ${i > 0 ? 'border-t border-[var(--neg-surface)]' : ''}`}
+              className={`flex items-center justify-between px-3 py-1.5 ${i > 0 ? rowEdge : ''}`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                <Globe size={11} strokeWidth={2} className="text-[var(--neg)] shrink-0" />
+                <Globe size={11} strokeWidth={2} className={`${accent} shrink-0`} />
                 <span className="font-mono text-[12px] text-[var(--ink)] truncate">{u.domain}</span>
               </div>
               <span className="font-mono text-[11px] text-[var(--muted)] shrink-0">
@@ -251,6 +289,15 @@ function UnknownDomainsPanel({
               </span>
             </div>
           ))}
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className={`w-full px-3 py-1.5 text-left text-[11px] text-[var(--muted)] hover:text-[var(--ink)] transition-colors ${rowEdge}`}
+            >
+              +{hidden.toLocaleString()} more domain{hidden !== 1 ? 's' : ''}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react'
 import { Routes, Route, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
 import { ResetPassword } from './components/ResetPassword'
@@ -17,6 +17,8 @@ import {
 } from './lib/storage'
 import { logActivity } from './lib/activityLog'
 import { getInitialTheme, applyTheme, saveTheme, type Theme } from './lib/theme'
+import { fetchSitesRows, SitesApiError } from './lib/sitesApi'
+import { normalizeRows } from './lib/sitesNormalize'
 
 import { Sidebar }       from './components/Sidebar'
 import { Topbar }        from './components/Topbar'
@@ -52,7 +54,15 @@ function Layout() {
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload]   = useState(false)
   const [uploadSummary, setUploadSummary] = useState<UploadSummaryData | null>(null)
-  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[] } | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: Snapshot; pendingRecords: RankingRecord[]; unknownDomains: UnknownDomain[]; source: 'upload' | 'sync' } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState(0)
+  // Re-entrancy guard for the sync. A `syncing` state check cannot do this job:
+  // React has not committed setSyncing(true) by the time a second click lands,
+  // and the guard sits before an `await` anyway. A ref is set synchronously.
+  const syncRunningRef = useRef(false)
+  // Lets the overlay's Cancel button abort an in-flight sync.
+  const syncAbortRef = useRef<AbortController | null>(null)
   const [toasts, setToasts]           = useState<ToastItem[]>([])
   const [bpFilterBrand, setBPFilterBrand] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -216,7 +226,7 @@ function Layout() {
       const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === parsed.rawDate)
       if (dupe) {
         setShowUpload(false)
-        setDuplicateWarning({ existing: dupe, pendingRecords: parsed.records, unknownDomains })
+        setDuplicateWarning({ existing: dupe, pendingRecords: parsed.records, unknownDomains, source: 'upload' })
         return
       }
       const snap = await persistOneSnapshot(parsed, category)
@@ -264,9 +274,93 @@ function Layout() {
     reportUnknownDomains(unknownDomains)
   }, [addToast, persistOneSnapshot, reportUnknownDomains, state.snapshots])
 
+  // ── Sync from the Ranks API ───────────────────────────────────────────────
+  //
+  // BP only. The API tracks none of the LP domains, so there is deliberately no
+  // category argument — a sync can never write a half-empty LP snapshot.
+  const handleSyncFromApi = useCallback(async () => {
+    // Claim the slot synchronously, before the first await — see syncRunningRef.
+    if (syncRunningRef.current) return
+    syncRunningRef.current = true
+
+    const controller = new AbortController()
+    syncAbortRef.current = controller
+
+    try {
+      // Gate before doing any work. A cancelled sign-in just means no sync;
+      // there is nothing to surface as an error.
+      const allowed = await requireAuth(() => true).then(() => true, () => false)
+      if (!allowed) return
+
+      setSyncing(true)
+      setSyncProgress(0)
+
+      const rows = await fetchSitesRows(setSyncProgress, controller.signal)
+      // Cancelled while the final page was in flight. Nothing is written.
+      if (controller.signal.aborted) return
+      const { records, unknownDomains, rawDate } = normalizeRows(rows)
+
+      // Everything filtered out. This is what you see when brands.ts and the
+      // API disagree, so it gets the summary modal rather than an error — the
+      // skipped-domain list is the whole point.
+      if (records.length === 0) {
+        setUploadSummary({ displayDate: '—', records: [], unknownDomains, source: 'sync' })
+        addToast('Sync returned no Rooster rows — every row was filtered out.', 'warning')
+        return
+      }
+
+      const dupe = state.snapshots.find((s) => s.category === 'bp-sites' && s.rawDate === rawDate)
+      if (dupe) {
+        setDuplicateWarning({ existing: dupe, pendingRecords: records, unknownDomains, source: 'sync' })
+        return
+      }
+
+      const snap = await persistOneSnapshot({ rawDate, records }, 'bp-sites')
+      if (!snap) return
+
+      void logActivity('sync', 'bp-sites', `Synced ${records.length} records from Ranks API — ${snap.displayDate}`)
+      setUploadSummary({ displayDate: snap.displayDate, records, unknownDomains, source: 'sync' })
+      const counts = summarizeRecords(records, DOMAIN_TO_BRAND)
+      addToast(
+        `✓ Synced ${records.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
+      )
+      // Deliberately NO reportUnknownDomains here. ~60% of every sync is other
+      // projects' rows, by design and forever, so a warning toast would make
+      // every successful sync look like a failure. The sync summary reports
+      // them neutrally instead. The xlsx path keeps the warning: there, an
+      // unrecognised domain really does mean the file is wrong.
+    } catch (err) {
+      // Cancelling is a choice, not a failure.
+      if (controller.signal.aborted) {
+        addToast('Sync cancelled — nothing was saved.', 'warning')
+        return
+      }
+      // A 401 is either our proxy refusing the caller (code 'unauthenticated',
+      // already worded for a human) or the vendor rejecting the key, passed
+      // through with the upstream's generic wording — name the variable there
+      // so the fix is obvious.
+      const msg =
+        err instanceof SitesApiError && err.status === 401 && err.code !== 'unauthenticated'
+          ? 'the Ranks API rejected the key — check SITES_API_KEY on the server.'
+          : err instanceof Error
+            ? err.message
+            : String(err)
+      addToast(`Sync failed: ${msg}`, 'error')
+    } finally {
+      syncRunningRef.current = false
+      syncAbortRef.current = null
+      setSyncing(false)
+    }
+  }, [addToast, persistOneSnapshot, requireAuth, state.snapshots])
+
+  /** Abort an in-flight sync. The handler's finally clears `syncing`. */
+  const handleCancelSync = useCallback(() => {
+    syncAbortRef.current?.abort()
+  }, [])
+
   const handleReplaceDuplicate = useCallback(async () => {
     if (!duplicateWarning) return
-    const { existing, pendingRecords, unknownDomains } = duplicateWarning
+    const { existing, pendingRecords, unknownDomains, source } = duplicateWarning
     setDuplicateWarning(null)
     try {
       await requireAuth(() => deleteSnapshot(existing.id))
@@ -285,14 +379,20 @@ function Layout() {
       existing.category,
     )
     if (!snap) return
-    void logActivity('upload', existing.category, `Replaced snapshot — ${snap.displayDate} (${pendingRecords.length} records)`)
-    setUploadSummary({ displayDate: snap.displayDate, records: pendingRecords, unknownDomains })
+    if (source === 'sync') {
+      void logActivity('sync', existing.category, `Replaced snapshot from Ranks API — ${snap.displayDate} (${pendingRecords.length} records)`)
+    } else {
+      void logActivity('upload', existing.category, `Replaced snapshot — ${snap.displayDate} (${pendingRecords.length} records)`)
+    }
+    setUploadSummary({ displayDate: snap.displayDate, records: pendingRecords, unknownDomains, source })
     const domainMap = existing.category === 'lp-sites' ? LP_DOMAIN_TO_BRAND : DOMAIN_TO_BRAND
     const counts = summarizeRecords(pendingRecords, domainMap)
     addToast(
-      `✓ Imported ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
+      `✓ ${source === 'sync' ? 'Synced' : 'Imported'} ${pendingRecords.length.toLocaleString()} records · ${counts.brands} brand${counts.brands !== 1 ? 's' : ''} · ${counts.sites} site${counts.sites !== 1 ? 's' : ''} · ${counts.keywords} keyword${counts.keywords !== 1 ? 's' : ''} — ${snap.displayDate}`,
     )
-    reportUnknownDomains(unknownDomains)
+    // Upload only — for a sync the foreign rows are expected, not a warning.
+    // See the note in handleSyncFromApi.
+    if (source !== 'sync') reportUnknownDomains(unknownDomains)
   }, [addToast, duplicateWarning, persistOneSnapshot, reportUnknownDomains, requireAuth])
 
   // ── Inline-edit GSV / SV / AFF ────────────────────────────────────────────
@@ -465,6 +565,8 @@ function Layout() {
       <Sidebar
         uploadDate={activeSnapshot?.displayDate ?? null}
         onOpenUpload={openUpload}
+        onSyncFromApi={handleSyncFromApi}
+        syncing={syncing}
         activeBPBrand={bpFilterBrand}
         onSelectBPBrand={setBPFilterBrand}
         mobileOpen={mobileNavOpen}
@@ -505,7 +607,7 @@ function Layout() {
 
       {duplicateWarning && (
         <DuplicateWarning
-          data={{ existing: duplicateWarning.existing }}
+          data={{ existing: duplicateWarning.existing, source: duplicateWarning.source }}
           onClose={() => setDuplicateWarning(null)}
           onDelete={handleReplaceDuplicate}
           writeGate={writeGate}
@@ -530,6 +632,35 @@ function Layout() {
             <p className="text-center text-[12px] text-[var(--muted-3)]">
               Saving snapshot {bulkProgress.done} of {bulkProgress.total}…
             </p>
+          </div>
+        </div>
+      )}
+
+      {syncing && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-[var(--surface)] border border-[var(--border-2)] rounded-2xl w-[420px] max-w-[95vw] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+            <h2 className="font-display text-[16px] tracking-wider text-[var(--ink-2)] mb-4">
+              Syncing from Ranks API
+            </h2>
+            <div className="h-[5px] bg-[var(--border-3)] rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full w-1/3 rounded-full animate-pulse"
+                style={{ background: 'linear-gradient(90deg, var(--brand-navy) 0%, var(--brand-blue) 100%)' }}
+              />
+            </div>
+            <p className="text-center text-[12px] text-[var(--muted-3)]">
+              {syncProgress.toLocaleString()} rows fetched…
+            </p>
+            {/* Without this a hung proxy leaves an uncancellable modal over
+                the whole app. Aborting writes no snapshot. */}
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleCancelSync}
+                className="px-4 py-1.5 bg-transparent border border-[var(--border-2)] text-[var(--text-2)] rounded-md text-[12px] font-semibold hover:border-[var(--border-strong)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
