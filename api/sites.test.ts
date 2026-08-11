@@ -3,12 +3,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler, { config } from './sites.js'
 
-// The handler resolves the caller's Supabase token through supabase-js. Stub
-// the SDK so the tests never touch the network; `getUserMock` is what each
-// test drives to make a token valid, invalid or unreachable.
-const getUserMock = vi.hoisted(() => vi.fn())
+// The handler resolves the caller's Supabase token through supabase-js, then
+// reads their user_access row through it. Stub the SDK so the tests never touch
+// the network: `getUserMock` decides whether the token is valid, invalid or
+// unreachable, and `maybeSingleMock` decides whether the account is approved.
+const getUserMock     = vi.hoisted(() => vi.fn())
+const maybeSingleMock = vi.hoisted(() => vi.fn())
+/** Captures the Authorization header the access client was built with. */
+const createClientSpy = vi.hoisted(() => vi.fn())
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ auth: { getUser: getUserMock } }),
+  createClient: (url: string, key: string, opts?: unknown) => {
+    createClientSpy(url, key, opts)
+    return {
+      auth: { getUser: getUserMock },
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: maybeSingleMock }) }) }),
+    }
+  },
 }))
 
 type MockRes = VercelResponse & {
@@ -47,6 +57,9 @@ beforeEach(() => {
   process.env.SUPABASE_ANON_KEY   = 'anon_test'
   getUserMock.mockReset()
   getUserMock.mockResolvedValue({ data: { user: { id: 'user-1', email: 'a@b.co' } }, error: null })
+  maybeSingleMock.mockReset()
+  maybeSingleMock.mockResolvedValue({ data: { status: 'approved' }, error: null })
+  createClientSpy.mockReset()
   fetchMock = vi.fn(async () => new Response('{"ok":true,"data":[]}', { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
 })
@@ -123,6 +136,61 @@ describe('api/sites auth gate', () => {
     await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer good-token' }), res)
     expect(getUserMock).toHaveBeenCalledWith('good-token')
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(200)
+  })
+
+  it('403s a signed-in user whose account is still pending', async () => {
+    maybeSingleMock.mockResolvedValue({ data: { status: 'pending' }, error: null })
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json.mock.calls[0][0].code).toBe('unapproved')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('403s a revoked user', async () => {
+    maybeSingleMock.mockResolvedValue({ data: { status: 'revoked' }, error: null })
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the user_access row is missing', async () => {
+    maybeSingleMock.mockResolvedValue({ data: null, error: null })
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the approval lookup errors', async () => {
+    maybeSingleMock.mockResolvedValue({ data: null, error: { message: 'relation does not exist' } })
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the approval lookup throws', async () => {
+    maybeSingleMock.mockRejectedValue(new Error('network down'))
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }), res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('reads user_access AS the caller, so RLS limits it to their own row', async () => {
+    const res = makeRes()
+    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer good-token' }), res)
+    // The access client is the one built with the caller's bearer token; the
+    // anon key alone would read nothing, and a service-role key would read
+    // everything. Neither is what this path wants.
+    const withAuthHeader = createClientSpy.mock.calls.filter(
+      (c) => (c[2] as { global?: { headers?: Record<string, string> } })?.global?.headers?.Authorization === 'Bearer good-token',
+    )
+    expect(withAuthHeader).toHaveLength(1)
+    expect(createClientSpy.mock.calls.every((c) => c[1] === 'anon_test')).toBe(true)
     expect(res.status).toHaveBeenCalledWith(200)
   })
 

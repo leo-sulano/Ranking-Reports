@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { bearerToken, createTokenResolver, resolveUser } from './_lib/requestAuth.js'
+import {
+  bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
+} from './_lib/requestAuth.js'
 
 const UPSTREAM = 'https://3213211.xyz/bpn-panel-cc/api/ranks.php'
 
@@ -53,8 +55,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let resolver
+  let accessResolver
   try {
     resolver = createTokenResolver(process.env)
+    accessResolver = createAccessResolver(process.env, token)
   } catch (err) {
     return res.status(500).json({ ok: false, error: (err as Error).message })
   }
@@ -65,6 +69,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: false,
       code: 'unauthenticated',
       error: 'Your session is not valid or has expired — sign in again and retry',
+    })
+  }
+
+  // A valid session is not enough. Signup is self-serve and auto-provisions a
+  // 'pending' row, so authentication alone would narrow the exposure only from
+  // "anyone with the URL" to "anyone who can register". This route reads no
+  // Supabase table of its own, so RLS never sees it — the check is explicit.
+  if (!(await isApprovedUser(accessResolver, user.id))) {
+    return res.status(403).json({
+      ok: false,
+      code: 'unapproved',
+      error: 'Your account is not approved yet — an admin needs to approve it before you can sync',
     })
   }
 

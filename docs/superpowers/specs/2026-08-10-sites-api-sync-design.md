@@ -113,9 +113,14 @@ write path is new.
 | `.env.example` | Document `SITES_API_KEY` as server-only. |
 | `docs/integrations/sites-api.md` | Append the observed-behaviour table above. |
 
-`api/sites.ts` requires a valid Supabase session — the browser sends its access
-token and the handler validates it server-side, 401ing on a missing or rejected
-token, so the proxy is not an open read path onto the vendor's data or quota. It
+`api/sites.ts` requires a valid Supabase session **belonging to an approved
+user** — the browser sends its access token, the handler validates it
+server-side (401 on a missing or rejected token) and then reads the caller's own
+`user_access` row to confirm `status = 'approved'` (403 otherwise), so the proxy
+is not an open read path onto the vendor's data or quota. The approval read runs
+as the caller, so `user_access`'s self-read RLS policy limits it to one row and
+no service-role key is involved. It fails closed: a missing row, an unreadable
+row or a network failure all deny. It
 accepts only `action=results`, clamps
 `limit` to 1–1000 and `offset` to a non-negative integer, times out at 45s under
 a 60s `maxDuration`,
