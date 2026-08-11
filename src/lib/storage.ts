@@ -26,7 +26,9 @@ type RecordRow = {
 const RECORD_COLS = 'snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume'
 const PAGE = 1000
 
-function toSnapshotMeta(s: { id: string; raw_date: string; display_date: string; category: string | null }): SnapshotMeta {
+function toSnapshotMeta(
+  s: { id: string; raw_date: string; display_date: string; category: string | null; source: string | null },
+): SnapshotMeta {
   return {
     id:          s.id,
     category:    (s.category as CategoryId | null) ?? DEFAULT_CATEGORY,
@@ -34,6 +36,9 @@ function toSnapshotMeta(s: { id: string; raw_date: string; display_date: string;
     // Re-format on read so display matches the current formatter even for
     // older rows whose stored display_date used a previous format.
     displayDate: formatDisplayDate(s.raw_date),
+    // Null only if a row predates the column, which the migration's default
+    // makes impossible going forward — and those rows are all human work.
+    source:      s.source === 'sync' ? 'sync' : 'upload',
   }
 }
 
@@ -47,7 +52,7 @@ export async function loadSnapshotMeta(): Promise<SnapshotMeta[]> {
   // backfills write newest first, so created_at DESC would put oldest on top.
   const { data: snaps, error } = await supabase
     .from('snapshots')
-    .select('id, raw_date, display_date, category')
+    .select('id, raw_date, display_date, category, source')
     .order('raw_date', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw error

@@ -23,7 +23,11 @@ export interface Snapshot {
   category: CategoryId
   rawDate: string      // from Last Check column e.g. "5/20/2026"
   displayDate: string  // formatted e.g. "20 May 26"
-  /** Absent on snapshots loaded before the column existed; treat as 'upload'. */
+  /**
+   * Populated on everything loadSnapshotMeta returns (a null column reads as
+   * 'upload', matching the migration's default) and on everything this session
+   * writes. Optional only so literals — chiefly test fixtures — need not set it.
+   */
   source?: SnapshotSource
   records: RankingRecord[]
 }
@@ -36,6 +40,8 @@ export interface SnapshotMeta {
   category:    CategoryId
   rawDate:     string
   displayDate: string
+  /** Same contract as Snapshot.source — hydrating a meta entry carries it over. */
+  source?:     SnapshotSource
 }
 
 export type { Brand } from '../../api/_lib/brands.js'

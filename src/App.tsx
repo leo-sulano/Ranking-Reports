@@ -188,7 +188,7 @@ function Layout() {
       )
       const metaFiltered = s.snapshotMeta.filter((m) => !(m.category === category && m.rawDate === rawDate))
       const nextMeta = [
-        { id: newSnap.id, category: newSnap.category, rawDate: newSnap.rawDate, displayDate: newSnap.displayDate },
+        { id: newSnap.id, category: newSnap.category, rawDate: newSnap.rawDate, displayDate: newSnap.displayDate, source: newSnap.source },
         ...metaFiltered,
       ].sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
       // Carry-forward is applied in the derived useMemo; state stays raw.
@@ -456,12 +456,18 @@ function Layout() {
           if ('globalSearchVolume' in patch) np.globalSearchVolume = patch.globalSearchVolume ?? ''
           return np
         })
-        return { ...snap, records }
+        // updateRecordFields has just marked this snapshot 'upload' in the
+        // database; mirror it here so the local copy doesn't claim 'sync'
+        // until the next reload.
+        return { ...snap, records, source: 'upload' as const }
       })
+      const nextMeta = s.snapshotMeta.map((m) =>
+        m.id === snapshotId ? { ...m, source: 'upload' as const } : m,
+      )
       // Carry-forward is applied in the derived useMemo. The raw state only
       // reflects the edited snapshot; downstream propagation happens in the
       // view layer.
-      return { ...s, snapshots: next }
+      return { ...s, snapshots: next, snapshotMeta: nextMeta }
     })
   }, [addToast, requireAuth, state.snapshots])
 
