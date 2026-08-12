@@ -1,7 +1,16 @@
 import * as XLSX from 'xlsx'
 import type { RankingRecord } from '../types'
 import type { CategoryId } from './categories'
-import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS } from './brands'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS, normalizeCountry } from './brands'
+// Re-exported so `src/lib/sitesNormalize.ts` (and its test) can keep
+// `import { normalizeCountry } from './parser'` unchanged — an `import`
+// alone doesn't re-export a name.
+export { normalizeCountry }
+
+// formatDisplayDate moved to api/_lib for the same reason normalizeCountry
+// did: api/cron-sync.ts needs it and cannot import from src/. This file stays
+// the frontend's import site, so no consumer changed.
+export { formatDisplayDate } from '../../api/_lib/displayDate.js'
 
 export interface UnknownDomain {
   domain: string
@@ -55,41 +64,6 @@ export function parseXlsx(buffer: ArrayBuffer, category: CategoryId = 'bp-sites'
     snapshots:      flat.records.length > 0 ? [{ rawDate, records: flat.records }] : [],
     unknownDomains: flat.unknownDomains,
   }
-}
-
-/**
- * Coerce a country cell to a 2-letter code:
- *   "Australia"   → "AU"
- *   "australia"   → "AU"
- *   "AU"          → "AU"
- *   "au"          → "AU"
- *   "ZZ"          → "ZZ"   (unknown → uppercased pass-through so it still
- *                            matches itself in lookups)
- *
- * Shared with the API sync (`src/lib/sitesNormalize.ts`) and NOT to be
- * duplicated: `applyCarryForward` keys on `${domain}|${keyword}|${country}`
- * with the country NOT case-folded, so any divergence between the two ingest
- * paths silently breaks GSV/SV/AFF carry-forward between an uploaded and a
- * synced snapshot, and adds a phantom entry to the country filter.
- */
-export function normalizeCountry(raw: unknown): string {
-  const s = String(raw ?? '').trim()
-  if (!s) return ''
-
-  // Try the literal value (handles "Australia", "AU", etc.)
-  const direct = COUNTRY_LABELS[s]
-  if (direct) return direct
-
-  // Try lowercased/normalized variants of full names
-  const norm = s.toLowerCase().replace(/\s+/g, ' ')
-  for (const [key, code] of Object.entries(COUNTRY_LABELS)) {
-    if (key.toLowerCase() === norm) return code
-  }
-
-  // Already a 2-letter code in some other case? Uppercase it.
-  if (s.length === 2) return s.toUpperCase()
-
-  return s.toUpperCase()
 }
 
 // Format a JS Date as "yyyy-MM-dd" using its LOCAL components. Avoids the
@@ -205,25 +179,6 @@ export function extractSnapshotDate(records: RankingRecord[]): string {
   })
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
   return sorted.length > 0 ? sorted[0][0] : ''
-}
-
-// Format raw date string "5/20/2026" → "May 20, 2026"
-export function formatDisplayDate(raw: string): string {
-  if (!raw) return 'Unknown Date'
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
-  // YYYY-MM-DD literals: build a local Date so toLocaleDateString doesn't
-  // shift the displayed day across the UTC boundary (e.g. UTC- zones would
-  // otherwise show the previous day for a "2026-05-13" ISO date).
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
-  if (iso) {
-    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
-    return d.toLocaleDateString('en-US', opts)
-  }
-  const d = new Date(raw)
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('en-US', opts)
-  }
-  return raw
 }
 
 export function parsePosition(pos: string): number | 'NR' | null {

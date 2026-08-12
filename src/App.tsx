@@ -4,7 +4,7 @@ import { AuthGate } from './components/AuthGate'
 import { ResetPassword } from './components/ResetPassword'
 import { useAuth, getWriteGate } from './lib/useAuth'
 import { LoginModal } from './components/LoginModal'
-import type { AppState, RROutletContext, RankingRecord, Snapshot, SnapshotMeta, EditCellMatcher, EditCellPatch } from './types'
+import type { AppState, RROutletContext, RankingRecord, Snapshot, SnapshotMeta, EditCellMatcher, EditCellPatch, SnapshotSource } from './types'
 import type { CategoryId } from './lib/categories'
 import type { UnknownDomain, ParsedSnapshot } from './lib/parser'
 import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from './lib/brands'
@@ -165,14 +165,15 @@ function Layout() {
   const persistOneSnapshot = useCallback(async (
     parsed: ParsedSnapshot,
     category: CategoryId,
+    source: SnapshotSource,
   ): Promise<Snapshot | null> => {
     const { rawDate, records } = parsed
     const displayDate = formatDisplayDate(rawDate)
     const newId       = `snap-${category}-${rawDate || Date.now()}`
-    const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, records }
+    const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, source, records }
 
     try {
-      await requireAuth(() => upsertSnapshot(newSnap))
+      await requireAuth(() => upsertSnapshot(newSnap, source))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Save failed (${displayDate}): ${msg}`, 'error')
@@ -187,7 +188,7 @@ function Layout() {
       )
       const metaFiltered = s.snapshotMeta.filter((m) => !(m.category === category && m.rawDate === rawDate))
       const nextMeta = [
-        { id: newSnap.id, category: newSnap.category, rawDate: newSnap.rawDate, displayDate: newSnap.displayDate },
+        { id: newSnap.id, category: newSnap.category, rawDate: newSnap.rawDate, displayDate: newSnap.displayDate, source: newSnap.source },
         ...metaFiltered,
       ].sort((a, b) => (a.rawDate < b.rawDate ? 1 : a.rawDate > b.rawDate ? -1 : 0))
       // Carry-forward is applied in the derived useMemo; state stays raw.
@@ -229,7 +230,7 @@ function Layout() {
         setDuplicateWarning({ existing: dupe, pendingRecords: parsed.records, unknownDomains, source: 'upload' })
         return
       }
-      const snap = await persistOneSnapshot(parsed, category)
+      const snap = await persistOneSnapshot(parsed, category, 'upload')
       if (!snap) return
       void logActivity('upload', category, `Uploaded ${parsed.records.length} records — ${snap.displayDate}`)
       setShowUpload(false)
@@ -252,7 +253,7 @@ function Layout() {
     let totalRecords = 0
     const aggregateRecords: RankingRecord[] = []
     for (let i = 0; i < snapshots.length; i++) {
-      const snap = await persistOneSnapshot(snapshots[i], category)
+      const snap = await persistOneSnapshot(snapshots[i], category, 'upload')
       if (snap) {
         okCount++
         totalRecords += snapshots[i].records.length
@@ -315,7 +316,7 @@ function Layout() {
         return
       }
 
-      const snap = await persistOneSnapshot({ rawDate, records }, 'bp-sites')
+      const snap = await persistOneSnapshot({ rawDate, records }, 'bp-sites', 'sync')
       if (!snap) return
 
       void logActivity('sync', 'bp-sites', `Synced ${records.length} records from Ranks API — ${snap.displayDate}`)
@@ -377,6 +378,7 @@ function Layout() {
     const snap = await persistOneSnapshot(
       { rawDate: existing.rawDate, records: pendingRecords },
       existing.category,
+      source === 'sync' ? 'sync' : 'upload',
     )
     if (!snap) return
     if (source === 'sync') {
@@ -454,12 +456,18 @@ function Layout() {
           if ('globalSearchVolume' in patch) np.globalSearchVolume = patch.globalSearchVolume ?? ''
           return np
         })
-        return { ...snap, records }
+        // updateRecordFields has just marked this snapshot 'upload' in the
+        // database; mirror it here so the local copy doesn't claim 'sync'
+        // until the next reload.
+        return { ...snap, records, source: 'upload' as const }
       })
+      const nextMeta = s.snapshotMeta.map((m) =>
+        m.id === snapshotId ? { ...m, source: 'upload' as const } : m,
+      )
       // Carry-forward is applied in the derived useMemo. The raw state only
       // reflects the edited snapshot; downstream propagation happens in the
       // view layer.
-      return { ...s, snapshots: next }
+      return { ...s, snapshots: next, snapshotMeta: nextMeta }
     })
   }, [addToast, requireAuth, state.snapshots])
 

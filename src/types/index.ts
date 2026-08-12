@@ -15,11 +15,20 @@ export interface RankingRecord {
   globalSearchVolume?: string   // per-keyword GSV — same value on every record for the keyword in the snapshot
 }
 
+/** Who created a snapshot. The scheduled sync only ever replaces its own. */
+export type SnapshotSource = 'upload' | 'sync'
+
 export interface Snapshot {
   id: string
   category: CategoryId
   rawDate: string      // from Last Check column e.g. "5/20/2026"
   displayDate: string  // formatted e.g. "20 May 26"
+  /**
+   * Populated on everything loadSnapshotMeta returns (a null column reads as
+   * 'upload', matching the migration's default) and on everything this session
+   * writes. Optional only so literals — chiefly test fixtures — need not set it.
+   */
+  source?: SnapshotSource
   records: RankingRecord[]
 }
 
@@ -31,18 +40,11 @@ export interface SnapshotMeta {
   category:    CategoryId
   rawDate:     string
   displayDate: string
+  /** Same contract as Snapshot.source — hydrating a meta entry carries it over. */
+  source?:     SnapshotSource
 }
 
-export interface Brand {
-  name: string
-  abbr: string
-  color: string
-  mainDomain: string
-  domains: string[]
-  // Landing-page domains for the same brand. Tracked separately from `domains`
-  // (BP / MAIN) so the BP and LP namespaces stay independent during parse + display.
-  lpDomains: string[]
-}
+export type { Brand } from '../../api/_lib/brands.js'
 
 export type SortDir = 'asc' | 'desc'
 

@@ -1,4 +1,4 @@
-import type { Snapshot, SnapshotMeta, RankingRecord } from '../types'
+import type { Snapshot, SnapshotMeta, RankingRecord, SnapshotSource } from '../types'
 import type { CategoryId } from './categories'
 import { DEFAULT_CATEGORY } from './categories'
 import { formatDisplayDate } from './parser'
@@ -26,7 +26,9 @@ type RecordRow = {
 const RECORD_COLS = 'snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume'
 const PAGE = 1000
 
-function toSnapshotMeta(s: { id: string; raw_date: string; display_date: string; category: string | null }): SnapshotMeta {
+function toSnapshotMeta(
+  s: { id: string; raw_date: string; display_date: string; category: string | null; source: string | null },
+): SnapshotMeta {
   return {
     id:          s.id,
     category:    (s.category as CategoryId | null) ?? DEFAULT_CATEGORY,
@@ -34,6 +36,9 @@ function toSnapshotMeta(s: { id: string; raw_date: string; display_date: string;
     // Re-format on read so display matches the current formatter even for
     // older rows whose stored display_date used a previous format.
     displayDate: formatDisplayDate(s.raw_date),
+    // Null only if a row predates the column, which the migration's default
+    // makes impossible going forward — and those rows are all human work.
+    source:      s.source === 'sync' ? 'sync' : 'upload',
   }
 }
 
@@ -47,7 +52,7 @@ export async function loadSnapshotMeta(): Promise<SnapshotMeta[]> {
   // backfills write newest first, so created_at DESC would put oldest on top.
   const { data: snaps, error } = await supabase
     .from('snapshots')
-    .select('id, raw_date, display_date, category')
+    .select('id, raw_date, display_date, category, source')
     .order('raw_date', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -166,7 +171,7 @@ export async function loadOlderSnapshots(metaEntries: SnapshotMeta[]): Promise<S
  *
  * Records are batched in 500-row chunks to stay well under PostgREST limits.
  */
-export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
+export async function upsertSnapshot(snapshot: Snapshot, source: SnapshotSource): Promise<void> {
   const { error: eDelRecs } = await supabase
     .from('ranking_records')
     .delete()
@@ -181,6 +186,7 @@ export async function upsertSnapshot(snapshot: Snapshot): Promise<void> {
     raw_date:     snapshot.rawDate,
     display_date: snapshot.displayDate,
     category:     snapshot.category,
+    source,
   })
   if (eIns) throw eIns
 
@@ -230,6 +236,26 @@ export async function updateRecordFields(
   if ('affiliateUrl'       in patch) dbPatch.affiliate_url        = patch.affiliateUrl       ?? ''
   if ('globalSearchVolume' in patch) dbPatch.global_search_volume = patch.globalSearchVolume ?? ''
   if (Object.keys(dbPatch).length === 0) return
+
+  // Order matters, do not swap these two writes.
+  //
+  // A hand edit makes this snapshot human work, whatever created it. Without
+  // the source write, the scheduled sync would happily replace a button-synced
+  // snapshot that someone had since typed a GSV value onto, and the "never
+  // destroys a snapshot a person edited" guarantee would be nominal only.
+  //
+  // It goes FIRST because neither write is transactional with the other. If the
+  // records patch failed second, the caller sees the throw and the snapshot is
+  // merely marked human-touched without having changed — harmless, and it errs
+  // toward protecting data exactly as decideWrite does. The reverse order fails
+  // the other way: the records would already hold the new value while the
+  // caller reports "Edit failed", skips its setState and logs nothing, so the
+  // UI shows the old value and the snapshot stays replaceable by the cron.
+  const { error: eSrc } = await supabase
+    .from('snapshots')
+    .update({ source: 'upload' })
+    .eq('id', snapshotId)
+  if (eSrc) throw eSrc
 
   let q = supabase.from('ranking_records').update(dbPatch).eq('snapshot_id', snapshotId)
   if (matcher.keyword) q = q.eq('keyword', matcher.keyword)
