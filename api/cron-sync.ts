@@ -142,7 +142,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     // A budget abort arrives as undici's bare "This operation was aborted",
     // which in /log would read as an unexplained failure. Name the real cause.
-    const message = deadline.aborted
+    //
+    // Both halves of this condition are load-bearing. The deadline keeps
+    // ticking through the write phase, so `deadline.aborted` alone would relabel
+    // an unrelated write failure that happened to land after the budget expired
+    // — burying the real error in the cron's only history. Requiring the error
+    // to actually BE an abort keeps the two apart.
+    const timedOut = (err as Error)?.name === 'AbortError' && deadline.aborted
+    const message = timedOut
       ? `the run exceeded its ${FETCH_BUDGET_MS / 1000}s fetch budget — the Ranks API did not finish responding in time`
       : (err as Error).message
     const summary = `Scheduled sync failed: ${message}`
