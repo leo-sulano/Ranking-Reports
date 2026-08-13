@@ -8,8 +8,14 @@ import handler from './cron-sync.js'
 // and logCronActivity's insert both get called. A bare {} here throws inside
 // the handler's try, the catch logs, and that throws again. Every insert is
 // recorded so a test can assert what was written and, more often, what wasn't.
-const { inserts } = vi.hoisted(() => ({
+const { inserts, insertFailure } = vi.hoisted(() => ({
   inserts: [] as { table: string; rows: unknown }[],
+  /**
+   * Lets one test make a single table's insert fail. `onCall` fires before the
+   * failure is returned, so a test can change the world at the exact moment the
+   * write goes wrong — which is how the deadline-during-write case is staged.
+   */
+  insertFailure: { table: '', message: '', onCall: undefined as (() => void) | undefined },
 }))
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -17,6 +23,10 @@ vi.mock('@supabase/supabase-js', () => ({
     from: (table: string) => ({
       insert: async (rows: unknown) => {
         inserts.push({ table, rows })
+        if (insertFailure.table === table) {
+          insertFailure.onCall?.()
+          return { error: { message: insertFailure.message } }
+        }
         return { error: null }
       },
       delete: () => ({ eq: async () => ({ error: null }) }),
@@ -72,6 +82,9 @@ const MANAGED = ['CRON_SECRET', 'SITES_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVI
 
 beforeEach(() => {
   inserts.length = 0
+  insertFailure.table = ''
+  insertFailure.message = ''
+  insertFailure.onCall = undefined
   for (const n of MANAGED) saved[n] = process.env[n]
   process.env.CRON_SECRET               = 'secret-value'
   process.env.SITES_API_KEY             = 'bpn_test'
@@ -179,6 +192,29 @@ describe('api/cron-sync time budget', () => {
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(loggedSummaries()).toEqual([
       'Scheduled sync failed: the run exceeded its 35s fetch budget — the Ranks API did not finish responding in time',
+    ])
+  })
+
+  it('names the real error when a write fails after the deadline has passed', async () => {
+    // The deadline covers fetching, but it keeps ticking through the write. So
+    // "fetch finished at 34s, the deadline fired at 35s, the write then failed
+    // for its own reason" is reachable — and deciding the message from
+    // `deadline.aborted` alone would report a timeout and bury the real cause
+    // in the cron's only history.
+    const controller = new AbortController()
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal)
+    stubVendorRows([apiRow()])
+    insertFailure.table = 'snapshots'
+    insertFailure.message = 'duplicate key value violates unique constraint'
+    insertFailure.onCall = () => controller.abort()   // the deadline expires mid-write
+
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+    spy.mockRestore()
+
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(loggedSummaries()).toEqual([
+      'Scheduled sync failed: Could not write the snapshot: duplicate key value violates unique constraint',
     ])
   })
 })
