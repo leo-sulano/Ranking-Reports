@@ -111,18 +111,24 @@ function fakeAdmin(result: { error: { code?: string; message: string; status?: n
 }
 
 describe('ensureUserExists', () => {
-  it('creates the user with email pre-confirmed when they do not exist', async () => {
+  // The true/false return is not incidental: api/portal-callback.ts auto-approves
+  // only when it is `true`. Both `pending` and `revoked` users look identical in
+  // user_access, so "did we just create the auth user" is the only signal that
+  // separates a first-time arrival from someone an admin deliberately cut off.
+  // Assert the value, not just that the call resolves.
+
+  it('creates the user with email pre-confirmed when they do not exist, and reports it as new', async () => {
     const { admin, calls } = fakeAdmin({ error: null })
 
-    await ensureUserExists(admin, 'new@example.com')
+    await expect(ensureUserExists(admin, 'new@example.com')).resolves.toBe(true)
 
     expect(calls).toEqual([{ email: 'new@example.com', email_confirm: true }])
   })
 
-  it('treats an email_exists error code as success', async () => {
+  it('treats an email_exists error code as success, and reports the user as pre-existing', async () => {
     const { admin } = fakeAdmin({ error: { code: 'email_exists', message: 'User already registered', status: 422 } })
 
-    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBeUndefined()
+    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBe(false)
   })
 
   it('treats an "already been registered" message without a code as success (older GoTrue)', async () => {
@@ -130,7 +136,7 @@ describe('ensureUserExists', () => {
       error: { message: 'A user with this email address has already been registered', status: 422 },
     })
 
-    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBeUndefined()
+    await expect(ensureUserExists(admin, 'existing@example.com')).resolves.toBe(false)
   })
 
   it('throws on any other createUser error', async () => {
