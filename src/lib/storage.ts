@@ -24,7 +24,7 @@ type RecordRow = {
 }
 
 const RECORD_COLS = 'snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume'
-const PAGE = 1000
+export const PAGE = 1000
 
 function toSnapshotMeta(
   s: { id: string; raw_date: string; display_date: string; category: string | null; source: string | null },

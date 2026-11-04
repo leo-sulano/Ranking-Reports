@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { findExistingSnapshot, findStoredSnapshot, loadSnapshotRecords } from './storage'
+import { PAGE, findExistingSnapshot, findStoredSnapshot, loadSnapshotRecords } from './storage'
 import type { Snapshot, SnapshotMeta } from '../types'
 
 // findStoredSnapshot asks the database, not the page's loaded state, whether a
@@ -12,29 +12,42 @@ const query = vi.hoisted(() => ({
   result: { data: [] as unknown[] | null, error: null as { message: string } | null },
 }))
 
-// A stand-in ranking_records table for loadSnapshotRecords. Without an ORDER BY,
-// Postgres may return each LIMIT/OFFSET page in a different order (the planner
-// picks its plan from the offset), so this fake returns the first page in id
-// order and every later page in reverse, unless the query asks for id order.
+// A stand-in ranking_records table for loadSnapshotRecords. Postgres may plan
+// each LIMIT/OFFSET page differently, and rows an ORDER BY leaves tied (every
+// row, with no ORDER BY) come back in that plan's order. This fake's "plan"
+// returns ties in id order on the first page and in reverse on later pages.
 const recordsTable = vi.hoisted(() => ({
   rows: [] as { id: number; snapshot_id: string; domain: string; keyword: string; country: string }[],
 }))
 
 vi.mock('./supabase', () => {
+  type Row = (typeof recordsTable.rows)[number]
   function recordsQuery(head: boolean) {
     let ids: string[] = []
-    let byId = false
+    let orderBy: { column: keyof Row; ascending: boolean } | null = null
     let from = 0
     let to = Infinity
     const q = {
       in: (column: string, values: string[]) => { if (column === 'snapshot_id') ids = values; return q },
-      order: (column: string, opts?: { ascending?: boolean }) => { byId = column === 'id' && opts?.ascending !== false; return q },
+      order: (column: string, opts?: { ascending?: boolean }) => {
+        orderBy = { column: column as keyof Row, ascending: opts?.ascending !== false }
+        return q
+      },
       range: (a: number, b: number) => { from = a; to = b; return q },
       then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
         const matching = recordsTable.rows.filter((r) => ids.includes(r.snapshot_id))
         if (head) return Promise.resolve({ count: matching.length, error: null }).then(resolve, reject)
-        const ascending = byId || from === 0
-        const ordered = [...matching].sort((x, y) => (ascending ? x.id - y.id : y.id - x.id))
+        const by = orderBy
+        const planOrder = from === 0 ? 1 : -1
+        const ordered = [...matching].sort((x, y) => {
+          if (by) {
+            const a = x[by.column]
+            const b = y[by.column]
+            const cmp = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b))
+            if (cmp !== 0) return by.ascending ? cmp : -cmp
+          }
+          return (x.id - y.id) * planOrder
+        })
         return Promise.resolve({ data: ordered.slice(from, to + 1), error: null }).then(resolve, reject)
       },
     }
@@ -91,10 +104,12 @@ beforeEach(() => {
 // warning once showed "Records stored: 0" for a snapshot holding 1,110 rows.
 describe('loadSnapshotRecords', () => {
   it('returns every stored row even when the database orders each page differently', async () => {
-    recordsTable.rows = [...storedRecords('snap-a', 1500, 1), ...storedRecords('snap-b', 1000, 1501)]
+    // Two and a half pages, whatever PAGE is: snap-b lands on the later pages.
+    const aRows = Math.round(PAGE * 1.5)
+    recordsTable.rows = [...storedRecords('snap-a', aRows, 1), ...storedRecords('snap-b', PAGE, aRows + 1)]
     const byId = await loadSnapshotRecords(['snap-a', 'snap-b'])
-    expect(byId.get('snap-a')).toHaveLength(1500)
-    expect(byId.get('snap-b')).toHaveLength(1000)
+    expect(byId.get('snap-a')).toHaveLength(aRows)
+    expect(byId.get('snap-b')).toHaveLength(PAGE)
   })
 })
 
