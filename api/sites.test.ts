@@ -242,6 +242,16 @@ describe('api/sites', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('returns 500 naming OPENSEO_BASE_URL when it is not https, without calling it', async () => {
+    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
+    const res = makeRes()
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json.mock.calls[0][0].error).toContain('OPENSEO_BASE_URL')
+    expect(res.json.mock.calls[0][0].error).not.toContain('insecure.example')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('returns normalized records for the BP domains', async () => {
     const res = makeRes()
     await handler(makeReq('GET'), res)

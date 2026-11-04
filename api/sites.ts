@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
 } from './_lib/requestAuth.js'
-import { OpenSeoError, fetchBpExports, openSeoConfig } from './_lib/openseo.js'
+import { OpenSeoError, fetchBpExports, isAbortLike, openSeoConfig } from './_lib/openseo.js'
 import { normalizeExports } from './_lib/sitesNormalize.js'
 
 /**
@@ -14,12 +14,6 @@ import { normalizeExports } from './_lib/sitesNormalize.js'
  */
 export const config = { maxDuration: 60 }
 const TIMEOUT_MS = 45_000
-
-/** True for the error a fired deadline rejects fetch with. */
-function isAbortLike(err: unknown): boolean {
-  const name = (err as { name?: string } | null)?.name
-  return name === 'AbortError' || name === 'TimeoutError'
-}
 
 /**
  * The Sync button's one request: every BP ranking OpenSEO holds, already
@@ -35,10 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Authenticate BEFORE anything else. Without this the endpoint is a public
-  // read of every row the key can see (including other projects' data) and a
-  // free proxy against the vendor's quota. Every other read in this app is
-  // gated by Supabase, so this one is too — the browser sends the caller's
-  // access token and we resolve it server-side.
+  // read of every BP ranking OpenSEO holds, and a free way to make this server
+  // hammer OpenSEO. Every other read in this app is gated by Supabase, so this
+  // one is too — the browser sends the caller's access token and we resolve it
+  // server-side.
   const token = bearerToken(req.headers?.authorization)
   if (!token) {
     return res.status(401).json({
@@ -80,7 +74,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  const openseo = openSeoConfig(process.env)
+  let openseo
+  try {
+    openseo = openSeoConfig(process.env)
+  } catch (err) {
+    // A malformed OPENSEO_BASE_URL — worded without echoing it.
+    return res.status(500).json({ ok: false, error: (err as Error).message })
+  }
   if (!openseo) {
     return res.status(500).json({
       ok: false,

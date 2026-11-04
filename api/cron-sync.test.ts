@@ -46,7 +46,7 @@ function loggedSummaries(): string[] {
 
 type Cells = Record<string, Record<string, { position: number | null; previous: number | null; status: string }>>
 
-/** One keyword's OpenSEO export for lucky7even.com, DE (2276) and AU (2036). */
+/** One keyword's OpenSEO export for lucky7even.com: DE (2276), AU (2036), CA (2124). */
 function exportBody(weeks: string[], cells: Cells) {
   return {
     domain:   'lucky7even.com',
@@ -54,6 +54,7 @@ function exportBody(weeks: string[], cells: Cells) {
     markets:  [
       { locationCode: 2276, countryCode: 'DE', locationName: null },
       { locationCode: 2036, countryCode: 'AU', locationName: null },
+      { locationCode: 2124, countryCode: 'CA', locationName: null },
     ],
     keywords: [{ keyword: 'lucky 7even casino', cells }],
   }
@@ -187,6 +188,36 @@ describe('api/cron-sync writes', () => {
 
     expect(res.status).toHaveBeenCalledWith(200)
     expect(loggedSummaries()).toEqual(['Scheduled sync — 2 records (Aug 4, 2026); 1 kept an earlier check'])
+  })
+
+  it('skips a snapshot that most records did not get a fresh check for', async () => {
+    // One tracker re-run on 2026-08-04; the other two markets are a week old.
+    // Unattended, that must not become the newest "week".
+    stubOpenSeo(exportBody(['2026-07-28', '2026-08-04'], {
+      '2276': { '2026-07-28': cell(4), '2026-08-04': cell(3) },
+      '2036': { '2026-07-28': cell(9) },
+      '2124': { '2026-07-28': cell(2) },
+    }))
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
+    expect(loggedSummaries()).toEqual([
+      "Scheduled sync — skipped Aug 4, 2026: OpenSEO's newest run covers only 1 of 3 records; nothing written",
+    ])
+  })
+
+  it('logs a non-https OPENSEO_BASE_URL as a failure without calling it', async () => {
+    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(loggedSummaries()).toEqual([
+      'Scheduled sync failed: OPENSEO_BASE_URL must be an https:// URL — check it on the server',
+    ])
   })
 
   it('writes nothing when OpenSEO has no BP rankings', async () => {

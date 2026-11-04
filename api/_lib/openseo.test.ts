@@ -41,6 +41,23 @@ function stubDomains(domains: unknown, exportFor: (domain: string) => Response |
   stubOpenSeo((domain) => (domain === null ? json({ domains }) : exportFor(domain)))
 }
 
+/** Headers now, body never — until the request's signal fires, like a stalled upstream. */
+function stalledBody(init: RequestInit): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      init.signal?.addEventListener('abort', () => controller.error(init.signal?.reason), { once: true })
+    },
+  })
+  return new Response(stream, { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+/** No response at all until the request's signal fires. */
+function stalledFetch(init: RequestInit): Promise<Response> {
+  return new Promise((_resolve, reject) => {
+    init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+  })
+}
+
 function exportCalls(domain?: string): URL[] {
   return fetchMock.mock.calls
     .map((c) => new URL(String(c[0])))
@@ -58,6 +75,21 @@ describe('openSeoConfig', () => {
     expect(openSeoConfig({ OPENSEO_RANKINGS_API_KEY: 'k', OPENSEO_BASE_URL: ' https://x.example/ ' }))
       .toEqual({ key: 'k', baseUrl: 'https://x.example' })
   })
+
+  it('refuses a base URL that is not https, without echoing it', () => {
+    // The key rides on every request, so it must never go out over plain http.
+    for (const bad of ['http://x.example', 'not a url']) {
+      let err: unknown
+      try {
+        openSeoConfig({ OPENSEO_RANKINGS_API_KEY: 'k', OPENSEO_BASE_URL: bad })
+      } catch (e) {
+        err = e
+      }
+      expect(err).toBeInstanceOf(OpenSeoError)
+      expect((err as Error).message).toContain('OPENSEO_BASE_URL')
+      expect((err as Error).message).not.toContain('x.example')
+    }
+  })
 })
 
 describe('fetchBpExports', () => {
@@ -71,7 +103,7 @@ describe('fetchBpExports', () => {
     }
   })
 
-  it('fetches only BP domains, by their original spelling, desktop, 8 weeks', async () => {
+  it('fetches only BP domains, by their original spelling, desktop, the full 52 run dates', async () => {
     stubDomains(['rooster.bet', 'WWW.SpinJo.com', 'example.com'])
     const exports = await fetchBpExports(CONFIG)
     const calls = exportCalls()
@@ -79,7 +111,7 @@ describe('fetchBpExports', () => {
     for (const u of calls) {
       expect(u.origin + u.pathname).toBe('https://openseo.test/api/public/rankings')
       expect(u.searchParams.get('device')).toBe('desktop')
-      expect(u.searchParams.get('weeks')).toBe('8')
+      expect(u.searchParams.get('weeks')).toBe('52')
     }
     expect(exports.map((e) => e.domain).sort()).toEqual(['WWW.SpinJo.com', 'rooster.bet'])
   })
@@ -129,6 +161,60 @@ describe('fetchBpExports', () => {
     const err = await fetchBpExports(CONFIG).catch((e: unknown) => e)
     expect((err as OpenSeoError).message).toBe(EXPORT_OFF)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a platform 503 that is not the export being switched off', async () => {
+    let attempts = 0
+    stubDomains(['rooster.bet'], (d) =>
+      ++attempts === 1 ? new Response('<html>overloaded</html>', { status: 503 }) : json(exportBody(d)))
+    await expect(fetchBpExports(CONFIG)).resolves.toHaveLength(1)
+    expect(exportCalls('rooster.bet')).toHaveLength(2)
+  })
+
+  it('says OpenSEO did not answer when a request times out twice', async () => {
+    stubOpenSeo((_domain, _url, init) => stalledFetch(init))
+    const err = await fetchBpExports(CONFIG, { requestTimeoutMs: 20 }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(OpenSeoError)
+    expect((err as Error).message).toBe('OpenSEO did not answer within 0.02 seconds for the domain list')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries a body that stalls past the request timeout instead of calling it not JSON', async () => {
+    stubOpenSeo((_domain, _url, init) => stalledBody(init))
+    const err = await fetchBpExports(CONFIG, { requestTimeoutMs: 20 }).catch((e: unknown) => e)
+    expect((err as Error).message).toBe('OpenSEO did not answer within 0.02 seconds for the domain list')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("lets the caller's deadline through untouched when it fires mid-body", async () => {
+    const controller = new AbortController()
+    stubOpenSeo((_domain, _url, init) => {
+      setTimeout(() => controller.abort(), 5)
+      return stalledBody(init)
+    })
+    const err = await fetchBpExports(CONFIG, { signal: controller.signal }).catch((e: unknown) => e)
+    expect((err as Error).name).toBe('AbortError')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('still calls a body that is not JSON what it is', async () => {
+    stubOpenSeo(() => new Response('<!doctype html>', { status: 200 }))
+    await expect(fetchBpExports(CONFIG)).rejects.toThrow('OpenSEO returned something other than JSON for the domain list')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels the other in-flight exports once one fails', async () => {
+    let pending: AbortSignal | null = null
+    stubOpenSeo((domain, _url, init) => {
+      if (domain === null) return json({ domains: ['rooster.bet', 'spinjo.com'] })
+      if (domain === 'spinjo.com') {
+        pending = init.signal ?? null
+        return stalledFetch(init)
+      }
+      return json({ error: 'unauthorized' }, 401)
+    })
+    await expect(fetchBpExports(CONFIG, { concurrency: 2 })).rejects.toThrow(KEY_REJECTED)
+    expect((pending as AbortSignal | null)?.aborted).toBe(true)
   })
 
   it('says to check the Access bypass when OpenSEO redirects', async () => {

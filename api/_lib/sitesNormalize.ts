@@ -101,15 +101,33 @@ function changeString(previous: number | null, current: number | null): string {
   return delta > 0 ? `+${delta}` : String(delta)
 }
 
-/** locationCode -> dashboard country code, for country-level markets only. */
-function marketCountries(markets: OpenSeoMarket[]): Map<string, string> {
+/**
+ * locationCode -> dashboard country code, for country-level markets only, plus
+ * the codes where a city tracker shares a national one.
+ *
+ * OpenSEO stores a city tracker under its country's location code, and its
+ * export keys cells by that code — so a domain tracked both nationally and in
+ * a city has the two merged under one key, and nothing says which tracker a
+ * cell came from. A city tracker with no national twin is simply not a
+ * country ranking, and is skipped.
+ */
+function marketCountries(markets: OpenSeoMarket[]): {
+  countries: Map<string, string>
+  merged:    Array<{ code: string; city: string }>
+} {
   const countries = new Map<string, string>()
+  const cities = new Map<string, string>()
   for (const market of markets ?? []) {
-    if (market.locationName) continue
+    const code = String(market.locationCode)
+    if (market.locationName) {
+      cities.set(code, market.locationName)
+      continue
+    }
     const country = normalizeCountry(market.countryCode)
-    if (country) countries.set(String(market.locationCode), country)
+    if (country) countries.set(code, country)
   }
-  return countries
+  const merged = [...cities].filter(([code]) => countries.has(code)).map(([code, city]) => ({ code, city }))
+  return { countries, merged }
 }
 
 /**
@@ -127,7 +145,15 @@ export function normalizeExports(exports: OpenSeoExport[]): NormalizeResult {
   for (const report of exports) {
     const domain = canonicalDomain(report.domain)
     const known = Boolean(DOMAIN_TO_BRAND[domain])
-    const countries = marketCountries(report.markets)
+    const { countries, merged } = marketCountries(report.markets)
+    // Refuse rather than report a city rank as national. Only a BP domain can
+    // stop the sync: another client's trackers are not ours to judge.
+    if (known && merged.length > 0) {
+      const { code, city } = merged[0]
+      throw new Error(
+        `OpenSEO tracks ${domain} both nationally and in ${city.split(',')[0]} under one location (${code}), and its export merges the two — archive one of those trackers to sync`,
+      )
+    }
 
     for (const entry of report.keywords ?? []) {
       const keyword = (entry.keyword ?? '').trim()

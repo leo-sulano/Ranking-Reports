@@ -114,23 +114,38 @@ describe('normalizeExports', () => {
     expect(pick([undefined, 2], two)).toMatchObject({ position: '2', previous: '', change: '' })
   })
 
-  it('maps markets to dashboard country codes and skips city-level or unlabelled markets', () => {
+  it('maps markets to dashboard country codes and skips city-only or unlabelled markets', () => {
     const weeks = [W3]
-    const sydney: OpenSeoMarket = { locationCode: 1000286, countryCode: 'AU', locationName: 'Sydney' }
+    // A city tracker carries its country's location code (OpenSEO stores
+    // Auckland under NZ's 2554); with no national NZ tracker it is not a
+    // country ranking, so it is skipped.
+    const auckland: OpenSeoMarket = { locationCode: 2554, countryCode: 'NZ', locationName: 'Auckland,New Zealand' }
     const unlabelled: OpenSeoMarket = { locationCode: 9999, countryCode: null, locationName: null }
     const { records } = normalizeExports([
       exportFor(
         'rooster.bet',
         weeks,
         [kw('rooster bet', {
-          '2036':    series(weeks, [1]),
-          '1000286': series(weeks, [2]),
-          '9999':    series(weeks, [3]),
+          '2036': series(weeks, [1]),
+          '2554': series(weeks, [2]),
+          '9999': series(weeks, [3]),
         })],
-        [AU, sydney, unlabelled],
+        [AU, auckland, unlabelled],
       ),
     ])
     expect(records.map((r) => [r.country, r.position])).toEqual([['AU', '1']])
+  })
+
+  it('refuses a city tracker that shares its national market, rather than report its ranks as national', () => {
+    // OpenSEO's export keys cells by location code, and a city tracker uses
+    // the same code as the national one — the two are merged and
+    // indistinguishable, so any record from that code could be either.
+    const sydney: OpenSeoMarket = { locationCode: 2036, countryCode: 'AU', locationName: 'Sydney,New South Wales,Australia' }
+    expect(() =>
+      normalizeExports([
+        exportFor('rooster.bet', [W3], [kw('rooster bet', { '2036': series([W3], [41]) })], [AU, sydney]),
+      ]),
+    ).toThrow(/rooster\.bet.*Sydney/)
   })
 
   it('keeps only BP domains, canonicalised', () => {
@@ -145,12 +160,14 @@ describe('normalizeExports', () => {
   })
 
   it('collapses a domain listed twice to one row per keyword and country, newer check wins', () => {
-    const { records } = normalizeExports([
-      exportFor('rooster.bet', [W3], [kw('Rooster Bet', { '2036': series([W3], [5]) })]),
-      exportFor('www.rooster.bet', [W2], [kw('rooster bet', { '2036': series([W2], [9]) })]),
-    ])
-    expect(records).toHaveLength(1)
-    expect(records[0]).toMatchObject({ domain: 'rooster.bet', position: '5', date: W3 })
+    const newer = exportFor('rooster.bet', [W3], [kw('Rooster Bet', { '2036': series([W3], [5]) })])
+    const older = exportFor('www.rooster.bet', [W2], [kw('rooster bet', { '2036': series([W2], [9]) })])
+    // Whichever order the two listings arrive in.
+    for (const batch of [[newer, older], [older, newer]]) {
+      const { records } = normalizeExports(batch)
+      expect(records).toHaveLength(1)
+      expect(records[0]).toMatchObject({ domain: 'rooster.bet', position: '5', date: W3 })
+    }
   })
 
   it('returns no records for an empty export', () => {

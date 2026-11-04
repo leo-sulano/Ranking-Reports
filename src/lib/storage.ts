@@ -59,6 +59,30 @@ export async function loadSnapshotMeta(): Promise<SnapshotMeta[]> {
   return (snaps ?? []).map(toSnapshotMeta)
 }
 
+/** The id a snapshot for (category, rawDate) is stored under — and replaced by. */
+export function snapshotIdFor(category: CategoryId, rawDate: string): string {
+  return `snap-${category}-${rawDate}`
+}
+
+/**
+ * The stored snapshot a write for (category, rawDate) would collide with, or
+ * null.
+ *
+ * Asks the database rather than the page's loaded state, which can be empty
+ * (still loading, or a failed load) or partial (only the most recent snapshots
+ * are hydrated). A match by id is the destructive case: upsertSnapshot deletes
+ * by id before it inserts, with no guard of its own.
+ */
+export async function findStoredSnapshot(category: CategoryId, rawDate: string): Promise<SnapshotMeta | null> {
+  const { data, error } = await supabase
+    .from('snapshots')
+    .select('id, raw_date, display_date, category, source')
+    .eq('raw_date', rawDate)
+  if (error) throw error
+  const id = snapshotIdFor(category, rawDate)
+  return (data ?? []).map(toSnapshotMeta).find((m) => m.id === id || m.category === category) ?? null
+}
+
 /**
  * Fetch + page + dedupe ranking_records for an explicit, caller-bounded list
  * of snapshot ids. Returns a Map keyed by snapshot_id so callers can zip the

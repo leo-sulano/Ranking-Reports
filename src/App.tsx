@@ -13,7 +13,7 @@ import {
 } from './lib/parser'
 import {
   loadRecentSnapshots, loadOlderSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields,
-  DEFAULT_RECENT_PER_CATEGORY,
+  findStoredSnapshot, snapshotIdFor, DEFAULT_RECENT_PER_CATEGORY,
 } from './lib/storage'
 import { logActivity } from './lib/activityLog'
 import { getInitialTheme, applyTheme, saveTheme, type Theme } from './lib/theme'
@@ -177,7 +177,7 @@ function Layout() {
   ): Promise<Snapshot | null> => {
     const { rawDate, records } = parsed
     const displayDate = formatDisplayDate(rawDate)
-    const newId       = `snap-${category}-${rawDate || Date.now()}`
+    const newId       = rawDate ? snapshotIdFor(category, rawDate) : `snap-${category}-${Date.now()}`
     const newSnap: Snapshot = { id: newId, category, rawDate, displayDate, source, records }
 
     try {
@@ -320,6 +320,21 @@ function Layout() {
       const dupe = state.snapshots.find((s) => s.category === 'bp-sites' && s.rawDate === rawDate)
       if (dupe) {
         setDuplicateWarning({ existing: dupe, pendingRecords: records, unknownDomains, source: 'sync' })
+        return
+      }
+
+      // The loaded state is not the whole truth: it is empty until the first
+      // load finishes (and after a failed one), and holds only the most recent
+      // snapshots. The write below deletes by id, so ask the database before
+      // writing — a sync must never replace a snapshot it could not show the
+      // duplicate warning for. A failed lookup throws: nothing is written.
+      const stored = await findStoredSnapshot('bp-sites', rawDate)
+      if (controller.signal.aborted) return
+      if (stored) {
+        addToast(
+          `Sync stopped: a ${stored.displayDate} snapshot is already saved but this page has not loaded it yet — nothing was changed. Reload the page, then sync again.`,
+          'error',
+        )
         return
       }
 

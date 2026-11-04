@@ -290,3 +290,23 @@
 - A fresh reviewer reads the whole branch before the PR.
 - Ship it per the Ranking-Reports workflow: PR from the sandbox account; merge with `--merge --delete-branch` after the user's go-ahead; kanban task In Progress → Done.
 - `OPENSEO_RANKINGS_API_KEY` must be in Vercel (Production and Preview) before the merge, because merging deploys Production.
+
+## Amendments after the branch review (2026-11-04)
+
+The fresh review found one critical issue and three important ones. These change the design calls above:
+
+- **Design call 7 → `weeks=52`**, the endpoint's maximum. The run-date axis is shared by all markets of a domain, so re-runs in one market could push the other markets out of an 8-date window and silently drop their rows.
+- **Design call 5, cron only.** The cron skips writing when more than half the records kept an earlier check (`MAX_OLDER_SHARE` in `api/cron-sync.ts`), and logs "covers only X of Y records".
+  - A one-tracker test run must not date a new week unattended.
+  - The manual sync still writes, with the count shown in the toast and the summary.
+- **Design call 6.** OpenSEO stores a city tracker under its country's location code, and its export merges the two.
+  - A city tracker beside a national one for a BP domain now fails the sync, with operator wording.
+  - A city tracker with no national twin is still skipped.
+- **Design call 9.** Before writing, the manual sync asks the database (`findStoredSnapshot`) whether a snapshot for that date exists, and refuses if the page hasn't loaded it.
+  - The loaded state is empty during the first load and after a failed one.
+  - The write deletes by id, so without this check a click during the load could replace the hand-built Nov 3 upload.
+- **New behavior:**
+  - `OPENSEO_BASE_URL` must be https, because the key rides on every request.
+  - A body that stalls past the request timeout is retried like any other transport failure.
+  - After the first failure, the exports still in flight are cancelled.
+  - The cron's undated guard is restored (plan Task 3). It can't fire today, but a miss would mint a self-perpetuating junk snapshot.

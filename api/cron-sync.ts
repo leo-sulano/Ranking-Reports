@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { bearerToken } from './_lib/requestAuth.js'
 import { formatDisplayDate } from './_lib/displayDate.js'
-import { fetchBpExports, openSeoConfig } from './_lib/openseo.js'
+import { fetchBpExports, isAbortLike, openSeoConfig } from './_lib/openseo.js'
 import { countOlderChecks, normalizeExports } from './_lib/sitesNormalize.js'
 import {
   createAdminClient, decideWrite, findSnapshot, logCronActivity, writeSnapshot,
@@ -28,11 +28,15 @@ const REQUEST_TIMEOUT_MS = 20_000
 
 const CATEGORY = 'bp-sites'
 
-/** True for the error a fired deadline rejects fetch with (a real timeout signal says TimeoutError). */
-function isAbortLike(err: unknown): boolean {
-  const name = (err as { name?: string } | null)?.name
-  return name === 'AbortError' || name === 'TimeoutError'
-}
+/**
+ * The cron writes a snapshot only when OpenSEO's newest run covers at least
+ * half of the records. With every tracker run by hand, a one-tracker test run
+ * would otherwise date a new "week" that is almost all old checks — and BP
+ * Sites colours movement against the previous snapshot, so it would show
+ * changes no check measured. Unattended, skip it and say why; someone can
+ * still sync by hand and read the "kept an earlier check" count.
+ */
+const MAX_OLDER_SHARE = 0.5
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -59,11 +63,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: (err as Error).message })
   }
 
-  const openseo = openSeoConfig(process.env)
+  // Every run is supposed to leave exactly one activity_log row, /log being
+  // the cron's only history — so a misconfigured deployment must not fail
+  // silently twice a week.
+  let openseo
+  try {
+    openseo = openSeoConfig(process.env)
+  } catch (err) {
+    const summary = `Scheduled sync failed: ${(err as Error).message}`
+    await logCronActivity(admin, CATEGORY, summary)
+    return res.status(500).json({ ok: false, error: summary })
+  }
   if (!openseo) {
-    // Every run is supposed to leave exactly one activity_log row, /log being
-    // the cron's only history — so a misconfigured deployment must not fail
-    // silently twice a week.
     const summary = 'Scheduled sync failed: OPENSEO_RANKINGS_API_KEY is not configured on the server'
     await logCronActivity(admin, CATEGORY, summary)
     return res.status(500).json({ ok: false, error: summary })
@@ -74,8 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const exports = await fetchBpExports(openseo, { signal: deadline, requestTimeoutMs: REQUEST_TIMEOUT_MS })
-    // Every record carries its run date, so a non-empty batch always has a
-    // rawDate — the undated guard the Ranks API needed has nothing to catch.
     const { records, rawDate } = normalizeExports(exports)
 
     if (records.length === 0) {
@@ -84,8 +93,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, outcome: 'empty', summary })
     }
 
+    // Unreachable today — every OpenSEO record carries its run date — but the
+    // cost of a miss is high: writing '' would mint `snap-bp-sites-` labelled
+    // 'Unknown Date', and since the next run recomputes the same '' and finds
+    // its own source: 'sync' row, it would replace rather than supersede it, so
+    // the junk snapshot would never self-correct. The upload path refuses an
+    // empty rawDate too (src/App.tsx).
+    if (!rawDate) {
+      const summary = 'Scheduled sync — records carried no usable check date; nothing written'
+      await logCronActivity(admin, CATEGORY, summary)
+      return res.status(200).json({ ok: true, outcome: 'undated', summary })
+    }
+
+    const display = formatDisplayDate(rawDate)
+    const older   = countOlderChecks(records, rawDate)
+    if (older > records.length * MAX_OLDER_SHARE) {
+      const fresh = records.length - older
+      const summary = `Scheduled sync — skipped ${display}: OpenSEO's newest run covers only ${fresh.toLocaleString()} of ${records.length.toLocaleString()} records; nothing written`
+      await logCronActivity(admin, CATEGORY, summary)
+      return res.status(200).json({ ok: true, outcome: 'partial', summary })
+    }
+
     const id       = `snap-${CATEGORY}-${rawDate}`
-    const display  = formatDisplayDate(rawDate)
     const existing = await findSnapshot(admin, CATEGORY, rawDate)
     const decision = decideWrite(existing)
 
@@ -103,10 +132,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       records,
     })
 
-    // A partial OpenSEO run leaves some keywords on an older check. Say so, so
-    // the snapshot cannot pass for a full fresh week in /log.
-    const older = countOlderChecks(records, rawDate)
-    const note  = older > 0 ? `; ${older.toLocaleString()} kept an earlier check` : ''
+    // A run that covered most but not all keywords still says how many kept
+    // an older check, so /log shows it was not a full fresh week.
+    const note = older > 0 ? `; ${older.toLocaleString()} kept an earlier check` : ''
     const summary =
       decision === 'replace'
         ? `Scheduled sync — replaced ${display} (${records.length.toLocaleString()} records)${note}`

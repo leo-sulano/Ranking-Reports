@@ -44,10 +44,11 @@ export function DuplicateWarning({ data, onClose, onDelete, writeGate }: Props) 
             {source === 'sync' ? (
               <>
                 OpenSEO&apos;s newest check date matches an existing snapshot. Replacing it will overwrite any manual edits stored on that snapshot.
-                {/* A hand upload may hold corrections OpenSEO does not have —
-                    e.g. a file merged from two checks — so say so plainly. */}
+                {/* Human work may hold corrections OpenSEO does not have — e.g.
+                    a file merged from two checks. Any source other than 'sync'
+                    loads as 'upload', and a hand edit sets it too. */}
                 {existing.source === 'upload' && (
-                  <> <span className="font-semibold text-[var(--ink)]">This snapshot was uploaded by hand</span> — replacing it swaps that file&apos;s rankings for OpenSEO&apos;s.</>
+                  <> <span className="font-semibold text-[var(--ink)]">This snapshot was uploaded or edited by a person</span> — replacing it swaps that work for OpenSEO&apos;s rankings.</>
                 )}
               </>
             ) : (
