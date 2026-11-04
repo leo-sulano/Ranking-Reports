@@ -310,3 +310,10 @@ The fresh review found one critical issue and three important ones. These change
   - A body that stalls past the request timeout is retried like any other transport failure.
   - After the first failure, the exports still in flight are cancelled.
   - The cron's undated guard is restored (plan Task 3). It can't fire today, but a miss would mint a self-perpetuating junk snapshot.
+- **After the re-review (all findings closed; minor notes):**
+  - The sync and the single-file upload share `findExistingSnapshot`. It checks loaded state first, then the database, and hydrates a stored match, so the normal duplicate warning shows it.
+    - This replaces a "reload and retry" refusal, which couldn't help when the stored snapshot is older than the 8 loaded ones.
+    - The upload path had the same first-load race, which predated this branch.
+  - Plain http is allowed for a loopback `OPENSEO_BASE_URL` only.
+  - The normalizer's operator-worded refusal is a `SyncDataError`, which the proxy shows verbatim.
+  - **Known limit, kept on purpose:** the cron's 50% rule compares UTC run dates. A batch whose trackers are started one by one across 00:00 UTC (08:00 PHT) can be skipped by the cron. That fails safe: it's logged, and a manual sync still writes. A batch launched at once shares one date.

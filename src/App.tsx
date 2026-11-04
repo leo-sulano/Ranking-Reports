@@ -13,7 +13,7 @@ import {
 } from './lib/parser'
 import {
   loadRecentSnapshots, loadOlderSnapshots, upsertSnapshot, deleteSnapshot, updateRecordFields,
-  findStoredSnapshot, snapshotIdFor, DEFAULT_RECENT_PER_CATEGORY,
+  findExistingSnapshot, snapshotIdFor, DEFAULT_RECENT_PER_CATEGORY,
 } from './lib/storage'
 import { logActivity } from './lib/activityLog'
 import { getInitialTheme, applyTheme, saveTheme, type Theme } from './lib/theme'
@@ -232,7 +232,16 @@ function Layout() {
     // Single-snapshot path (flat-format upload) — preserve duplicate-warning UX.
     if (snapshots.length === 1) {
       const parsed = snapshots[0]
-      const dupe = state.snapshots.find((s) => s.category === category && s.rawDate === parsed.rawDate)
+      // Loaded state first, then the database — see findExistingSnapshot. The
+      // write below deletes by id, so it must never run blind.
+      let dupe: Snapshot | null
+      try {
+        dupe = await findExistingSnapshot(state.snapshots, category, parsed.rawDate)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        addToast(`Import stopped — could not check for an existing snapshot (${msg}). Nothing was saved.`, 'error')
+        return
+      }
       if (dupe) {
         setShowUpload(false)
         setDuplicateWarning({ existing: dupe, pendingRecords: parsed.records, unknownDomains, source: 'upload' })
@@ -317,24 +326,15 @@ function Layout() {
         return
       }
 
-      const dupe = state.snapshots.find((s) => s.category === 'bp-sites' && s.rawDate === rawDate)
+      // Loaded state first, then the database: until the first load finishes
+      // (or after a failed one) the page knows of no snapshots, it only ever
+      // holds the most recent ones, and the write below deletes by id. So a
+      // sync never replaces a snapshot without the duplicate warning for it.
+      // A failed lookup throws into the catch: nothing is written.
+      const dupe = await findExistingSnapshot(state.snapshots, 'bp-sites', rawDate)
+      if (controller.signal.aborted) return
       if (dupe) {
         setDuplicateWarning({ existing: dupe, pendingRecords: records, unknownDomains, source: 'sync' })
-        return
-      }
-
-      // The loaded state is not the whole truth: it is empty until the first
-      // load finishes (and after a failed one), and holds only the most recent
-      // snapshots. The write below deletes by id, so ask the database before
-      // writing — a sync must never replace a snapshot it could not show the
-      // duplicate warning for. A failed lookup throws: nothing is written.
-      const stored = await findStoredSnapshot('bp-sites', rawDate)
-      if (controller.signal.aborted) return
-      if (stored) {
-        addToast(
-          `Sync stopped: a ${stored.displayDate} snapshot is already saved but this page has not loaded it yet — nothing was changed. Reload the page, then sync again.`,
-          'error',
-        )
         return
       }
 

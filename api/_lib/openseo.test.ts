@@ -76,6 +76,12 @@ describe('openSeoConfig', () => {
       .toEqual({ key: 'k', baseUrl: 'https://x.example' })
   })
 
+  it('allows plain http only for a local OpenSEO', () => {
+    for (const local of ['http://localhost:8787', 'http://127.0.0.1:8787', 'http://[::1]:8787']) {
+      expect(openSeoConfig({ OPENSEO_RANKINGS_API_KEY: 'k', OPENSEO_BASE_URL: local })).toEqual({ key: 'k', baseUrl: local })
+    }
+  })
+
   it('refuses a base URL that is not https, without echoing it', () => {
     // The key rides on every request, so it must never go out over plain http.
     for (const bad of ['http://x.example', 'not a url']) {

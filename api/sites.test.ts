@@ -268,6 +268,27 @@ describe('api/sites', () => {
     expect(fetched).toEqual([null, 'rooster.bet'])
   })
 
+  it('passes the normalizer\'s operator wording through verbatim when OpenSEO data cannot be trusted', async () => {
+    // A city tracker sharing rooster.bet's national AU code: the export merges them.
+    fetchMock.mockImplementation(async (input: unknown) => {
+      const domain = new URL(String(input)).searchParams.get('domain')
+      if (domain === null) return json({ domains: ['rooster.bet'] })
+      return json({
+        domain,
+        weeks: ['2026-11-03'],
+        markets: [
+          { locationCode: 2036, countryCode: 'AU', locationName: null },
+          { locationCode: 2036, countryCode: 'AU', locationName: 'Sydney,New South Wales,Australia' },
+        ],
+        keywords: [],
+      })
+    })
+    const res = makeRes()
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(res.json.mock.calls[0][0].error).toMatch(/^OpenSEO tracks rooster\.bet both nationally and in Sydney/)
+  })
+
   it("passes OpenSEO's key rejection through as a 502 with the operator wording", async () => {
     fetchMock.mockImplementation(async () => json({ error: 'unauthorized' }, 401))
     const res = makeRes()

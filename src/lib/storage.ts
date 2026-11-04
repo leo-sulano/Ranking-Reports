@@ -83,6 +83,35 @@ export async function findStoredSnapshot(category: CategoryId, rawDate: string):
   return (data ?? []).map(toSnapshotMeta).find((m) => m.id === id || m.category === category) ?? null
 }
 
+export interface ExistingSnapshotDeps {
+  findStored: (category: CategoryId, rawDate: string) => Promise<SnapshotMeta | null>
+  hydrate:    (meta: SnapshotMeta[]) => Promise<Snapshot[]>
+}
+
+/**
+ * The snapshot a write for (category, rawDate) would replace, with its records
+ * — or null when there is none.
+ *
+ * Checks the page's loaded snapshots first, then the database, because the
+ * loaded state is empty until the first load finishes (and after a failed
+ * one) and only ever holds the most recent snapshots. A stored match is
+ * hydrated so the duplicate warning can show what would be replaced. A failed
+ * lookup throws, and the caller writes nothing.
+ */
+export async function findExistingSnapshot(
+  loaded:   Snapshot[],
+  category: CategoryId,
+  rawDate:  string,
+  deps:     ExistingSnapshotDeps = { findStored: findStoredSnapshot, hydrate: loadOlderSnapshots },
+): Promise<Snapshot | null> {
+  const inPage = loaded.find((s) => s.category === category && s.rawDate === rawDate)
+  if (inPage) return inPage
+  const stored = await deps.findStored(category, rawDate)
+  if (!stored) return null
+  const [hydrated] = await deps.hydrate([stored])
+  return hydrated ?? null
+}
+
 /**
  * Fetch + page + dedupe ranking_records for an explicit, caller-bounded list
  * of snapshot ids. Returns a Map keyed by snapshot_id so callers can zip the

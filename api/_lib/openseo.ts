@@ -39,22 +39,27 @@ export class OpenSeoError extends Error {
   }
 }
 
+/** Plain http is allowed only to this machine — a local OpenSEO worker under development. */
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+
 /**
  * null when the key is not configured — the caller words that for its own
  * audience. Throws an OpenSeoError when OPENSEO_BASE_URL is set but is not an
- * https URL: the key rides on every request, so it never goes out in clear.
+ * https URL (or http to this machine): the key rides on every request, so it
+ * never goes out in clear.
  */
 export function openSeoConfig(env: Record<string, string | undefined>): OpenSeoConfig | null {
   const key = env.OPENSEO_RANKINGS_API_KEY?.trim()
   if (!key) return null
   const baseUrl = (env.OPENSEO_BASE_URL?.trim() || DEFAULT_OPENSEO_BASE_URL).replace(/\/+$/, '')
-  let protocol = ''
+  let url: URL | null = null
   try {
-    protocol = new URL(baseUrl).protocol
+    url = new URL(baseUrl)
   } catch {
     // Reported below without echoing the value.
   }
-  if (protocol !== 'https:') throw new OpenSeoError(BAD_BASE_URL)
+  const secure = url?.protocol === 'https:' || (url?.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname))
+  if (!secure) throw new OpenSeoError(BAD_BASE_URL)
   return { key, baseUrl }
 }
 

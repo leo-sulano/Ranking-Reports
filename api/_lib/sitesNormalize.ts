@@ -84,6 +84,17 @@ export function canonicalDomain(raw: string | null | undefined): string {
 
 const RUN_DATE = /^\d{4}-\d{2}-\d{2}$/
 
+/**
+ * OpenSEO answered, but with data the sync cannot turn into honest records.
+ * Its message is already worded for the operator, so callers show it as is.
+ */
+export class SyncDataError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SyncDataError'
+  }
+}
+
 /** A real rank, or null for "not found" (and for anything that is not a positive number). */
 function asRank(p: number | null | undefined): number | null {
   return typeof p === 'number' && Number.isFinite(p) && p > 0 ? p : null
@@ -150,7 +161,7 @@ export function normalizeExports(exports: OpenSeoExport[]): NormalizeResult {
     // stop the sync: another client's trackers are not ours to judge.
     if (known && merged.length > 0) {
       const { code, city } = merged[0]
-      throw new Error(
+      throw new SyncDataError(
         `OpenSEO tracks ${domain} both nationally and in ${city.split(',')[0]} under one location (${code}), and its export merges the two — archive one of those trackers to sync`,
       )
     }

@@ -3,7 +3,7 @@ import {
   bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
 } from './_lib/requestAuth.js'
 import { OpenSeoError, fetchBpExports, isAbortLike, openSeoConfig } from './_lib/openseo.js'
-import { normalizeExports } from './_lib/sitesNormalize.js'
+import { SyncDataError, normalizeExports } from './_lib/sitesNormalize.js'
 
 /**
  * Vercel kills a function at `maxDuration` (10s Hobby / 15s Pro by default),
@@ -101,11 +101,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: `OpenSEO did not respond within ${TIMEOUT_MS / 1000} seconds`,
       })
     }
-    // OpenSeoError messages are already worded for the toast and never carry
-    // the upstream URL or the key.
+    // OpenSeoError and SyncDataError messages are already worded for the toast
+    // and never carry the upstream URL or the key.
+    const worded = err instanceof OpenSeoError || err instanceof SyncDataError
     return res.status(502).json({
       ok: false,
-      error: err instanceof OpenSeoError ? err.message : `Could not sync from OpenSEO: ${(err as Error).message}`,
+      error: worded ? (err as Error).message : `Could not sync from OpenSEO: ${(err as Error).message}`,
     })
   }
 }
