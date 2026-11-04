@@ -1,41 +1,37 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { bearerToken } from './_lib/requestAuth.js'
 import { formatDisplayDate } from './_lib/displayDate.js'
-import { ALLOWED_ACTIONS, MAX_LIMIT, buildRanksUrl, fetchRanksPage } from './_lib/ranks.js'
-import { fetchAllRows, PAGE_SIZE } from './_lib/ranksPaging.js'
-import { normalizeRows, type ApiRow } from './_lib/sitesNormalize.js'
+import { fetchBpExports, openSeoConfig } from './_lib/openseo.js'
+import { countOlderChecks, normalizeExports } from './_lib/sitesNormalize.js'
 import {
   createAdminClient, decideWrite, findSnapshot, logCronActivity, writeSnapshot,
 } from './_lib/snapshotStore.js'
 
-/** Hobby caps functions at 60s. A run is ~10-15s, so the headroom is real. */
+/** Hobby caps functions at 60s. A run takes a few seconds, so the headroom is real. */
 export const config = { maxDuration: 60 }
 
 /**
- * One budget for ALL upstream pages combined, started at handler entry.
+ * One budget for ALL upstream requests combined, started at handler entry.
  *
- * A per-page timeout cannot protect this handler: three-plus sequential pages
- * each granted their own ceiling can outlast maxDuration between them, and a
- * platform kill runs neither the catch below nor logCronActivity — so the run
- * would leave no activity_log row at all, which is the one thing /log is
- * supposed to guarantee about the cron. 35s of fetching leaves ~25s for the
- * four writes, which take ~2s, so the deadline always fires before Vercel does.
+ * A per-request timeout cannot protect this handler: the domain list plus
+ * dozens of exports, each granted its own ceiling, can outlast maxDuration
+ * between them, and a platform kill runs neither the catch below nor
+ * logCronActivity — so the run would leave no activity_log row at all, which
+ * is the one thing /log is supposed to guarantee about the cron. 35s of
+ * fetching leaves ~25s for the four writes, which take ~2s, so the deadline
+ * always fires before Vercel does.
  */
 const FETCH_BUDGET_MS = 35_000
 
-/** Per-page ceiling, so one wedged page cannot silently eat the whole budget. */
-const PAGE_TIMEOUT_MS = 20_000
+/** Per-request ceiling, so one wedged export cannot silently eat the whole budget. */
+const REQUEST_TIMEOUT_MS = 20_000
 
 const CATEGORY = 'bp-sites'
 
-// Response.json() resolves to Promise<unknown> (undici-types, in effect here
-// because the api tsconfig has no DOM lib). Left as bare unknown, TS narrows
-// `body?.ok` to `{}` after the non-nullish check and every property access
-// below fails to compile — an explicit shape sidesteps that narrowing quirk.
-interface RanksApiResponse {
-  ok?:    boolean
-  error?: string
-  data?:  unknown
+/** True for the error a fired deadline rejects fetch with (a real timeout signal says TimeoutError). */
+function isAbortLike(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name
+  return name === 'AbortError' || name === 'TimeoutError'
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -63,55 +59,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: (err as Error).message })
   }
 
-  const key = process.env.SITES_API_KEY
-  if (!key) {
+  const openseo = openSeoConfig(process.env)
+  if (!openseo) {
     // Every run is supposed to leave exactly one activity_log row, /log being
     // the cron's only history — so a misconfigured deployment must not fail
     // silently twice a week.
-    const summary = 'Scheduled sync failed: SITES_API_KEY is not configured on the server'
+    const summary = 'Scheduled sync failed: OPENSEO_RANKINGS_API_KEY is not configured on the server'
     await logCronActivity(admin, CATEGORY, summary)
     return res.status(500).json({ ok: false, error: summary })
   }
 
-  // Started once, here, and shared by every page below — see FETCH_BUDGET_MS.
+  // Started once, here, and shared by every request below — see FETCH_BUDGET_MS.
   const deadline = AbortSignal.timeout(FETCH_BUDGET_MS)
 
   try {
-    const action = 'results'
-    if (!ALLOWED_ACTIONS.has(action)) throw new Error(`Unsupported action "${action}"`)
-
-    const rows = await fetchAllRows(async (offset) => {
-      const url = buildRanksUrl(action, Math.min(PAGE_SIZE, MAX_LIMIT), offset)
-      const upstream = await fetchRanksPage(key, url, PAGE_TIMEOUT_MS, deadline)
-      const body = (await upstream.json().catch(() => null)) as RanksApiResponse | null
-      if (!upstream.ok || body?.ok === false) {
-        throw new Error(body?.error ?? `the Ranks API returned HTTP ${upstream.status}`)
-      }
-      if (!Array.isArray(body?.data)) {
-        throw new Error('the Ranks API returned an unexpected payload (no data array)')
-      }
-      return body.data as ApiRow[]
-    })
-
-    const { records, unknownDomains, rawDate } = normalizeRows(rows)
+    const exports = await fetchBpExports(openseo, { signal: deadline, requestTimeoutMs: REQUEST_TIMEOUT_MS })
+    // Every record carries its run date, so a non-empty batch always has a
+    // rawDate — the undated guard the Ranks API needed has nothing to catch.
+    const { records, rawDate } = normalizeExports(exports)
 
     if (records.length === 0) {
-      const summary = `Scheduled sync — 0 Rooster rows after filtering; nothing written (${unknownDomains.length} foreign domains)`
+      const summary = 'Scheduled sync — OpenSEO has no BP rankings; nothing written'
       await logCronActivity(admin, CATEGORY, summary)
       return res.status(200).json({ ok: true, outcome: 'empty', summary })
-    }
-
-    // normalizeRows returns '' when no kept row had a parseable checked_at,
-    // while still returning the records. Writing that would mint an id of
-    // `snap-bp-sites-` labelled 'Unknown Date', sorting below every real
-    // snapshot — and because the next run recomputes the same '' and finds its
-    // own source: 'sync' row, it would replace it rather than supersede it, so
-    // the junk snapshot never self-corrects. The upload path already refuses an
-    // empty rawDate (src/App.tsx); refuse it here for the same reason.
-    if (!rawDate) {
-      const summary = 'Scheduled sync — records carried no usable checked_at date; nothing written'
-      await logCronActivity(admin, CATEGORY, summary)
-      return res.status(200).json({ ok: true, outcome: 'undated', summary })
     }
 
     const id       = `snap-${CATEGORY}-${rawDate}`
@@ -133,24 +103,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       records,
     })
 
+    // A partial OpenSEO run leaves some keywords on an older check. Say so, so
+    // the snapshot cannot pass for a full fresh week in /log.
+    const older = countOlderChecks(records, rawDate)
+    const note  = older > 0 ? `; ${older.toLocaleString()} kept an earlier check` : ''
     const summary =
       decision === 'replace'
-        ? `Scheduled sync — replaced ${display} (${records.length.toLocaleString()} records)`
-        : `Scheduled sync — ${records.length.toLocaleString()} records (${display})`
+        ? `Scheduled sync — replaced ${display} (${records.length.toLocaleString()} records)${note}`
+        : `Scheduled sync — ${records.length.toLocaleString()} records (${display})${note}`
     await logCronActivity(admin, CATEGORY, summary)
     return res.status(200).json({ ok: true, outcome: decision, summary, records: records.length })
   } catch (err) {
-    // A budget abort arrives as undici's bare "This operation was aborted",
-    // which in /log would read as an unexplained failure. Name the real cause.
+    // A budget abort arrives as a bare "This operation was aborted" (or "…due
+    // to timeout"), which in /log would read as an unexplained failure. Name
+    // the real cause.
     //
     // Both halves of this condition are load-bearing. The deadline keeps
     // ticking through the write phase, so `deadline.aborted` alone would relabel
     // an unrelated write failure that happened to land after the budget expired
     // — burying the real error in the cron's only history. Requiring the error
     // to actually BE an abort keeps the two apart.
-    const timedOut = (err as Error)?.name === 'AbortError' && deadline.aborted
+    const timedOut = isAbortLike(err) && deadline.aborted
     const message = timedOut
-      ? `the run exceeded its ${FETCH_BUDGET_MS / 1000}s fetch budget — the Ranks API did not finish responding in time`
+      ? `the run exceeded its ${FETCH_BUDGET_MS / 1000}s fetch budget — OpenSEO did not finish responding in time`
       : (err as Error).message
     const summary = `Scheduled sync failed: ${message}`
     await logCronActivity(admin, CATEGORY, summary)

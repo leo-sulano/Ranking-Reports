@@ -2,13 +2,13 @@ import type { RankingRecord } from '../types'
 import type { UnknownDomain } from './parser'
 import type { SyncRecord, SkippedDomain } from '../../api/_lib/sitesNormalize.js'
 
-// The normalizer moved to api/_lib so the cron can use it. This file stays the
-// frontend's import site.
-export type { ApiRow, NormalizeResult } from '../../api/_lib/sitesNormalize.js'
-export {
-  normalizeRows, canonicalDomain, positionToString, changeToString,
-  checkedAtDate, reduceLatest,
+// The normalizer lives in api/_lib so the proxy and the cron share it. This
+// file stays the frontend's import site. (The browser never normalizes —
+// /api/sites returns records — but it reads the types and the date helper.)
+export type {
+  NormalizeResult, OpenSeoCell, OpenSeoExport, OpenSeoKeyword, OpenSeoMarket,
 } from '../../api/_lib/sitesNormalize.js'
+export { canonicalDomain, countOlderChecks } from '../../api/_lib/sitesNormalize.js'
 
 /**
  * api/_lib declares its own record types because it cannot import from src/.

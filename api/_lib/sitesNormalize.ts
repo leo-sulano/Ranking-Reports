@@ -1,32 +1,48 @@
 // SHIPS IN THE BROWSER BUNDLE — src/lib/sitesNormalize.ts re-exports from here,
 // so being under api/ does not make this server code. No secrets, no
 // process.env, no node: imports. (Server-only neighbours, where those are fine:
-// ranks.ts, snapshotStore.ts, requestAuth.ts, ssoPortal.ts.)
+// openseo.ts, snapshotStore.ts, requestAuth.ts, ssoPortal.ts.)
 //
-// One implementation for both ingest paths. See its doc comment: carry-forward
-// keys on a byte-compared country, so a second, subtly different normalizer
-// here would break GSV/SV/AFF inheritance between synced and uploaded
-// snapshots. Project 0 returns codes COUNTRY_LABELS already maps to
-// themselves, and an unrecognised value is uppercased and kept rather than
-// dropped — it surfaces in the summary's Countries count.
+// One implementation for both sync paths — the Sync button's proxy and the
+// cron. Countries go through the xlsx parser's own normalizeCountry: carry-
+// forward keys on a byte-compared country, so a second, subtly different
+// normalizer here would break GSV/SV/AFF inheritance between synced and
+// uploaded snapshots.
 import { DOMAIN_TO_BRAND, normalizeCountry } from './brands.js'
 
-/**
- * One row as the Ranks API actually returns it. Types are deliberately loose:
- * the upstream is PHP and has been observed returning ints where the vendor doc
- * promises null, so every field is coerced rather than trusted.
- */
-export interface ApiRow {
-  domain:            string
-  keyword:           string
-  country:           string | null
-  language?:         string | null
-  position:          number | string | null
-  previous_position: number | string | null
-  change:            number | string | null
-  url_found:         string | null
-  checked_at:        string | null
-  project_id?:       number
+/** One cell of OpenSEO's rank export: one keyword, in one market, on one run date. */
+export interface OpenSeoCell {
+  /** null = checked, but not found within the tracker's SERP depth. */
+  position: number | null
+  /**
+   * OpenSEO's last RANKED position, skipping not-found weeks. Not used: the
+   * dashboard's Previous column means the previous check, found or not.
+   */
+  previous: number | null
+  status:   string
+}
+
+export interface OpenSeoMarket {
+  locationCode: number
+  /** Short code the export carries, e.g. "AU". */
+  countryCode:  string | null
+  /** Set only for city-level trackers, which are not country rankings. */
+  locationName: string | null
+}
+
+export interface OpenSeoKeyword {
+  keyword: string
+  /** locationCode -> run date -> cell. A missing date means that run never checked the keyword. */
+  cells:   Record<string, Record<string, OpenSeoCell>>
+}
+
+/** GET /api/public/rankings?domain=… — only the fields the sync reads. */
+export interface OpenSeoExport {
+  domain:   string
+  /** Run dates (the run's UTC start date, YYYY-MM-DD), ascending. */
+  weeks:    string[]
+  markets:  OpenSeoMarket[]
+  keywords: OpenSeoKeyword[]
 }
 
 /**
@@ -55,124 +71,129 @@ export interface SkippedDomain {
 
 export interface NormalizeResult {
   records:        SyncRecord[]
-  /** Rows dropped because the domain is not in BRANDS, counted per domain, busiest first. */
+  /** Exports dropped because the domain is not in BRANDS, counted in keyword × market pairs, busiest first. */
   unknownDomains: SkippedDomain[]
-  /** Newest checked_at date among the KEPT rows; '' when none. */
+  /** Newest record date; '' when there are no records. */
   rawDate:        string
 }
 
-/** Lowercase, trim, drop a leading `www.` — the upstream mixes all three forms. */
+/** Lowercase, trim, drop a leading `www.`. */
 export function canonicalDomain(raw: string | null | undefined): string {
   return (raw ?? '').trim().toLowerCase().replace(/^www\./, '')
 }
 
-/**
- * The API signals "not ranking" with 0 far more often than with null — 403 of
- * 1,109 Rooster rows are 0, while the vendor doc mentions only null. Treat
- * both, plus anything non-positive or unparseable, as NR.
- */
-export function positionToString(p: number | string | null | undefined): string {
-  if (p === null || p === undefined || p === '') return 'NR'
-  const n = Number(p)
-  if (!Number.isFinite(n) || n <= 0) return 'NR'
-  return String(n)
+const RUN_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** A real rank, or null for "not found" (and for anything that is not a positive number). */
+function asRank(p: number | null | undefined): number | null {
+  return typeof p === 'number' && Number.isFinite(p) && p > 0 ? p : null
 }
 
-/** Signed movement string. Positive means the rank improved. */
-export function changeToString(c: number | string | null | undefined): string {
-  if (c === null || c === undefined || c === '') return ''
-  const n = Number(c)
-  if (!Number.isFinite(n)) return ''
-  if (n === 0) return '0'
-  return n > 0 ? `+${n}` : String(n)
+function rankString(rank: number | null): string {
+  return rank === null ? 'NR' : String(rank)
 }
 
-/** Date portion of a checked_at value. Accepts 'YYYY-MM-DD HH:MM:SS' and ISO. */
-export function checkedAtDate(s: string | null | undefined): string {
-  if (!s) return ''
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim())
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : ''
+/** Signed movement, positive = improved. Only when both checks found the site. */
+function changeString(previous: number | null, current: number | null): string {
+  if (previous === null || current === null) return ''
+  const delta = previous - current
+  if (delta === 0) return '0'
+  return delta > 0 ? `+${delta}` : String(delta)
 }
 
-/**
- * Normalise a timestamp into a directly-comparable form: ISO 'T' becomes a
- * space and a trailing 'Z' is dropped. Without this a raw string compare would
- * rank any ISO row above any space-separated row on the same date ('T' is 0x54,
- * ' ' is 0x20) regardless of actual clock time.
- */
-function comparableTimestamp(s: string | null | undefined): string {
-  return (s ?? '').replace('T', ' ').replace(/Z$/, '')
+/** locationCode -> dashboard country code, for country-level markets only. */
+function marketCountries(markets: OpenSeoMarket[]): Map<string, string> {
+  const countries = new Map<string, string>()
+  for (const market of markets ?? []) {
+    if (market.locationName) continue
+    const country = normalizeCountry(market.countryCode)
+    if (country) countries.set(String(market.locationCode), country)
+  }
+  return countries
 }
 
 /**
- * Keep only the newest row per (domain, keyword, country).
+ * One record per (domain, keyword, country), from that pair's newest checked
+ * run date in the export.
  *
- * A no-op against project 0 today — every key appears exactly once. It stays as
- * a guard: BIF-Dashboard observed up to 6 rows per key on project 18, because
- * `action=results` is a check log rather than current state. A row with an
- * empty timestamp sorts lowest, which is what we want.
+ * A date with no cell was not checked, so it never becomes 'NR' — the record
+ * keeps the newest real check, and its own date says how old that is. A pair
+ * with no checked date in the window gets no record at all.
  */
-export function reduceLatest(rows: ApiRow[]): ApiRow[] {
-  const best = new Map<string, ApiRow>()
-  for (const r of rows) {
-    const key = [
-      canonicalDomain(r.domain),
-      (r.keyword ?? '').trim().toLowerCase(),
-      normalizeCountry(r.country),
-    ].join('|')
-    const prev = best.get(key)
-    if (!prev || comparableTimestamp(r.checked_at) > comparableTimestamp(prev.checked_at)) {
-      best.set(key, r)
+export function normalizeExports(exports: OpenSeoExport[]): NormalizeResult {
+  const skipped = new Map<string, number>()
+  const newest = new Map<string, SyncRecord>()
+
+  for (const report of exports) {
+    const domain = canonicalDomain(report.domain)
+    const known = Boolean(DOMAIN_TO_BRAND[domain])
+    const countries = marketCountries(report.markets)
+
+    for (const entry of report.keywords ?? []) {
+      const keyword = (entry.keyword ?? '').trim()
+      for (const [locationCode, byDate] of Object.entries(entry.cells ?? {})) {
+        const country = countries.get(locationCode)
+        if (!country || !byDate) continue
+        // Sorted here rather than trusting `weeks`: the cell keys are exactly
+        // the dates this keyword was checked in this market.
+        const checked = Object.keys(byDate)
+          .filter((d) => RUN_DATE.test(d) && byDate[d])
+          .sort()
+        if (checked.length === 0) continue
+        if (!known) {
+          skipped.set(domain, (skipped.get(domain) ?? 0) + 1)
+          continue
+        }
+
+        const date = checked[checked.length - 1]
+        const previousDate = checked.length > 1 ? checked[checked.length - 2] : null
+        const rank = asRank(byDate[date].position)
+        const previousRank = previousDate ? asRank(byDate[previousDate].position) : null
+
+        const record: SyncRecord = {
+          domain,
+          keyword,
+          country,
+          position: rankString(rank),
+          previous: previousDate ? rankString(previousRank) : '',
+          change:   previousDate ? changeString(previousRank, rank) : '',
+          date,
+          // Not in the export. Carry-forward inherits them from the previous
+          // snapshot, as it did for the Ranks API.
+          searchVolume:       '',
+          affiliateUrl:       '',
+          globalSearchVolume: '',
+        }
+
+        // The same site can be listed twice (www. and bare) and the same text
+        // can differ only in case: keep one row, from the newer check.
+        const key = `${domain}|${keyword.toLowerCase()}|${country}`
+        const held = newest.get(key)
+        if (!held || record.date > held.date) newest.set(key, record)
+      }
     }
   }
-  return [...best.values()]
-}
 
-export function normalizeRows(rows: ApiRow[]): NormalizeResult {
-  const skippedCounts = new Map<string, number>()
-  const kept: ApiRow[] = []
-
-  // DOMAIN_TO_BRAND is the only filter — NOT project_id. The 56 project-18 rows
-  // on shared Rooster domains use the same keyword vocabulary as project 0 and
-  // fill (domain, keyword, country) keys project 0 did not check that week.
-  for (const r of reduceLatest(rows)) {
-    const domain = canonicalDomain(r.domain)
-    if (!DOMAIN_TO_BRAND[domain]) {
-      skippedCounts.set(domain, (skippedCounts.get(domain) ?? 0) + 1)
-      continue
-    }
-    kept.push(r)
-  }
-
-  // Date the snapshot from the retained rows only: a foreign domain's later
-  // checked_at must never date a batch that does not contain it.
+  const records = [...newest.values()].sort((a, b) =>
+    a.domain.localeCompare(b.domain) || a.keyword.localeCompare(b.keyword) || a.country.localeCompare(b.country),
+  )
   let rawDate = ''
-  for (const r of kept) {
-    const d = checkedAtDate(r.checked_at)
-    if (d > rawDate) rawDate = d
-  }
+  for (const r of records) if (r.date > rawDate) rawDate = r.date
 
-  const records: SyncRecord[] = kept.map((r) => ({
-    domain:   canonicalDomain(r.domain),
-    keyword:  (r.keyword ?? '').trim(),
-    country:  normalizeCountry(r.country),
-    position: positionToString(r.position),
-    previous: positionToString(r.previous_position),
-    change:   changeToString(r.change),
-    // An undated row stays undated. Falling back to the batch date would stamp
-    // a never-crawled row as freshly checked and destroy the only signal
-    // separating "the vendor never looked" from "looked and found nothing".
-    date:     checkedAtDate(r.checked_at),
-    // Not supplied by the API. applyCarryForward inherits them from the
-    // previous snapshot, which is exactly what it was built for.
-    searchVolume:       '',
-    affiliateUrl:       '',
-    globalSearchVolume: '',
-  }))
-
-  const unknownDomains: SkippedDomain[] = [...skippedCounts.entries()]
+  const unknownDomains: SkippedDomain[] = [...skipped.entries()]
     .map(([domain, count]) => ({ domain, count }))
     .sort((a, b) => b.count - a.count || a.domain.localeCompare(b.domain))
 
   return { records, unknownDomains, rawDate }
+}
+
+/**
+ * Records whose newest check is older than the snapshot date — keywords the
+ * latest OpenSEO run did not cover. Surfaced so a partial run cannot pass for
+ * a fresh week.
+ */
+export function countOlderChecks(records: { date: string }[], rawDate: string): number {
+  let older = 0
+  for (const r of records) if (r.date && r.date < rawDate) older++
+  return older
 }

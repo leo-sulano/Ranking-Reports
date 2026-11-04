@@ -195,7 +195,7 @@ export function Sidebar({
         <div className="p-2 border-t border-[var(--border-3)] shrink-0">
           <button
             onClick={onSyncFromApi}
-            title={writeGate.title ?? 'Pull the latest BP rankings from the Ranks API'}
+            title={writeGate.title ?? 'Pull the latest BP rankings from OpenSEO'}
             disabled={writeGate.disabled || syncing}
             className="w-full flex items-center gap-3 px-3 py-2 mb-2 bg-transparent border border-[var(--border-2)] text-[var(--text-2)] rounded-lg text-[12px] font-bold transition-all hover:border-[var(--brand-blue)] hover:text-[var(--ink)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >

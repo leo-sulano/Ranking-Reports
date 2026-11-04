@@ -2,23 +2,32 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
 } from './_lib/requestAuth.js'
-import { ALLOWED_ACTIONS, MAX_LIMIT, buildRanksUrl, clampInt, fetchRanksPage } from './_lib/ranks.js'
+import { OpenSeoError, fetchBpExports, openSeoConfig } from './_lib/openseo.js'
+import { normalizeExports } from './_lib/sitesNormalize.js'
 
 /**
  * Vercel kills a function at `maxDuration` (10s Hobby / 15s Pro by default),
- * which is *below* the timeout this handler used to set — so the crafted 504
- * could never fire and the caller got a platform error instead. Raise the
+ * which is *below* the timeout this handler sets — so the crafted 504 could
+ * never fire and the caller would get a platform error instead. Raise the
  * ceiling explicitly and keep the fetch timeout comfortably under it, so a slow
  * upstream always comes back as our own 504.
  */
 export const config = { maxDuration: 60 }
 const TIMEOUT_MS = 45_000
 
-/** Vercel gives repeated query params as an array; take the first. */
-function first(raw: unknown): string | undefined {
-  return Array.isArray(raw) ? (raw[0] as string | undefined) : (raw as string | undefined)
+/** True for the error a fired deadline rejects fetch with. */
+function isAbortLike(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name
+  return name === 'AbortError' || name === 'TimeoutError'
 }
 
+/**
+ * The Sync button's one request: every BP ranking OpenSEO holds, already
+ * normalized into dashboard records.
+ *
+ * Answers `{ ok: true, data: { records, unknownDomains, rawDate } }`, or
+ * `{ ok: false, error, code? }` where `error` is already worded for the toast.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -34,9 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!token) {
     return res.status(401).json({
       ok: false,
-      // `code` separates OUR 401 from an upstream 401, which is passed through
-      // with the same status but means "the vendor rejected SITES_API_KEY".
-      // The client words those two very differently.
+      // `code` marks OUR refusal of the caller, as opposed to an upstream
+      // failure, so the client can word the two differently.
       code: 'unauthenticated',
       error: 'Sign in to sync — this request carried no Supabase session',
     })
@@ -72,41 +80,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  const key = process.env.SITES_API_KEY
-  if (!key) {
+  const openseo = openSeoConfig(process.env)
+  if (!openseo) {
     return res.status(500).json({
       ok: false,
-      error: 'SITES_API_KEY is not configured on the server',
+      error: 'OPENSEO_RANKINGS_API_KEY is not configured on the server',
     })
   }
 
-  const action = first(req.query.action) ?? 'results'
-  if (!ALLOWED_ACTIONS.has(action)) {
-    return res.status(400).json({ ok: false, error: `Unsupported action "${action}"` })
-  }
-
-  const limit  = clampInt(req.query.limit,  1, MAX_LIMIT,  MAX_LIMIT)
-  const offset = clampInt(req.query.offset, 0, 10_000_000, 0)
-  const url = buildRanksUrl(action, limit, offset)
-
+  // One deadline for the whole fan-out (domain list + every export).
+  const deadline = AbortSignal.timeout(TIMEOUT_MS)
   try {
-    const upstream = await fetchRanksPage(key, url, TIMEOUT_MS)
-    const body = await upstream.text()
-
-    // Surface the upstream status so the client can tell a revoked key (401)
-    // from an outage (5xx). Never echo the request URL — it is built from
-    // secret-bearing config.
-    res.status(upstream.status)
-    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    const result = normalizeExports(await fetchBpExports(openseo, { signal: deadline }))
     res.setHeader('Cache-Control', 'no-store')
-    return res.send(body)
+    return res.status(200).json({ ok: true, data: result })
   } catch (err) {
-    const timedOut = err instanceof Error && err.name === 'TimeoutError'
-    return res.status(504).json({
+    if (deadline.aborted && isAbortLike(err)) {
+      return res.status(504).json({
+        ok: false,
+        error: `OpenSEO did not respond within ${TIMEOUT_MS / 1000} seconds`,
+      })
+    }
+    // OpenSeoError messages are already worded for the toast and never carry
+    // the upstream URL or the key.
+    return res.status(502).json({
       ok: false,
-      error: timedOut
-        ? `The sites service did not respond within ${TIMEOUT_MS / 1000} seconds`
-        : `Could not reach the sites service: ${(err as Error).message}`,
+      error: err instanceof OpenSeoError ? err.message : `Could not sync from OpenSEO: ${(err as Error).message}`,
     })
   }
 }

@@ -1,18 +1,15 @@
 import { supabase } from './supabase'
-import type { ApiRow } from './sitesNormalize'
-export { PAGE_SIZE, fetchAllRows } from '../../api/_lib/ranksPaging.js'
-import { PAGE_SIZE, fetchAllRows } from '../../api/_lib/ranksPaging.js'
+import type { NormalizeResult } from './sitesNormalize'
 
 export class SitesApiError extends Error {
   status: number | null
   /**
    * The proxy's own machine-readable reason, when it set one:
-   * - `'unauthenticated'` (401) — no valid Supabase session. Distinguishes our
-   *   401 from an upstream 401 passed through with the same status, which means
-   *   the vendor rejected `SITES_API_KEY` and reads very differently.
+   * - `'unauthenticated'` (401) — no valid Supabase session.
    * - `'unapproved'` (403) — a valid session whose account an admin has not
-   *   approved. Its `error` text is already user-facing, so callers surface it
-   *   verbatim rather than branching on the code.
+   *   approved.
+   * Either way the `error` text is already user-facing, so callers surface it
+   * verbatim rather than branching on the code.
    */
   code: string | null
   constructor(message: string, status: number | null = null, code: string | null = null) {
@@ -29,16 +26,16 @@ function isAbort(err: unknown): boolean {
 }
 
 /**
- * Turn one proxy response into rows, or throw the error the user will read.
+ * Turn the proxy's response into a sync result, or throw the error the user
+ * will read.
  *
- * Split out from `fetchProxyPage` because this — not the transport — is what
- * decides the wording of every sync failure. Three shapes reach here:
- * a non-2xx status, a 2xx envelope with `ok: false`, and a success envelope
- * with no `data` array. The proxy's own errors (401 no session, 500 naming
- * `SITES_API_KEY`, 504 timeout) all arrive as `body.error` and are surfaced
- * verbatim, so the message the server wrote is the message the user sees.
+ * Split out from `fetchSync` because this — not the transport — decides the
+ * wording of every sync failure. The proxy words its own errors (no session,
+ * unapproved, missing OPENSEO_RANKINGS_API_KEY, OpenSEO rejecting the key or
+ * timing out) as `body.error`, and they are surfaced verbatim, so the message
+ * the server wrote is the message the user sees.
  */
-export function parsePageBody(res: { ok: boolean; status: number }, body: unknown): ApiRow[] {
+export function parseSyncBody(res: { ok: boolean; status: number }, body: unknown): NormalizeResult {
   const payload = body as { ok?: unknown; error?: unknown; data?: unknown; code?: unknown } | null
 
   if (!res.ok || payload?.ok === false) {
@@ -49,23 +46,25 @@ export function parsePageBody(res: { ok: boolean; status: number }, body: unknow
     const code = typeof payload?.code === 'string' ? payload.code : null
     throw new SitesApiError(error, res.status, code)
   }
-  if (!Array.isArray(payload?.data)) {
-    throw new SitesApiError('Sites service returned an unexpected payload (no data array)', res.status)
+
+  const data = payload?.data as Partial<NormalizeResult> | undefined
+  if (!Array.isArray(data?.records) || !Array.isArray(data?.unknownDomains) || typeof data?.rawDate !== 'string') {
+    throw new SitesApiError('The sync service returned an unexpected payload', res.status)
   }
-  return payload.data as ApiRow[]
+  return data as NormalizeResult
 }
 
 /**
- * Fetch one page from our own proxy. Never talks to the upstream directly.
+ * Every BP ranking OpenSEO holds, already normalized, from our own proxy —
+ * never from OpenSEO directly, which needs a server-only key.
  *
- * The proxy requires the caller's Supabase session — it is a read of live
- * ranking data, gated exactly like every other read in the app. A missing
- * token is still sent (headerless) rather than short-circuited here, so the
- * single source of truth for "who may sync" stays server-side.
+ * The proxy requires the caller's Supabase session; a missing token is still
+ * sent (headerless) rather than short-circuited here, so the single source of
+ * truth for "who may sync" stays server-side. `signal` cancels the request —
+ * the rejection is the raw `AbortError`, which the caller uses to skip the
+ * failure toast.
  */
-export async function fetchProxyPage(offset: number, signal?: AbortSignal): Promise<ApiRow[]> {
-  const url = `/api/sites?action=results&limit=${PAGE_SIZE}&offset=${offset}`
-
+export async function fetchSync(signal?: AbortSignal): Promise<NormalizeResult> {
   let token: string | undefined
   try {
     const { data } = await supabase.auth.getSession()
@@ -76,7 +75,7 @@ export async function fetchProxyPage(offset: number, signal?: AbortSignal): Prom
 
   let res: Response
   try {
-    res = await fetch(url, {
+    res = await fetch('/api/sites', {
       signal,
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
@@ -84,22 +83,9 @@ export async function fetchProxyPage(offset: number, signal?: AbortSignal): Prom
     // A cancel is the user's choice, not a failure: propagate it untouched so
     // the caller can tell the two apart.
     if (isAbort(err)) throw err
-    throw new SitesApiError(`Could not reach the sites service: ${(err as Error).message}`)
+    throw new SitesApiError(`Could not reach the dashboard's sync service: ${(err as Error).message}`)
   }
 
   const body = await res.json().catch(() => null)
-  return parsePageBody(res, body)
-}
-
-/**
- * Every ranking row the caller can see, paged to completion.
- *
- * `signal` cancels an in-flight sync — the rejection is the raw `AbortError`,
- * which the caller uses to skip the failure toast.
- */
-export function fetchSitesRows(
-  onProgress?: (rows: number) => void,
-  signal?: AbortSignal,
-): Promise<ApiRow[]> {
-  return fetchAllRows((offset) => fetchProxyPage(offset, signal), onProgress)
+  return parseSyncBody(res, body)
 }

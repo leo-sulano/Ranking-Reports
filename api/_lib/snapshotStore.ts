@@ -1,6 +1,5 @@
-// SERVER-ONLY. Unlike brands.ts, sitesNormalize.ts and ranksPaging.ts in this
-// same directory, nothing in src/ may import this file — it runs on the
-// service-role key.
+// SERVER-ONLY. Unlike brands.ts and sitesNormalize.ts in this same directory,
+// nothing in src/ may import this file — it runs on the service-role key.
 //
 // The "never overwrites human work" guarantee lives in the CALLER, not here:
 // decideWrite returns a verdict and writeSnapshot has no internal guard, so a
