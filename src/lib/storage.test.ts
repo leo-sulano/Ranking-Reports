@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { findExistingSnapshot, findStoredSnapshot } from './storage'
+import { findExistingSnapshot, findStoredSnapshot, loadSnapshotRecords } from './storage'
 import type { Snapshot, SnapshotMeta } from '../types'
 
 // findStoredSnapshot asks the database, not the page's loaded state, whether a
@@ -11,24 +11,61 @@ const query = vi.hoisted(() => ({
   filter: [] as unknown[],
   result: { data: [] as unknown[] | null, error: null as { message: string } | null },
 }))
-vi.mock('./supabase', () => ({
-  supabase: {
-    from: (table: string) => {
-      query.table = table
-      return {
-        select: (cols: string) => {
-          query.cols = cols
-          return {
-            eq: (column: string, value: unknown) => {
-              query.filter = [column, value]
-              return Promise.resolve(query.result)
-            },
-          }
-        },
-      }
-    },
-  },
+
+// A stand-in ranking_records table for loadSnapshotRecords. Without an ORDER BY,
+// Postgres may return each LIMIT/OFFSET page in a different order (the planner
+// picks its plan from the offset), so this fake returns the first page in id
+// order and every later page in reverse, unless the query asks for id order.
+const recordsTable = vi.hoisted(() => ({
+  rows: [] as { id: number; snapshot_id: string; domain: string; keyword: string; country: string }[],
 }))
+
+vi.mock('./supabase', () => {
+  function recordsQuery(head: boolean) {
+    let ids: string[] = []
+    let byId = false
+    let from = 0
+    let to = Infinity
+    const q = {
+      in: (column: string, values: string[]) => { if (column === 'snapshot_id') ids = values; return q },
+      order: (column: string, opts?: { ascending?: boolean }) => { byId = column === 'id' && opts?.ascending !== false; return q },
+      range: (a: number, b: number) => { from = a; to = b; return q },
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
+        const matching = recordsTable.rows.filter((r) => ids.includes(r.snapshot_id))
+        if (head) return Promise.resolve({ count: matching.length, error: null }).then(resolve, reject)
+        const ascending = byId || from === 0
+        const ordered = [...matching].sort((x, y) => (ascending ? x.id - y.id : y.id - x.id))
+        return Promise.resolve({ data: ordered.slice(from, to + 1), error: null }).then(resolve, reject)
+      },
+    }
+    return q
+  }
+  return {
+    supabase: {
+      from: (name: string) => {
+        query.table = name
+        return {
+          select: (cols: string, opts?: { head?: boolean }) => {
+            query.cols = cols
+            if (name === 'ranking_records') return recordsQuery(opts?.head === true)
+            return {
+              eq: (column: string, value: unknown) => {
+                query.filter = [column, value]
+                return Promise.resolve(query.result)
+              },
+            }
+          },
+        }
+      },
+    },
+  }
+})
+
+function storedRecords(snapshotId: string, count: number, firstId: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: firstId + i, snapshot_id: snapshotId, domain: 'rooster.bet', keyword: `keyword ${i}`, country: 'AU',
+  }))
+}
 
 function row(over: Record<string, unknown> = {}) {
   return {
@@ -46,6 +83,19 @@ beforeEach(() => {
   query.cols = ''
   query.filter = []
   query.result = { data: [], error: null }
+  recordsTable.rows = []
+})
+
+// The page load fetches records 1,000 at a time. Pages without a fixed order
+// can overlap and skip rows, so a whole snapshot can load empty: the duplicate
+// warning once showed "Records stored: 0" for a snapshot holding 1,110 rows.
+describe('loadSnapshotRecords', () => {
+  it('returns every stored row even when the database orders each page differently', async () => {
+    recordsTable.rows = [...storedRecords('snap-a', 1500, 1), ...storedRecords('snap-b', 1000, 1501)]
+    const byId = await loadSnapshotRecords(['snap-a', 'snap-b'])
+    expect(byId.get('snap-a')).toHaveLength(1500)
+    expect(byId.get('snap-b')).toHaveLength(1000)
+  })
 })
 
 describe('findStoredSnapshot', () => {
