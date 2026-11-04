@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { findExistingSnapshot, findStoredSnapshot } from './storage'
+import { PAGE, findExistingSnapshot, findStoredSnapshot, loadSnapshotRecords } from './storage'
 import type { Snapshot, SnapshotMeta } from '../types'
 
 // findStoredSnapshot asks the database, not the page's loaded state, whether a
@@ -11,24 +11,74 @@ const query = vi.hoisted(() => ({
   filter: [] as unknown[],
   result: { data: [] as unknown[] | null, error: null as { message: string } | null },
 }))
-vi.mock('./supabase', () => ({
-  supabase: {
-    from: (table: string) => {
-      query.table = table
-      return {
-        select: (cols: string) => {
-          query.cols = cols
-          return {
-            eq: (column: string, value: unknown) => {
-              query.filter = [column, value]
-              return Promise.resolve(query.result)
-            },
-          }
-        },
-      }
-    },
-  },
+
+// A stand-in ranking_records table for loadSnapshotRecords. Postgres may plan
+// each LIMIT/OFFSET page differently, and rows an ORDER BY leaves tied (every
+// row, with no ORDER BY) come back in that plan's order. This fake's "plan"
+// returns ties in id order on the first page and in reverse on later pages.
+const recordsTable = vi.hoisted(() => ({
+  rows: [] as { id: number; snapshot_id: string; domain: string; keyword: string; country: string }[],
 }))
+
+vi.mock('./supabase', () => {
+  type Row = (typeof recordsTable.rows)[number]
+  function recordsQuery(head: boolean) {
+    let ids: string[] = []
+    let orderBy: { column: keyof Row; ascending: boolean } | null = null
+    let from = 0
+    let to = Infinity
+    const q = {
+      in: (column: string, values: string[]) => { if (column === 'snapshot_id') ids = values; return q },
+      order: (column: string, opts?: { ascending?: boolean }) => {
+        orderBy = { column: column as keyof Row, ascending: opts?.ascending !== false }
+        return q
+      },
+      range: (a: number, b: number) => { from = a; to = b; return q },
+      then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
+        const matching = recordsTable.rows.filter((r) => ids.includes(r.snapshot_id))
+        if (head) return Promise.resolve({ count: matching.length, error: null }).then(resolve, reject)
+        const by = orderBy
+        const planOrder = from === 0 ? 1 : -1
+        const ordered = [...matching].sort((x, y) => {
+          if (by) {
+            const a = x[by.column]
+            const b = y[by.column]
+            const cmp = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b))
+            if (cmp !== 0) return by.ascending ? cmp : -cmp
+          }
+          return (x.id - y.id) * planOrder
+        })
+        return Promise.resolve({ data: ordered.slice(from, to + 1), error: null }).then(resolve, reject)
+      },
+    }
+    return q
+  }
+  return {
+    supabase: {
+      from: (name: string) => {
+        query.table = name
+        return {
+          select: (cols: string, opts?: { head?: boolean }) => {
+            query.cols = cols
+            if (name === 'ranking_records') return recordsQuery(opts?.head === true)
+            return {
+              eq: (column: string, value: unknown) => {
+                query.filter = [column, value]
+                return Promise.resolve(query.result)
+              },
+            }
+          },
+        }
+      },
+    },
+  }
+})
+
+function storedRecords(snapshotId: string, count: number, firstId: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: firstId + i, snapshot_id: snapshotId, domain: 'rooster.bet', keyword: `keyword ${i}`, country: 'AU',
+  }))
+}
 
 function row(over: Record<string, unknown> = {}) {
   return {
@@ -46,6 +96,21 @@ beforeEach(() => {
   query.cols = ''
   query.filter = []
   query.result = { data: [], error: null }
+  recordsTable.rows = []
+})
+
+// The page load fetches records 1,000 at a time. Pages without a fixed order
+// can overlap and skip rows, so a whole snapshot can load empty: the duplicate
+// warning once showed "Records stored: 0" for a snapshot holding 1,110 rows.
+describe('loadSnapshotRecords', () => {
+  it('returns every stored row even when the database orders each page differently', async () => {
+    // Two and a half pages, whatever PAGE is: snap-b lands on the later pages.
+    const aRows = Math.round(PAGE * 1.5)
+    recordsTable.rows = [...storedRecords('snap-a', aRows, 1), ...storedRecords('snap-b', PAGE, aRows + 1)]
+    const byId = await loadSnapshotRecords(['snap-a', 'snap-b'])
+    expect(byId.get('snap-a')).toHaveLength(aRows)
+    expect(byId.get('snap-b')).toHaveLength(PAGE)
+  })
 })
 
 describe('findStoredSnapshot', () => {

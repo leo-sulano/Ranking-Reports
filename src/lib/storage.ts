@@ -24,7 +24,7 @@ type RecordRow = {
 }
 
 const RECORD_COLS = 'snapshot_id, domain, keyword, country, position, previous, change, date, search_volume, affiliate_url, global_search_volume'
-const PAGE = 1000
+export const PAGE = 1000
 
 function toSnapshotMeta(
   s: { id: string; raw_date: string; display_date: string; category: string | null; source: string | null },
@@ -120,6 +120,11 @@ export async function findExistingSnapshot(
  * Paginated in parallel (1 + ceil(N/PAGE) round trips) rather than
  * sequentially — the count query tells us how many pages to fetch, then all
  * pages fire at once.
+ *
+ * Every page is ordered by the primary key. Without an ORDER BY, Postgres may
+ * plan each LIMIT/OFFSET page differently and return its rows in a different
+ * order, so the pages overlap and skip rows: whole snapshots loaded empty
+ * while the database held every one of their rows.
  */
 export async function loadSnapshotRecords(ids: string[]): Promise<Map<string, RankingRecord[]>> {
   const byId = new Map<string, Map<string, RankingRecord>>()
@@ -138,6 +143,7 @@ export async function loadSnapshotRecords(ids: string[]): Promise<Map<string, Ra
       .from('ranking_records')
       .select(RECORD_COLS)
       .in('snapshot_id', ids)
+      .order('id', { ascending: true })
       .range(i * PAGE, i * PAGE + PAGE - 1)
   )
   const pages = await Promise.all(pagePromises)
