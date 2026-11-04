@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { RankingRecord } from '../types'
 import type { UnknownDomain } from '../lib/parser'
 import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from '../lib/brands'
+import { countOlderChecks } from '../lib/sitesNormalize'
 import { ChevronDown, X, AlertCircle, Info, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
@@ -109,6 +110,14 @@ export function UploadSummary({ data, onClose }: Props) {
     [records],
   )
   const unknownTotal = unknownDomains.reduce((s, u) => s + u.count, 0)
+  // Sync only: keywords OpenSEO's newest run did not cover keep their last
+  // real check (never NR), so say how many — a partial run must not pass for
+  // a full fresh week.
+  const olderChecks = useMemo(() => {
+    let newest = ''
+    for (const r of records) if (r.date && r.date > newest) newest = r.date
+    return countOlderChecks(records, newest)
+  }, [records])
 
   // All brands expanded by default — first impression should reveal everything
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(brands.map((b) => b.name)))
@@ -156,6 +165,18 @@ export function UploadSummary({ data, onClose }: Props) {
             <Stat label="Domains"   value={domainCount} />
             <Stat label="Countries" value={countryCount} />
           </div>
+
+          {source === 'sync' && olderChecks > 0 && (
+            <p className="mb-4 flex items-center gap-2 px-3 py-2 text-[12px] leading-snug text-[var(--muted)] bg-[var(--surface-2)] border border-[var(--border)] rounded-md">
+              <Info size={13} strokeWidth={2.25} className="shrink-0" />
+              <span>
+                <span className="font-semibold">
+                  {olderChecks.toLocaleString()} record{olderChecks !== 1 ? 's' : ''}
+                </span>{' '}
+                kept an earlier check — OpenSEO&apos;s newest run did not cover {olderChecks !== 1 ? 'them' : 'it'}.
+              </span>
+            </p>
+          )}
 
           {unknownDomains.length > 0 && (
             <UnknownDomainsPanel
@@ -218,10 +239,11 @@ const SYNC_DOMAIN_CAP = 8
  *
  * - **upload** — an unrecognised domain means the file has something
  *   unexpected in it. Alarm styling, expanded, complete list.
- * - **sync** — the endpoint returns every project's rows and ~60% of them are
- *   other projects', on every sync, forever, by design. Dressing that up as an
- *   error would make every successful sync look like a failure, so it reads as
- *   a neutral note, collapsed, with the list capped.
+ * - **sync** — the server only fetches BP domains from OpenSEO, so this is
+ *   normally empty; anything that does slip through is another client's site,
+ *   not a fault. Dressing that up as an error would make a successful sync
+ *   look like a failure, so it reads as a neutral note, collapsed, with the
+ *   list capped.
  */
 function UnknownDomainsPanel({
   total,

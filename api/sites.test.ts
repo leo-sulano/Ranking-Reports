@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler, { config } from './sites.js'
+import { KEY_REJECTED } from './_lib/openseo.js'
 
 // The handler resolves the caller's Supabase token through supabase-js, then
 // reads their user_access row through it. Stub the SDK so the tests never touch
@@ -31,7 +32,7 @@ type MockRes = VercelResponse & {
 /** A signed-in caller. Pass `headers: {}` explicitly to test the anonymous case. */
 function makeReq(
   method: string,
-  query: Record<string, string | string[]>,
+  query: Record<string, string | string[]> = {},
   headers: Record<string, string> = { authorization: 'Bearer good-token' },
 ): VercelRequest {
   return { method, query, headers } as unknown as VercelRequest
@@ -46,21 +47,45 @@ function makeRes(): MockRes {
   return res as MockRes
 }
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+/** OpenSEO answering for one BP domain: rooster.bet, "rooster bet", AU, position 3 on 2026-11-03. */
+function openSeo(input: unknown, init: RequestInit = {}): Response {
+  if (init.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
+  const domain = new URL(String(input)).searchParams.get('domain')
+  if (domain === null) return json({ domains: ['rooster.bet', 'example.com'] })
+  return json({
+    domain,
+    weeks: ['2026-11-03'],
+    markets: [{ locationCode: 2036, countryCode: 'AU', locationName: null }],
+    keywords: [{
+      keyword: 'rooster bet',
+      cells: { '2036': { '2026-11-03': { position: 3, previous: null, status: 'new' } } },
+    }],
+  })
+}
+
 let fetchMock: ReturnType<typeof vi.fn>
 const savedEnv: Record<string, string | undefined> = {}
-const MANAGED_ENV = ['SITES_API_KEY', 'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY']
+const MANAGED_ENV = [
+  'OPENSEO_RANKINGS_API_KEY', 'OPENSEO_BASE_URL',
+  'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY',
+]
 
 beforeEach(() => {
   for (const name of MANAGED_ENV) savedEnv[name] = process.env[name]
-  process.env.SITES_API_KEY       = 'bpn_test'
-  process.env.SUPABASE_URL        = 'https://project.supabase.co'
-  process.env.SUPABASE_ANON_KEY   = 'anon_test'
+  process.env.OPENSEO_RANKINGS_API_KEY = 'osk_test'
+  process.env.OPENSEO_BASE_URL         = 'https://openseo.test'
+  process.env.SUPABASE_URL             = 'https://project.supabase.co'
+  process.env.SUPABASE_ANON_KEY        = 'anon_test'
   getUserMock.mockReset()
   getUserMock.mockResolvedValue({ data: { user: { id: 'user-1', email: 'a@b.co' } }, error: null })
   maybeSingleMock.mockReset()
   maybeSingleMock.mockResolvedValue({ data: { status: 'approved' }, error: null })
   createClientSpy.mockReset()
-  fetchMock = vi.fn(async () => new Response('{"ok":true,"data":[]}', { status: 200 }))
+  fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => openSeo(input, init))
   vi.stubGlobal('fetch', fetchMock)
 })
 
@@ -71,11 +96,6 @@ afterEach(() => {
   }
   vi.unstubAllGlobals()
 })
-
-/** The URL the handler asked fetch() for, as a URL object. */
-function calledUrl(): URL {
-  return new URL(String(fetchMock.mock.calls[0][0]))
-}
 
 describe('api/sites function config', () => {
   it('raises maxDuration above the fetch timeout so our own 504 can fire', () => {
@@ -88,18 +108,17 @@ describe('api/sites function config', () => {
 describe('api/sites auth gate', () => {
   it('rejects a request with no Authorization header with 401', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }, {}), res)
+    await handler(makeReq('GET', {}, {}), res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json.mock.calls[0][0].error).toMatch(/sign in/i)
-    // Tagged so the client can tell it apart from an upstream 401, which is
-    // passed through with the same status but means the API key was rejected.
+    // Tagged so the client can tell it apart from an upstream failure.
     expect(res.json.mock.calls[0][0].code).toBe('unauthenticated')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('rejects a malformed Authorization header with 401', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer' }), res)
+    await handler(makeReq('GET', {}, { authorization: 'Bearer' }), res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -107,7 +126,7 @@ describe('api/sites auth gate', () => {
   it('rejects a garbage token with 401 and never reaches the upstream', async () => {
     getUserMock.mockResolvedValue({ data: { user: null }, error: { message: 'invalid JWT' } })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer garbage' }), res)
+    await handler(makeReq('GET', {}, { authorization: 'Bearer garbage' }), res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json.mock.calls[0][0].error).toMatch(/expired|not valid/i)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -116,7 +135,7 @@ describe('api/sites auth gate', () => {
   it('fails closed when Supabase itself cannot be reached', async () => {
     getUserMock.mockRejectedValue(new Error('network down'))
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -125,24 +144,24 @@ describe('api/sites auth gate', () => {
     delete process.env.SUPABASE_URL
     delete process.env.VITE_SUPABASE_URL
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(500)
     expect(res.json.mock.calls[0][0].error).toContain('SUPABASE_URL')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('proxies through for a valid token, passing it to Supabase verbatim', async () => {
+  it('reaches OpenSEO for a valid token, passing it to Supabase verbatim', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer good-token' }), res)
+    await handler(makeReq('GET', {}, { authorization: 'Bearer good-token' }), res)
     expect(getUserMock).toHaveBeenCalledWith('good-token')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalled()
     expect(res.status).toHaveBeenCalledWith(200)
   })
 
   it('403s a signed-in user whose account is still pending', async () => {
     maybeSingleMock.mockResolvedValue({ data: { status: 'pending' }, error: null })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(res.json.mock.calls[0][0].code).toBe('unapproved')
     expect(fetchMock).not.toHaveBeenCalled()
@@ -151,7 +170,7 @@ describe('api/sites auth gate', () => {
   it('403s a revoked user', async () => {
     maybeSingleMock.mockResolvedValue({ data: { status: 'revoked' }, error: null })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -159,7 +178,7 @@ describe('api/sites auth gate', () => {
   it('fails closed when the user_access row is missing', async () => {
     maybeSingleMock.mockResolvedValue({ data: null, error: null })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -167,7 +186,7 @@ describe('api/sites auth gate', () => {
   it('fails closed when the approval lookup errors', async () => {
     maybeSingleMock.mockResolvedValue({ data: null, error: { message: 'relation does not exist' } })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -175,14 +194,14 @@ describe('api/sites auth gate', () => {
   it('fails closed when the approval lookup throws', async () => {
     maybeSingleMock.mockRejectedValue(new Error('network down'))
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('reads user_access AS the caller, so RLS limits it to their own row', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }, { authorization: 'Bearer good-token' }), res)
+    await handler(makeReq('GET', {}, { authorization: 'Bearer good-token' }), res)
     // The access client is the one built with the caller's bearer token; the
     // anon key alone would read nothing, and a service-role key would read
     // everything. Neither is what this path wants.
@@ -194,80 +213,97 @@ describe('api/sites auth gate', () => {
     expect(res.status).toHaveBeenCalledWith(200)
   })
 
-  it('never forwards the caller session to the upstream — only the API key', async () => {
+  it('never forwards the caller session to OpenSEO — only the API key', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
-    const init = fetchMock.mock.calls[0][1] as RequestInit
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer bpn_test')
+    await handler(makeReq('GET'), res)
+    expect(fetchMock).toHaveBeenCalled()
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = (init as RequestInit).headers as Record<string, string>
+      expect(headers.Authorization).toBeUndefined()
+      expect(headers['x-api-key']).toBe('osk_test')
+    }
   })
 })
 
 describe('api/sites', () => {
   it('rejects non-GET with 405', async () => {
     const res = makeRes()
-    await handler(makeReq('POST', {}), res)
+    await handler(makeReq('POST'), res)
     expect(res.status).toHaveBeenCalledWith(405)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('returns 500 naming the variable when the key is unset', async () => {
-    delete process.env.SITES_API_KEY
+  it('returns 500 naming OPENSEO_RANKINGS_API_KEY when it is unset', async () => {
+    delete process.env.OPENSEO_RANKINGS_API_KEY
     const res = makeRes()
-    await handler(makeReq('GET', {}), res)
+    await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json.mock.calls[0][0].error).toContain('SITES_API_KEY')
-  })
-
-  it('rejects an unsupported action with 400', async () => {
-    const res = makeRes()
-    await handler(makeReq('GET', { action: 'history' }), res)
-    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json.mock.calls[0][0].error).toContain('OPENSEO_RANKINGS_API_KEY')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('rejects `domains` too — only `results` has a caller', async () => {
+  it('returns 500 naming OPENSEO_BASE_URL when it is not https, without calling it', async () => {
+    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'domains' }), res)
-    expect(res.status).toHaveBeenCalledWith(400)
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json.mock.calls[0][0].error).toContain('OPENSEO_BASE_URL')
+    expect(res.json.mock.calls[0][0].error).not.toContain('insecure.example')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('never sends project_id — 0 is falsy upstream and would not filter', async () => {
+  it('returns normalized records for the BP domains', async () => {
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
-    expect(calledUrl().searchParams.has('project_id')).toBe(false)
-  })
-
-  it('sends the bearer key and clamps limit to 1000', async () => {
-    const res = makeRes()
-    await handler(makeReq('GET', { action: 'results', limit: '99999' }), res)
-    const init = fetchMock.mock.calls[0][1] as RequestInit
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer bpn_test')
-    expect(calledUrl().searchParams.get('limit')).toBe('1000')
-  })
-
-  it('clamps a negative offset to 0 and a garbage limit to the max', async () => {
-    const res = makeRes()
-    await handler(makeReq('GET', { action: 'results', limit: 'abc', offset: '-5' }), res)
-    expect(calledUrl().searchParams.get('limit')).toBe('1000')
-    expect(calledUrl().searchParams.get('offset')).toBe('0')
-  })
-
-  it('passes the upstream status and body through', async () => {
-    fetchMock.mockResolvedValueOnce(new Response('{"ok":false,"error":"nope"}', { status: 401 }))
-    const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
-    expect(res.status).toHaveBeenCalledWith(401)
-    expect(res.send).toHaveBeenCalledWith('{"ok":false,"error":"nope"}')
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(200)
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+    const body = res.json.mock.calls[0][0]
+    expect(body.ok).toBe(true)
+    expect(body.data.rawDate).toBe('2026-11-03')
+    expect(body.data.records).toEqual([
+      expect.objectContaining({ domain: 'rooster.bet', keyword: 'rooster bet', country: 'AU', position: '3', date: '2026-11-03' }),
+    ])
+    // example.com is another client's site: never fetched.
+    const fetched = fetchMock.mock.calls.map((c) => new URL(String(c[0])).searchParams.get('domain'))
+    expect(fetched).toEqual([null, 'rooster.bet'])
   })
 
-  it('turns a timeout into 504', async () => {
-    const err = new Error('timed out')
-    err.name = 'TimeoutError'
-    fetchMock.mockRejectedValueOnce(err)
+  it('passes the normalizer\'s operator wording through verbatim when OpenSEO data cannot be trusted', async () => {
+    // A city tracker sharing rooster.bet's national AU code: the export merges them.
+    fetchMock.mockImplementation(async (input: unknown) => {
+      const domain = new URL(String(input)).searchParams.get('domain')
+      if (domain === null) return json({ domains: ['rooster.bet'] })
+      return json({
+        domain,
+        weeks: ['2026-11-03'],
+        markets: [
+          { locationCode: 2036, countryCode: 'AU', locationName: null },
+          { locationCode: 2036, countryCode: 'AU', locationName: 'Sydney,New South Wales,Australia' },
+        ],
+        keywords: [],
+      })
+    })
     const res = makeRes()
-    await handler(makeReq('GET', { action: 'results' }), res)
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(res.json.mock.calls[0][0].error).toMatch(/^OpenSEO tracks rooster\.bet both nationally and in Sydney/)
+  })
+
+  it("passes OpenSEO's key rejection through as a 502 with the operator wording", async () => {
+    fetchMock.mockImplementation(async () => json({ error: 'unauthorized' }, 401))
+    const res = makeRes()
+    await handler(makeReq('GET'), res)
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(res.json.mock.calls[0][0]).toEqual({ ok: false, error: KEY_REJECTED })
+  })
+
+  it('turns the overall timeout into a 504 that names 45 seconds', async () => {
+    // Every AbortSignal.timeout() the handler creates comes back already
+    // expired — the same as a 45s OpenSEO stall, without the wait.
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort())
+    const res = makeRes()
+    await handler(makeReq('GET'), res)
+    spy.mockRestore()
     expect(res.status).toHaveBeenCalledWith(504)
     // Must stay under the function's own maxDuration, or the platform kills
     // the request before this 504 can be written.

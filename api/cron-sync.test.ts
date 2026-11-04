@@ -44,18 +44,29 @@ function loggedSummaries(): string[] {
     .map((i) => (i.rows as { summary: string }).summary)
 }
 
-function apiRow(overrides: Record<string, unknown> = {}) {
+type Cells = Record<string, Record<string, { position: number | null; previous: number | null; status: string }>>
+
+/** One keyword's OpenSEO export for lucky7even.com: DE (2276), AU (2036), CA (2124). */
+function exportBody(weeks: string[], cells: Cells) {
   return {
-    domain:            'lucky7even.com',
-    keyword:           'lucky 7even casino',
-    country:           'DE',
-    position:          3,
-    previous_position: 4,
-    change:            1,
-    url_found:         null,
-    checked_at:        '2026-08-04 06:12:00',
-    ...overrides,
+    domain:   'lucky7even.com',
+    weeks,
+    markets:  [
+      { locationCode: 2276, countryCode: 'DE', locationName: null },
+      { locationCode: 2036, countryCode: 'AU', locationName: null },
+      { locationCode: 2124, countryCode: 'CA', locationName: null },
+    ],
+    keywords: [{ keyword: 'lucky 7even casino', cells }],
   }
+}
+
+const cell = (position: number | null) => ({ position, previous: null, status: 'new' })
+
+/** Checked once, in DE, on 2026-08-04, at position 3. */
+const ONE_RECORD = exportBody(['2026-08-04'], { '2276': { '2026-08-04': cell(3) } })
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
 type MockRes = VercelResponse & {
@@ -77,8 +88,20 @@ function makeReq(method: string, headers: Record<string, string>): VercelRequest
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
+
+/** OpenSEO listing `domains`, answering every export with `body` (or a failure status). */
+function stubOpenSeo(body: unknown, { domains = ['lucky7even.com'], status = 200 } = {}) {
+  fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
+    if (init?.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
+    if (status !== 200) return json({ error: 'nope' }, status)
+    const domain = new URL(String(input)).searchParams.get('domain')
+    return domain === null ? json({ domains }) : json(body)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+}
+
 const saved: Record<string, string | undefined> = {}
-const MANAGED = ['CRON_SECRET', 'SITES_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+const MANAGED = ['CRON_SECRET', 'OPENSEO_RANKINGS_API_KEY', 'OPENSEO_BASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
 
 beforeEach(() => {
   inserts.length = 0
@@ -87,11 +110,11 @@ beforeEach(() => {
   insertFailure.onCall = undefined
   for (const n of MANAGED) saved[n] = process.env[n]
   process.env.CRON_SECRET               = 'secret-value'
-  process.env.SITES_API_KEY             = 'bpn_test'
+  process.env.OPENSEO_RANKINGS_API_KEY  = 'osk_test'
+  process.env.OPENSEO_BASE_URL          = 'https://openseo.test'
   process.env.SUPABASE_URL              = 'https://project.supabase.co'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test'
-  fetchMock = vi.fn(async () => new Response('{"ok":true,"data":[]}', { status: 200 }))
-  vi.stubGlobal('fetch', fetchMock)
+  stubOpenSeo(ONE_RECORD)
 })
 
 afterEach(() => {
@@ -132,24 +155,15 @@ describe('api/cron-sync auth', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('gets past the gate with the right secret and reaches the vendor', async () => {
+  it('gets past the gate with the right secret and reaches OpenSEO', async () => {
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
     expect(fetchMock).toHaveBeenCalled()
   })
 })
 
-function stubVendorRows(rows: unknown[]) {
-  fetchMock = vi.fn(async (_url: unknown, init?: { signal?: AbortSignal }) => {
-    if (init?.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
-    return new Response(JSON.stringify({ ok: true, data: rows }), { status: 200 })
-  })
-  vi.stubGlobal('fetch', fetchMock)
-}
-
 describe('api/cron-sync writes', () => {
   it('writes the snapshot and logs it with the shared date format', async () => {
-    stubVendorRows([apiRow()])
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
@@ -159,30 +173,95 @@ describe('api/cron-sync writes', () => {
     expect(snap.raw_date).toBe('2026-08-04')
     // The one formatDisplayDate, shared with src/lib/parser.ts.
     expect(snap.display_date).toBe('Aug 4, 2026')
+    expect(snap.source).toBe('sync')
     expect(loggedSummaries()).toEqual(['Scheduled sync — 1 records (Aug 4, 2026)'])
   })
 
-  it('writes nothing when no kept row carried a usable checked_at', async () => {
-    stubVendorRows([apiRow({ checked_at: null })])
+  it('notes records that kept an earlier check', async () => {
+    // DE was re-checked on 2026-08-04; AU was last checked a week earlier.
+    stubOpenSeo(exportBody(['2026-07-28', '2026-08-04'], {
+      '2276': { '2026-07-28': cell(4), '2026-08-04': cell(3) },
+      '2036': { '2026-07-28': cell(9) },
+    }))
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(loggedSummaries()).toEqual(['Scheduled sync — 2 records (Aug 4, 2026); 1 kept an earlier check'])
+  })
+
+  it('skips a snapshot that most records did not get a fresh check for', async () => {
+    // One tracker re-run on 2026-08-04; the other two markets are a week old.
+    // Unattended, that must not become the newest "week".
+    stubOpenSeo(exportBody(['2026-07-28', '2026-08-04'], {
+      '2276': { '2026-07-28': cell(4), '2026-08-04': cell(3) },
+      '2036': { '2026-07-28': cell(9) },
+      '2124': { '2026-07-28': cell(2) },
+    }))
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
+    expect(loggedSummaries()).toEqual([
+      "Scheduled sync — skipped Aug 4, 2026: OpenSEO's newest run covers only 1 of 3 records; nothing written",
+    ])
+  })
+
+  it('logs a non-https OPENSEO_BASE_URL as a failure without calling it', async () => {
+    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(loggedSummaries()).toEqual([
+      'Scheduled sync failed: OPENSEO_BASE_URL must be an https:// URL — check it on the server',
+    ])
+  })
+
+  it('writes nothing when OpenSEO has no BP rankings', async () => {
+    stubOpenSeo(ONE_RECORD, { domains: ['example.com'] })
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(inserts.some((i) => i.table === 'ranking_records')).toBe(false)
+    expect(loggedSummaries()).toEqual(['Scheduled sync — OpenSEO has no BP rankings; nothing written'])
+  })
+
+  it('logs a missing key as a failure', async () => {
+    delete process.env.OPENSEO_RANKINGS_API_KEY
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(loggedSummaries()).toEqual([
-      'Scheduled sync — records carried no usable checked_at date; nothing written',
+      'Scheduled sync failed: OPENSEO_RANKINGS_API_KEY is not configured on the server',
+    ])
+  })
+
+  it('logs a rejected key as a failure', async () => {
+    stubOpenSeo(ONE_RECORD, { status: 401 })
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
+    expect(loggedSummaries()).toEqual([
+      'Scheduled sync failed: OpenSEO rejected the key — check OPENSEO_RANKINGS_API_KEY on the server',
     ])
   })
 })
 
 describe('api/cron-sync time budget', () => {
   it('logs a run that ran out of time as a budget failure, not a bare abort', async () => {
-    // The handler's run-wide deadline, already expired. Stands in for a vendor
-    // slow enough that the platform would otherwise kill the function first —
-    // the case that leaves no activity_log row at all.
+    // The handler's run-wide deadline, already expired. Stands in for an
+    // upstream slow enough that the platform would otherwise kill the function
+    // first — the case that leaves no activity_log row at all.
     const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort())
-    stubVendorRows([apiRow()])
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
     spy.mockRestore()
@@ -191,7 +270,26 @@ describe('api/cron-sync time budget', () => {
     expect(res.status).toHaveBeenCalledWith(502)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: the run exceeded its 35s fetch budget — the Ranks API did not finish responding in time',
+      'Scheduled sync failed: the run exceeded its 35s fetch budget — OpenSEO did not finish responding in time',
+    ])
+  })
+
+  it('names the budget even when the deadline surfaces as a TimeoutError', async () => {
+    // A real AbortSignal.timeout() rejects fetch with a TimeoutError, not an
+    // AbortError, so the budget check has to accept both.
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(
+      AbortSignal.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')),
+    )
+    fetchMock.mockImplementation(async (_input: unknown, init?: RequestInit) => {
+      throw init?.signal?.reason ?? new Error('unreachable')
+    })
+    const res = makeRes()
+    await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
+    spy.mockRestore()
+
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(loggedSummaries()).toEqual([
+      'Scheduled sync failed: the run exceeded its 35s fetch budget — OpenSEO did not finish responding in time',
     ])
   })
 
@@ -203,7 +301,6 @@ describe('api/cron-sync time budget', () => {
     // in the cron's only history.
     const controller = new AbortController()
     const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal)
-    stubVendorRows([apiRow()])
     insertFailure.table = 'snapshots'
     insertFailure.message = 'duplicate key value violates unique constraint'
     insertFailure.onCall = () => controller.abort()   // the deadline expires mid-write

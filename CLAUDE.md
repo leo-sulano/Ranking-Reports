@@ -19,13 +19,18 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 ### Data Flow
 
 1. **Import** — Two paths into the same `Snapshot` shape:
-   - **Sync from API** (BP Sites only) — `src/lib/sitesApi.ts` pages `/api/sites`
-     (a Vercel function in `api/sites.ts` holding `SITES_API_KEY`), and
-     `src/lib/sitesNormalize.ts` filters rows to `DOMAIN_TO_BRAND` and converts
-     them to `RankingRecord[]`. See `docs/integrations/sites-api.md`.
+   - **Sync from API** (BP Sites only) — `src/lib/sitesApi.ts` makes one call to
+     `/api/sites` (a Vercel function holding `OPENSEO_RANKINGS_API_KEY`). The
+     server lists the domains OpenSEO tracks, keeps the ones in
+     `DOMAIN_TO_BRAND`, fetches each one's read-only rank export
+     (`api/_lib/openseo.ts`), and `api/_lib/sitesNormalize.ts` turns them into
+     `RankingRecord[]`: one per keyword × market, from its newest checked run.
+     An unchecked run is never read as NR. `api/cron-sync.ts` runs the same
+     path on a schedule (Wed + Fri 04:00 UTC). The old Ranks API stopped
+     checking after 2026-09-24 and is no longer called.
    - **Import Data** — user uploads an `.xlsx` via `UploadModal`;
      `src/lib/parser.ts` (`parseXlsx`) reads it, auto-detects the header row, and
-     filters to known brand domains. The only path for LP Sites, which the API
+     filters to known brand domains. The only path for LP Sites, which OpenSEO
      does not track.
 2. **Persist** — Parsed records are wrapped in a `Snapshot` (id, rawDate, displayDate, records[]) and saved to `localStorage` via `src/lib/storage.ts`. Multiple snapshots are supported; legacy flat-record format is migrated on first load.
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
@@ -40,8 +45,9 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `src/lib/storage.ts` | `localStorage` persistence under key `rr_snapshots`. Handles legacy migration from the old single-snapshot format. |
 | `src/types/index.ts` | All shared TypeScript types (`RankingRecord`, `Snapshot`, `Brand`, `AppState`). |
 | `src/App.tsx` | `Layout` holds all state and callback handlers; passes everything to `RankingReports` via `RROutletContext`. Stub pages (BP Sites, Screenshots, GMB, FTDs) exist but are not implemented. |
-| `src/lib/sitesNormalize.ts` | Ranks API row → `RankingRecord`. Encodes the endpoint's observed quirks (`position: 0` means NR). |
-| `api/sites.ts` | Serverless proxy holding `SITES_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. |
+| `api/_lib/sitesNormalize.ts` | OpenSEO rank export → `RankingRecord` (re-exported for the frontend by `src/lib/sitesNormalize.ts`). A missing run date means "not checked", `position: null` means NR; Previous is the previous check, Change is signed (+ = improved). |
+| `api/_lib/openseo.ts` | Server-only OpenSEO client: domain list, BP filter, per-domain exports with bounded concurrency, one retry, operator-worded errors. |
+| `api/sites.ts` | Serverless proxy holding `OPENSEO_RANKINGS_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. Returns normalized records. |
 
 ### Brands
 
