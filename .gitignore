@@ -40,3 +40,4 @@ supabase/.temp/
 # Local reference material — not part of the app source
 design-audit/
 docs/integrations/
+docs/references/
