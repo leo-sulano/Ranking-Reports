@@ -23,6 +23,8 @@ const ROW_LIMIT = 1000
 const DEFAULT_REQUEST_TIMEOUT_MS = 20_000
 const DEFAULT_CONCURRENCY = 6
 const DEFAULT_RETRY_DELAY_MS = 2_000
+/** The longest a 429's Retry-After may hold a retry: the cron's whole fetch budget is 35 s. */
+const MAX_RETRY_AFTER_MS = 10_000
 const DAY_MS = 86_400_000
 
 export interface AhrefsConfig {
@@ -94,6 +96,18 @@ function pause(ms: number, signal?: AbortSignal): Promise<void> {
   })
 }
 
+/**
+ * How long a 429 asks us to wait before retrying — `Retry-After` in seconds or
+ * as an HTTP date — capped at MAX_RETRY_AFTER_MS. `fallbackMs` when it does not say.
+ */
+function retryAfterMs(res: Response, fallbackMs: number): number {
+  const raw = res.headers.get('retry-after')?.trim()
+  if (!raw) return fallbackMs
+  const seconds = Number(raw)
+  const ms = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(raw) - Date.now()
+  return Number.isFinite(ms) ? Math.min(Math.max(ms, 0), MAX_RETRY_AFTER_MS) : fallbackMs
+}
+
 /** Ahrefs' own `error` text, when it is short enough to show an operator. */
 async function upstreamError(res: Response): Promise<string> {
   try {
@@ -145,8 +159,9 @@ async function getJson(
       }
       if (status >= 500 || status === 429) {
         if (!last) {
+          const wait = status === 429 ? retryAfterMs(res, opts.retryDelayMs) : 0
           discard(res)
-          if (status === 429) await pause(opts.retryDelayMs, opts.signal)
+          await pause(wait, opts.signal)
           continue
         }
         throw new AhrefsError(`Ahrefs returned HTTP ${status} for ${subject}${await upstreamError(res)}`, status)

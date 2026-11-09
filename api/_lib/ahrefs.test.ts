@@ -98,6 +98,14 @@ describe('fetchBpProjects', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it("waits as long as Ahrefs' Retry-After says before retrying a 429", async () => {
+    let n = 0
+    stubAhrefs((path) => (path === 'management/projects' && n++ === 0
+      ? new Response('{}', { status: 429, headers: { 'Retry-After': '0' } }) : undefined))
+    // A one-minute default pause would time this test out; Retry-After: 0 overrides it.
+    await expect(fetchBpProjects(CONFIG, { asOf: '2026-11-11', retryDelayMs: 60_000 })).resolves.toHaveLength(1)
+  })
+
   it("passes Ahrefs' own error text through for other refusals", async () => {
     stubAhrefs((path) => (path === 'management/projects' ? json({ error: 'API units limit reached' }, 402) : undefined))
     await expect(fetchBpProjects(CONFIG)).rejects.toThrow('Ahrefs returned HTTP 402 for the project list: API units limit reached')
