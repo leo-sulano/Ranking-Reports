@@ -245,11 +245,17 @@ export async function fetchBpProjects(config: AhrefsConfig, opts: FetchOptions =
 
   const list = (await getJson(config, 'management/projects', {}, 'the project list', base)) as { projects?: unknown } | null
   if (!Array.isArray(list?.projects)) throw new AhrefsError('Ahrefs returned an unexpected project list')
+  // Every entry must carry the two fields the BP filter reads. If Ahrefs ever
+  // renamed one, every project would be filtered out and the sync would report
+  // "no BP rankings" instead of failing.
+  const entries = list.projects as ProjectListEntry[]
+  if (!entries.every((p) => typeof p?.url === 'string' && typeof p?.keyword_count === 'number')) {
+    throw new AhrefsError('Ahrefs returned an unexpected project list')
+  }
 
   // Only BP projects with keywords: other clients' projects and LP projects
   // are never read at all.
-  const bp = (list.projects as ProjectListEntry[]).filter((p) =>
-    Number(p?.keyword_count) > 0 && bpDomainOf(hostOf(typeof p?.url === 'string' ? p.url : '')) !== '')
+  const bp = entries.filter((p) => (p.keyword_count as number) > 0 && bpDomainOf(hostOf(p.url as string)) !== '')
 
   // Fires on the first failure, so the requests still in flight stop too.
   const stop = new AbortController()

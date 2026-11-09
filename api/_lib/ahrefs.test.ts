@@ -129,6 +129,14 @@ describe('fetchBpProjects', () => {
       'Ahrefs returned 1000 rows for Roostersbet.com — more than one request can hold, so nothing was saved')
   })
 
+  it('refuses a project list whose entries lack the fields the BP filter reads', async () => {
+    // Without the guard, a renamed keyword_count would filter out every project
+    // and the sync would report "no BP rankings" instead of failing.
+    stubAhrefs((path) => (path === 'management/projects'
+      ? json({ projects: [{ project_id: 1, project_name: 'Roostersbet.com', url: 'roostersbet.com/' }] }) : undefined))
+    await expect(fetchBpProjects(CONFIG)).rejects.toThrow('Ahrefs returned an unexpected project list')
+  })
+
   it('refuses an unexpected shape', async () => {
     stubAhrefs((path) => (path === 'management/projects' ? json({}) : undefined))
     await expect(fetchBpProjects(CONFIG)).rejects.toThrow('Ahrefs returned an unexpected project list')
