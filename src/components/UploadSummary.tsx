@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { RankingRecord } from '../types'
 import type { UnknownDomain } from '../lib/parser'
 import { BRAND_BY_NAME, COUNTRY_LABELS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from '../lib/brands'
-import { countOlderChecks } from '../lib/sitesNormalize'
+import { countOlderChecks, cycleDate } from '../lib/sitesNormalize'
 import { ChevronDown, X, AlertCircle, Info, Globe, Building2 } from 'lucide-react'
 
 export interface UploadSummaryData {
@@ -110,14 +110,12 @@ export function UploadSummary({ data, onClose }: Props) {
     [records],
   )
   const unknownTotal = unknownDomains.reduce((s, u) => s + u.count, 0)
-  // Sync only: keywords OpenSEO's newest run did not cover keep their last
-  // real check (never NR), so say how many — a partial run must not pass for
-  // a full fresh week.
-  const olderChecks = useMemo(() => {
-    let newest = ''
-    for (const r of records) if (r.date && r.date > newest) newest = r.date
-    return countOlderChecks(records, newest)
-  }, [records])
+  // Sync only: keywords Ahrefs' latest weekly update did not cover keep their
+  // last real check (never NR), so say how many — a partial update must not
+  // pass for a full fresh week. Measured against the weekly update's date, not
+  // the newest record: one keyword re-checked later in the week would
+  // otherwise make every other row look stale.
+  const olderChecks = useMemo(() => countOlderChecks(records, cycleDate(records)), [records])
 
   // All brands expanded by default — first impression should reveal everything
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(brands.map((b) => b.name)))
@@ -173,7 +171,7 @@ export function UploadSummary({ data, onClose }: Props) {
                 <span className="font-semibold">
                   {olderChecks.toLocaleString()} record{olderChecks !== 1 ? 's' : ''}
                 </span>{' '}
-                kept an earlier check — OpenSEO&apos;s newest run did not cover {olderChecks !== 1 ? 'them' : 'it'}.
+                kept an earlier check — Ahrefs&apos; latest weekly update did not cover {olderChecks !== 1 ? 'them' : 'it'}.
               </span>
             </p>
           )}
@@ -239,8 +237,8 @@ const SYNC_DOMAIN_CAP = 8
  *
  * - **upload** — an unrecognised domain means the file has something
  *   unexpected in it. Alarm styling, expanded, complete list.
- * - **sync** — the server only fetches BP domains from OpenSEO, so this is
- *   normally empty; anything that does slip through is another client's site,
+ * - **sync** — the server reads only BP projects; anything listed is a domain
+ *   in those projects that brands.ts does not know (or another brand's site),
  *   not a fault. Dressing that up as an error would make a successful sync
  *   look like a failure, so it reads as a neutral note, collapsed, with the
  *   list capped.

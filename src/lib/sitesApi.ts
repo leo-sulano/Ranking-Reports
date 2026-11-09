@@ -31,8 +31,8 @@ function isAbort(err: unknown): boolean {
  *
  * Split out from `fetchSync` because this — not the transport — decides the
  * wording of every sync failure. The proxy words its own errors (no session,
- * unapproved, missing OPENSEO_RANKINGS_API_KEY, OpenSEO rejecting the key or
- * timing out) as `body.error`, and they are surfaced verbatim, so the message
+ * unapproved, missing AHREFS_API_KEY, Ahrefs rejecting the key or timing out)
+ * as `body.error`, and they are surfaced verbatim, so the message
  * the server wrote is the message the user sees.
  */
 export function parseSyncBody(res: { ok: boolean; status: number }, body: unknown): NormalizeResult {
@@ -55,8 +55,8 @@ export function parseSyncBody(res: { ok: boolean; status: number }, body: unknow
 }
 
 /**
- * Every BP ranking OpenSEO holds, already normalized, from our own proxy —
- * never from OpenSEO directly, which needs a server-only key.
+ * Every BP ranking in the client's Ahrefs Rank Tracker, already normalized,
+ * from our own proxy — never from Ahrefs directly, which needs a server-only key.
  *
  * The proxy requires the caller's Supabase session; a missing token is still
  * sent (headerless) rather than short-circuited here, so the single source of

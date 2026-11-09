@@ -21,7 +21,7 @@ function sitesApiDevServer(mode: string): PluginOption {
       // against — so copy those across explicitly.
       const env = loadEnv(mode, process.cwd(), '')
       for (const name of [
-        'OPENSEO_RANKINGS_API_KEY', 'OPENSEO_BASE_URL',
+        'AHREFS_API_KEY',
         'SUPABASE_URL', 'VITE_SUPABASE_URL',
         'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY',
       ]) {
