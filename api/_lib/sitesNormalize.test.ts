@@ -225,7 +225,7 @@ function row(keyword: string, country: string, slots: Slot[], opts: Partial<Ahre
 }
 const project = (projectId: number, target: string, competitors: string[], rows: AhrefsKeywordRow[]): AhrefsProject =>
   ({ projectId, name: `Project ${projectId}`, target, competitors, rows })
-const at = (records: { domain: string }[], domain: string) => records.find((r) => r.domain === domain)
+const at = <T extends { domain: string }>(records: T[], domain: string) => records.find((r) => r.domain === domain)
 
 describe('hostOf / bpDomainOf', () => {
   it('reads a bare host or a full URL, without www.', () => {
