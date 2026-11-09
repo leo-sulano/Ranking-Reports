@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler from './cron-sync.js'
+import { KEY_REJECTED } from './_lib/ahrefs.js'
 
 // Several of these tests stop at the auth gate, but the rest deliberately get
 // past it, so the stub has to survive a full run: findSnapshot's select chain
@@ -44,26 +45,20 @@ function loggedSummaries(): string[] {
     .map((i) => (i.rows as { summary: string }).summary)
 }
 
-type Cells = Record<string, Record<string, { position: number | null; previous: number | null; status: string }>>
-
-/** One keyword's OpenSEO export for lucky7even.com: DE (2276), AU (2036), CA (2124). */
-function exportBody(weeks: string[], cells: Cells) {
-  return {
-    domain:   'lucky7even.com',
-    weeks,
-    markets:  [
-      { locationCode: 2276, countryCode: 'DE', locationName: null },
-      { locationCode: 2036, countryCode: 'AU', locationName: null },
-      { locationCode: 2124, countryCode: 'CA', locationName: null },
-    ],
-    keywords: [{ keyword: 'lucky 7even casino', cells }],
-  }
+/**
+ * Rankings for a target-only BP project (lucky7evencasino.io, no competitors),
+ * so each [country, check date, position] row becomes exactly one record.
+ */
+function rankings(rows: Array<[country: string, date: string, position: number | null]>) {
+  return { keywords: rows.map(([country, date, position]) => ({ keyword: 'lucky 7even casino', country,
+    language: country === 'DE' ? 'de' : country === 'IT' ? 'it' : 'en', serp_updated: `${date}T10:00:00Z`, serp_updated_prev: null,
+    competitors_list: [{ url: position === null ? null : 'https://lucky7evencasino.io/', position, position_prev: null }] })) }
 }
 
-const cell = (position: number | null) => ({ position, previous: null, status: 'new' })
-
 /** Checked once, in DE, on 2026-08-04, at position 3. */
-const ONE_RECORD = exportBody(['2026-08-04'], { '2276': { '2026-08-04': cell(3) } })
+const ONE_RECORD = rankings([['DE', '2026-08-04', 3]])
+
+const BP_PROJECT = { project_id: 7, project_name: 'Lucky7evencasino.io', url: 'lucky7evencasino.io/', keyword_count: 1 }
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -89,19 +84,21 @@ function makeReq(method: string, headers: Record<string, string>): VercelRequest
 
 let fetchMock: ReturnType<typeof vi.fn>
 
-/** OpenSEO listing `domains`, answering every export with `body` (or a failure status). */
-function stubOpenSeo(body: unknown, { domains = ['lucky7even.com'], status = 200 } = {}) {
+/** Ahrefs listing `projects`, with no competitors, answering every rankings call with `body` (or `status` everywhere). */
+function stubAhrefs(body: unknown, { projects = [BP_PROJECT] as unknown[], status = 200 } = {}) {
   fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     if (init?.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
     if (status !== 200) return json({ error: 'nope' }, status)
-    const domain = new URL(String(input)).searchParams.get('domain')
-    return domain === null ? json({ domains }) : json(body)
+    const path = new URL(String(input)).pathname
+    if (path.endsWith('/management/projects')) return json({ projects })
+    if (path.endsWith('/management/project-competitors')) return json({ competitors: [] })
+    return json(body)
   })
   vi.stubGlobal('fetch', fetchMock)
 }
 
 const saved: Record<string, string | undefined> = {}
-const MANAGED = ['CRON_SECRET', 'OPENSEO_RANKINGS_API_KEY', 'OPENSEO_BASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+const MANAGED = ['CRON_SECRET', 'AHREFS_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
 
 beforeEach(() => {
   inserts.length = 0
@@ -110,11 +107,10 @@ beforeEach(() => {
   insertFailure.onCall = undefined
   for (const n of MANAGED) saved[n] = process.env[n]
   process.env.CRON_SECRET               = 'secret-value'
-  process.env.OPENSEO_RANKINGS_API_KEY  = 'osk_test'
-  process.env.OPENSEO_BASE_URL          = 'https://openseo.test'
+  process.env.AHREFS_API_KEY            = 'ahk_test'
   process.env.SUPABASE_URL              = 'https://project.supabase.co'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test'
-  stubOpenSeo(ONE_RECORD)
+  stubAhrefs(ONE_RECORD)
 })
 
 afterEach(() => {
@@ -155,7 +151,7 @@ describe('api/cron-sync auth', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('gets past the gate with the right secret and reaches OpenSEO', async () => {
+  it('gets past the gate with the right secret and reaches Ahrefs', async () => {
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
     expect(fetchMock).toHaveBeenCalled()
@@ -178,11 +174,8 @@ describe('api/cron-sync writes', () => {
   })
 
   it('notes records that kept an earlier check', async () => {
-    // DE was re-checked on 2026-08-04; AU was last checked a week earlier.
-    stubOpenSeo(exportBody(['2026-07-28', '2026-08-04'], {
-      '2276': { '2026-07-28': cell(4), '2026-08-04': cell(3) },
-      '2036': { '2026-07-28': cell(9) },
-    }))
+    // DE was checked in the 2026-08-04 update; AU still has last week's check.
+    stubAhrefs(rankings([['DE', '2026-08-04', 3], ['AU', '2026-07-28', 9]]))
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
@@ -191,68 +184,62 @@ describe('api/cron-sync writes', () => {
   })
 
   it('skips a snapshot that most records did not get a fresh check for', async () => {
-    // One tracker re-run on 2026-08-04; the other two markets are a week old.
-    // Unattended, that must not become the newest "week".
-    stubOpenSeo(exportBody(['2026-07-28', '2026-08-04'], {
-      '2276': { '2026-07-28': cell(4), '2026-08-04': cell(3) },
-      '2036': { '2026-07-28': cell(9) },
-      '2124': { '2026-07-28': cell(2) },
-    }))
+    // Only DE has the 2026-08-04 update so far; the other two markets are a
+    // week old. Unattended, that must not become the newest "week".
+    stubAhrefs(rankings([['DE', '2026-08-04', 3], ['AU', '2026-07-28', 9], ['CA', '2026-07-28', 2]]))
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(loggedSummaries()).toEqual([
-      "Scheduled sync — skipped Aug 4, 2026: OpenSEO's newest run covers only 1 of 3 records; nothing written",
+      "Scheduled sync — skipped Aug 4, 2026: Ahrefs' latest weekly update covers only 1 of 3 records; nothing written",
     ])
   })
 
-  it('logs a non-https OPENSEO_BASE_URL as a failure without calling it', async () => {
-    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
+  it('dates the snapshot by the weekly update, not a later re-check', async () => {
+    // Three markets in the 2026-08-04 update, one re-checked three days later.
+    stubAhrefs(rankings([['DE', '2026-08-04', 3], ['AU', '2026-08-04', 9], ['CA', '2026-08-04', 2], ['IT', '2026-08-07', 5]]))
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
-    expect(res.status).toHaveBeenCalledWith(500)
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: OPENSEO_BASE_URL must be an https:// URL — check it on the server',
-    ])
+    expect(res.status).toHaveBeenCalledWith(200)
+    const snap = inserts.find((i) => i.table === 'snapshots')?.rows as Record<string, string>
+    expect(snap.id).toBe('snap-bp-sites-2026-08-04')
+    expect(loggedSummaries()).toEqual(['Scheduled sync — 4 records (Aug 4, 2026)'])
   })
 
-  it('writes nothing when OpenSEO has no BP rankings', async () => {
-    stubOpenSeo(ONE_RECORD, { domains: ['example.com'] })
+  it('writes nothing when Ahrefs has no BP rankings', async () => {
+    stubAhrefs(ONE_RECORD, { projects: [{ project_id: 9, project_name: 'Trybet.ca', url: 'trybet.ca/', keyword_count: 45 }] })
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(inserts.some((i) => i.table === 'ranking_records')).toBe(false)
-    expect(loggedSummaries()).toEqual(['Scheduled sync — OpenSEO has no BP rankings; nothing written'])
+    expect(loggedSummaries()).toEqual(['Scheduled sync — Ahrefs has no BP rankings; nothing written'])
   })
 
   it('logs a missing key as a failure', async () => {
-    delete process.env.OPENSEO_RANKINGS_API_KEY
+    delete process.env.AHREFS_API_KEY
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
     expect(res.status).toHaveBeenCalledWith(500)
     expect(fetchMock).not.toHaveBeenCalled()
     expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: OPENSEO_RANKINGS_API_KEY is not configured on the server',
+      'Scheduled sync failed: AHREFS_API_KEY is not configured on the server',
     ])
   })
 
   it('logs a rejected key as a failure', async () => {
-    stubOpenSeo(ONE_RECORD, { status: 401 })
+    stubAhrefs(ONE_RECORD, { status: 401 })
     const res = makeRes()
     await handler(makeReq('GET', { authorization: 'Bearer secret-value' }), res)
 
     expect(res.status).toHaveBeenCalledWith(502)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
-    expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: OpenSEO rejected the key — check OPENSEO_RANKINGS_API_KEY on the server',
-    ])
+    expect(loggedSummaries()).toEqual([`Scheduled sync failed: ${KEY_REJECTED}`])
   })
 })
 
@@ -270,7 +257,7 @@ describe('api/cron-sync time budget', () => {
     expect(res.status).toHaveBeenCalledWith(502)
     expect(inserts.some((i) => i.table === 'snapshots')).toBe(false)
     expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: the run exceeded its 35s fetch budget — OpenSEO did not finish responding in time',
+      'Scheduled sync failed: the run exceeded its 35s fetch budget — Ahrefs did not finish responding in time',
     ])
   })
 
@@ -289,7 +276,7 @@ describe('api/cron-sync time budget', () => {
 
     expect(res.status).toHaveBeenCalledWith(502)
     expect(loggedSummaries()).toEqual([
-      'Scheduled sync failed: the run exceeded its 35s fetch budget — OpenSEO did not finish responding in time',
+      'Scheduled sync failed: the run exceeded its 35s fetch budget — Ahrefs did not finish responding in time',
     ])
   })
 

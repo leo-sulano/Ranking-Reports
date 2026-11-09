@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   bearerToken, createAccessResolver, createTokenResolver, isApprovedUser, resolveUser,
 } from './_lib/requestAuth.js'
-import { OpenSeoError, fetchBpExports, isAbortLike, openSeoConfig } from './_lib/openseo.js'
-import { SyncDataError, normalizeExports } from './_lib/sitesNormalize.js'
+import { AhrefsError, ahrefsConfig, fetchBpProjects, isAbortLike } from './_lib/ahrefs.js'
+import { SyncDataError, normalizeAhrefs } from './_lib/sitesNormalize.js'
 
 /**
  * Vercel kills a function at `maxDuration` (10s Hobby / 15s Pro by default),
@@ -16,8 +16,8 @@ export const config = { maxDuration: 60 }
 const TIMEOUT_MS = 45_000
 
 /**
- * The Sync button's one request: every BP ranking OpenSEO holds, already
- * normalized into dashboard records.
+ * The Sync button's one request: every BP ranking in the client's Ahrefs Rank
+ * Tracker, already normalized into dashboard records.
  *
  * Answers `{ ok: true, data: { records, unknownDomains, rawDate } }`, or
  * `{ ok: false, error, code? }` where `error` is already worded for the toast.
@@ -29,10 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Authenticate BEFORE anything else. Without this the endpoint is a public
-  // read of every BP ranking OpenSEO holds, and a free way to make this server
-  // hammer OpenSEO. Every other read in this app is gated by Supabase, so this
-  // one is too — the browser sends the caller's access token and we resolve it
-  // server-side.
+  // read of every BP ranking in the client's Ahrefs, and a free way to make
+  // this server call Ahrefs with the client's key. Every other read in this
+  // app is gated by Supabase, so this one is too — the browser sends the
+  // caller's access token and we resolve it server-side.
   const token = bearerToken(req.headers?.authorization)
   if (!token) {
     return res.status(401).json({
@@ -74,39 +74,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  let openseo
-  try {
-    openseo = openSeoConfig(process.env)
-  } catch (err) {
-    // A malformed OPENSEO_BASE_URL — worded without echoing it.
-    return res.status(500).json({ ok: false, error: (err as Error).message })
-  }
-  if (!openseo) {
+  const ahrefs = ahrefsConfig(process.env)
+  if (!ahrefs) {
     return res.status(500).json({
       ok: false,
-      error: 'OPENSEO_RANKINGS_API_KEY is not configured on the server',
+      error: 'AHREFS_API_KEY is not configured on the server',
     })
   }
 
-  // One deadline for the whole fan-out (domain list + every export).
+  // One deadline for the whole fan-out (project list + every BP project).
   const deadline = AbortSignal.timeout(TIMEOUT_MS)
   try {
-    const result = normalizeExports(await fetchBpExports(openseo, { signal: deadline }))
+    const result = normalizeAhrefs(await fetchBpProjects(ahrefs, { signal: deadline }))
     res.setHeader('Cache-Control', 'no-store')
     return res.status(200).json({ ok: true, data: result })
   } catch (err) {
     if (deadline.aborted && isAbortLike(err)) {
       return res.status(504).json({
         ok: false,
-        error: `OpenSEO did not respond within ${TIMEOUT_MS / 1000} seconds`,
+        error: `Ahrefs did not respond within ${TIMEOUT_MS / 1000} seconds`,
       })
     }
-    // OpenSeoError and SyncDataError messages are already worded for the toast
+    // AhrefsError and SyncDataError messages are already worded for the toast
     // and never carry the upstream URL or the key.
-    const worded = err instanceof OpenSeoError || err instanceof SyncDataError
+    const worded = err instanceof AhrefsError || err instanceof SyncDataError
     return res.status(502).json({
       ok: false,
-      error: worded ? (err as Error).message : `Could not sync from OpenSEO: ${(err as Error).message}`,
+      error: worded ? (err as Error).message : `Could not sync from Ahrefs: ${(err as Error).message}`,
     })
   }
 }
