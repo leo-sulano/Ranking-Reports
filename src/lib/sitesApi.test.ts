@@ -39,7 +39,7 @@ describe('parseSyncBody', () => {
   })
 
   it("surfaces the server's error text, status and code verbatim", () => {
-    const keyRejected = 'OpenSEO rejected the key — check OPENSEO_RANKINGS_API_KEY on the server'
+    const keyRejected = 'Ahrefs rejected the key — check AHREFS_API_KEY on the server (it may have expired or been revoked, or its creator left the Ahrefs workspace)'
     const err = thrown(() => parseSyncBody({ ok: false, status: 502 }, { ok: false, error: keyRejected }))
     expect(err).toBeInstanceOf(SitesApiError)
     expect(err.message).toBe(keyRejected)

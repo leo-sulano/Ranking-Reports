@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler, { config } from './sites.js'
-import { KEY_REJECTED } from './_lib/openseo.js'
+import { KEY_REJECTED } from './_lib/ahrefs.js'
 
 // The handler resolves the caller's Supabase token through supabase-js, then
 // reads their user_access row through it. Stub the SDK so the tests never touch
@@ -51,41 +51,42 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-/** OpenSEO answering for one BP domain: rooster.bet, "rooster bet", AU, position 3 on 2026-11-03. */
-function openSeo(input: unknown, init: RequestInit = {}): Response {
+/** The workspace: one BP project (roostersbet.com, competitor rooster.bet) and another client's. */
+const PROJECTS = { projects: [
+  { project_id: 1, project_name: 'Roostersbet.com', url: 'roostersbet.com/', keyword_count: 1 },
+  { project_id: 2, project_name: 'Trybet.ca', url: 'trybet.ca/', keyword_count: 45 },   // another client
+] }
+/** "rooster bet", AU, checked 2026-11-03: roostersbet.com 3 (was 4), rooster.bet not found either time. */
+const RANKINGS = { keywords: [{ keyword: 'rooster bet', country: 'AU', language: 'en',
+  serp_updated: '2026-11-03T10:00:00Z', serp_updated_prev: '2026-10-27T10:00:00Z',
+  competitors_list: [{ url: 'https://roostersbet.com/', position: 3, position_prev: 4 }, { url: null, position: null, position_prev: null }] }] }
+
+function ahrefs(input: unknown, init: RequestInit = {}): Response {
   if (init.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
-  const domain = new URL(String(input)).searchParams.get('domain')
-  if (domain === null) return json({ domains: ['rooster.bet', 'example.com'] })
-  return json({
-    domain,
-    weeks: ['2026-11-03'],
-    markets: [{ locationCode: 2036, countryCode: 'AU', locationName: null }],
-    keywords: [{
-      keyword: 'rooster bet',
-      cells: { '2036': { '2026-11-03': { position: 3, previous: null, status: 'new' } } },
-    }],
-  })
+  const path = new URL(String(input)).pathname
+  if (path.endsWith('/management/projects')) return json(PROJECTS)
+  if (path.endsWith('/management/project-competitors')) return json({ competitors: [{ url: 'rooster.bet/', mode: 'subdomains' }] })
+  return json(RANKINGS)
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
 const savedEnv: Record<string, string | undefined> = {}
 const MANAGED_ENV = [
-  'OPENSEO_RANKINGS_API_KEY', 'OPENSEO_BASE_URL',
+  'AHREFS_API_KEY',
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY',
 ]
 
 beforeEach(() => {
   for (const name of MANAGED_ENV) savedEnv[name] = process.env[name]
-  process.env.OPENSEO_RANKINGS_API_KEY = 'osk_test'
-  process.env.OPENSEO_BASE_URL         = 'https://openseo.test'
-  process.env.SUPABASE_URL             = 'https://project.supabase.co'
-  process.env.SUPABASE_ANON_KEY        = 'anon_test'
+  process.env.AHREFS_API_KEY    = 'ahk_test'
+  process.env.SUPABASE_URL      = 'https://project.supabase.co'
+  process.env.SUPABASE_ANON_KEY = 'anon_test'
   getUserMock.mockReset()
   getUserMock.mockResolvedValue({ data: { user: { id: 'user-1', email: 'a@b.co' } }, error: null })
   maybeSingleMock.mockReset()
   maybeSingleMock.mockResolvedValue({ data: { status: 'approved' }, error: null })
   createClientSpy.mockReset()
-  fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => openSeo(input, init))
+  fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => ahrefs(input, init))
   vi.stubGlobal('fetch', fetchMock)
 })
 
@@ -150,7 +151,7 @@ describe('api/sites auth gate', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('reaches OpenSEO for a valid token, passing it to Supabase verbatim', async () => {
+  it('reaches Ahrefs for a valid token, passing it to Supabase verbatim', async () => {
     const res = makeRes()
     await handler(makeReq('GET', {}, { authorization: 'Bearer good-token' }), res)
     expect(getUserMock).toHaveBeenCalledWith('good-token')
@@ -213,14 +214,13 @@ describe('api/sites auth gate', () => {
     expect(res.status).toHaveBeenCalledWith(200)
   })
 
-  it('never forwards the caller session to OpenSEO — only the API key', async () => {
+  it('sends only the Ahrefs key upstream, never the caller session', async () => {
     const res = makeRes()
     await handler(makeReq('GET'), res)
     expect(fetchMock).toHaveBeenCalled()
     for (const [, init] of fetchMock.mock.calls) {
       const headers = (init as RequestInit).headers as Record<string, string>
-      expect(headers.Authorization).toBeUndefined()
-      expect(headers['x-api-key']).toBe('osk_test')
+      expect(headers.Authorization).toBe('Bearer ahk_test')
     }
   })
 })
@@ -233,26 +233,16 @@ describe('api/sites', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('returns 500 naming OPENSEO_RANKINGS_API_KEY when it is unset', async () => {
-    delete process.env.OPENSEO_RANKINGS_API_KEY
+  it('returns 500 naming AHREFS_API_KEY when it is unset', async () => {
+    delete process.env.AHREFS_API_KEY
     const res = makeRes()
     await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json.mock.calls[0][0].error).toContain('OPENSEO_RANKINGS_API_KEY')
+    expect(res.json.mock.calls[0][0].error).toContain('AHREFS_API_KEY')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('returns 500 naming OPENSEO_BASE_URL when it is not https, without calling it', async () => {
-    process.env.OPENSEO_BASE_URL = 'http://insecure.example'
-    const res = makeRes()
-    await handler(makeReq('GET'), res)
-    expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json.mock.calls[0][0].error).toContain('OPENSEO_BASE_URL')
-    expect(res.json.mock.calls[0][0].error).not.toContain('insecure.example')
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('returns normalized records for the BP domains', async () => {
+  it('returns normalized records for the BP projects', async () => {
     const res = makeRes()
     await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(200)
@@ -261,35 +251,34 @@ describe('api/sites', () => {
     expect(body.ok).toBe(true)
     expect(body.data.rawDate).toBe('2026-11-03')
     expect(body.data.records).toEqual([
-      expect.objectContaining({ domain: 'rooster.bet', keyword: 'rooster bet', country: 'AU', position: '3', date: '2026-11-03' }),
+      expect.objectContaining({ domain: 'rooster.bet', keyword: 'rooster bet', country: 'AU', position: 'NR', previous: 'NR', change: '' }),
+      expect.objectContaining({
+        domain: 'roostersbet.com', keyword: 'rooster bet', country: 'AU', position: '3', previous: '4', change: '+1', date: '2026-11-03',
+      }),
     ])
-    // example.com is another client's site: never fetched.
-    const fetched = fetchMock.mock.calls.map((c) => new URL(String(c[0])).searchParams.get('domain'))
-    expect(fetched).toEqual([null, 'rooster.bet'])
+    // trybet.ca is another client's project: never fetched.
+    const ids = fetchMock.mock.calls.map((c) => new URL(String(c[0])).searchParams.get('project_id')).filter(Boolean)
+    expect(new Set(ids)).toEqual(new Set(['1']))
   })
 
-  it('passes the normalizer\'s operator wording through verbatim when OpenSEO data cannot be trusted', async () => {
-    // A city tracker sharing rooster.bet's national AU code: the export merges them.
-    fetchMock.mockImplementation(async (input: unknown) => {
-      const domain = new URL(String(input)).searchParams.get('domain')
-      if (domain === null) return json({ domains: ['rooster.bet'] })
-      return json({
-        domain,
-        weeks: ['2026-11-03'],
-        markets: [
-          { locationCode: 2036, countryCode: 'AU', locationName: null },
-          { locationCode: 2036, countryCode: 'AU', locationName: 'Sydney,New South Wales,Australia' },
-        ],
-        keywords: [],
-      })
+  it("passes the normalizer's operator wording through verbatim when Ahrefs data cannot be trusted", async () => {
+    // A ranked URL in rooster.bet's slot that is not rooster.bet: the competitor order changed.
+    fetchMock.mockImplementation(async (input: unknown, init?: RequestInit) => {
+      if (new URL(String(input)).pathname.endsWith('/rank-tracker/competitors-overview')) {
+        return json({ keywords: [{ ...RANKINGS.keywords[0], competitors_list: [
+          { url: 'https://roostersbet.com/', position: 3, position_prev: 4 },
+          { url: 'https://example.com/', position: 5, position_prev: 5 },
+        ] }] })
+      }
+      return ahrefs(input, init)
     })
     const res = makeRes()
     await handler(makeReq('GET'), res)
     expect(res.status).toHaveBeenCalledWith(502)
-    expect(res.json.mock.calls[0][0].error).toMatch(/^OpenSEO tracks rooster\.bet both nationally and in Sydney/)
+    expect(res.json.mock.calls[0][0].error).toMatch(/^Ahrefs listed example\.com in rooster\.bet's slot/)
   })
 
-  it("passes OpenSEO's key rejection through as a 502 with the operator wording", async () => {
+  it("passes Ahrefs' key rejection through as a 502 with the operator wording", async () => {
     fetchMock.mockImplementation(async () => json({ error: 'unauthorized' }, 401))
     const res = makeRes()
     await handler(makeReq('GET'), res)
@@ -299,7 +288,7 @@ describe('api/sites', () => {
 
   it('turns the overall timeout into a 504 that names 45 seconds', async () => {
     // Every AbortSignal.timeout() the handler creates comes back already
-    // expired — the same as a 45s OpenSEO stall, without the wait.
+    // expired — the same as a 45s Ahrefs stall, without the wait.
     const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort())
     const res = makeRes()
     await handler(makeReq('GET'), res)
@@ -307,6 +296,6 @@ describe('api/sites', () => {
     expect(res.status).toHaveBeenCalledWith(504)
     // Must stay under the function's own maxDuration, or the platform kills
     // the request before this 504 can be written.
-    expect(res.json.mock.calls[0][0].error).toContain('45 seconds')
+    expect(res.json.mock.calls[0][0].error).toBe('Ahrefs did not respond within 45 seconds')
   })
 })

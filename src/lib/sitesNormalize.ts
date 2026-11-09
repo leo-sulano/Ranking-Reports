@@ -6,9 +6,9 @@ import type { SyncRecord, SkippedDomain } from '../../api/_lib/sitesNormalize.js
 // file stays the frontend's import site. (The browser never normalizes —
 // /api/sites returns records — but it reads the types and the date helper.)
 export type {
-  NormalizeResult, OpenSeoCell, OpenSeoExport, OpenSeoKeyword, OpenSeoMarket,
+  NormalizeResult, AhrefsProject, AhrefsKeywordRow, AhrefsSlot,
 } from '../../api/_lib/sitesNormalize.js'
-export { canonicalDomain, countOlderChecks } from '../../api/_lib/sitesNormalize.js'
+export { canonicalDomain, countOlderChecks, cycleDate } from '../../api/_lib/sitesNormalize.js'
 
 /**
  * api/_lib declares its own record types because it cannot import from src/.

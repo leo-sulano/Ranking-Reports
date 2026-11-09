@@ -48,8 +48,8 @@ const INITIAL: AppState = {
 }
 
 /**
- * " · N kept an earlier check" when the newest OpenSEO run did not cover every
- * keyword, so a partial run cannot pass for a full fresh week. Empty otherwise.
+ * " · N kept an earlier check" when Ahrefs' latest weekly update did not cover
+ * every keyword, so a partial update cannot pass for a full fresh week. Empty otherwise.
  */
 function olderChecksNote(records: RankingRecord[], rawDate: string): string {
   const older = countOlderChecks(records, rawDate)
@@ -292,9 +292,9 @@ function Layout() {
     reportUnknownDomains(unknownDomains)
   }, [addToast, persistOneSnapshot, reportUnknownDomains, state.snapshots])
 
-  // ── Sync from OpenSEO ─────────────────────────────────────────────────────
+  // ── Sync from Ahrefs ──────────────────────────────────────────────────────
   //
-  // BP only. OpenSEO tracks none of the LP domains, so there is deliberately no
+  // BP only. LP Sites stay on manual upload, so there is deliberately no
   // category argument — a sync can never write a half-empty LP snapshot.
   const handleSyncFromApi = useCallback(async () => {
     // Claim the slot synchronously, before the first await — see syncRunningRef.
@@ -312,17 +312,17 @@ function Layout() {
 
       setSyncing(true)
 
-      // One request: the proxy fetches every BP domain from OpenSEO and
-      // returns them already normalized.
+      // One request: the proxy reads every BP project from Ahrefs and
+      // returns the rankings already normalized.
       const { records, unknownDomains, rawDate } = await fetchSync(controller.signal)
       // Cancelled while the response was in flight. Nothing is written.
       if (controller.signal.aborted) return
 
-      // Nothing to save. This is what you see when brands.ts and OpenSEO share
+      // Nothing to save. This is what you see when brands.ts and Ahrefs share
       // no domain, so it gets the summary modal rather than an error.
       if (records.length === 0) {
         setUploadSummary({ displayDate: '—', records: [], unknownDomains, source: 'sync' })
-        addToast('OpenSEO returned no BP rankings — nothing was saved.', 'warning')
+        addToast('Ahrefs returned no BP rankings — nothing was saved.', 'warning')
         return
       }
 
@@ -341,7 +341,7 @@ function Layout() {
       const snap = await persistOneSnapshot({ rawDate, records }, 'bp-sites', 'sync')
       if (!snap) return
 
-      void logActivity('sync', 'bp-sites', `Synced ${records.length} records from OpenSEO — ${snap.displayDate}`)
+      void logActivity('sync', 'bp-sites', `Synced ${records.length} records from Ahrefs — ${snap.displayDate}`)
       setUploadSummary({ displayDate: snap.displayDate, records, unknownDomains, source: 'sync' })
       const counts = summarizeRecords(records, DOMAIN_TO_BRAND)
       addToast(
@@ -358,8 +358,8 @@ function Layout() {
         return
       }
       // The proxy words every failure itself — no session, unapproved, a
-      // missing OPENSEO_RANKINGS_API_KEY, OpenSEO rejecting the key or timing
-      // out — so its text reaches the toast unaltered.
+      // missing AHREFS_API_KEY, Ahrefs rejecting the key or timing out — so
+      // its text reaches the toast unaltered.
       const msg = err instanceof Error ? err.message : String(err)
       addToast(`Sync failed: ${msg}`, 'error')
     } finally {
@@ -397,7 +397,7 @@ function Layout() {
     )
     if (!snap) return
     if (source === 'sync') {
-      void logActivity('sync', existing.category, `Replaced snapshot from OpenSEO — ${snap.displayDate} (${pendingRecords.length} records)`)
+      void logActivity('sync', existing.category, `Replaced snapshot from Ahrefs — ${snap.displayDate} (${pendingRecords.length} records)`)
     } else {
       void logActivity('upload', existing.category, `Replaced snapshot — ${snap.displayDate} (${pendingRecords.length} records)`)
     }
@@ -663,7 +663,7 @@ function Layout() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-[var(--surface)] border border-[var(--border-2)] rounded-2xl w-[420px] max-w-[95vw] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
             <h2 className="font-display text-[16px] tracking-wider text-[var(--ink-2)] mb-4">
-              Syncing from OpenSEO
+              Syncing from Ahrefs
             </h2>
             <div className="h-[5px] bg-[var(--border-3)] rounded-full overflow-hidden mb-3">
               <div
