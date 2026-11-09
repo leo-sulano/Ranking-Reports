@@ -1,9 +1,10 @@
 # Ranks API — Quick Start
 
 > **Superseded 2026-11-04 — kept for reference only.** The dashboard no longer
-> calls the Ranks API, which stopped checking after 2026-09-24. "Sync from API"
-> and the scheduled sync now read OpenSEO's read-only rank export — see
-> `api/_lib/openseo.ts`, `api/_lib/sitesNormalize.ts` and `CLAUDE.md`.
+> calls the Ranks API, which stopped checking after 2026-09-24. It was replaced
+> by OpenSEO, which was itself replaced by the client's Ahrefs Rank Tracker:
+> "Sync from API" and the scheduled sync now read Ahrefs — see
+> `docs/integrations/ahrefs.md`.
 
 **Base URL:** `https://3213211.xyz/bpn-panel-cc/api/ranks.php`
 

@@ -20,18 +20,20 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 
 1. **Import** — Two paths into the same `Snapshot` shape:
    - **Sync from API** (BP Sites only) — `src/lib/sitesApi.ts` makes one call to
-     `/api/sites` (a Vercel function holding `OPENSEO_RANKINGS_API_KEY`). The
-     server lists the domains OpenSEO tracks, keeps the ones in
-     `DOMAIN_TO_BRAND`, fetches each one's read-only rank export
-     (`api/_lib/openseo.ts`), and `api/_lib/sitesNormalize.ts` turns them into
-     `RankingRecord[]`: one per keyword × market, from its newest checked run.
-     An unchecked run is never read as NR. `api/cron-sync.ts` runs the same
-     path on a schedule (Wed + Fri 04:00 UTC). The old Ranks API stopped
-     checking after 2026-09-24 and is no longer called.
+     `/api/sites` (a Vercel function holding `AHREFS_API_KEY`). The server reads
+     the client's Ahrefs Rank Tracker (`api/_lib/ahrefs.ts`, free endpoints
+     only): the project list, the projects whose target is in
+     `DOMAIN_TO_BRAND`, and each one's competitor list and
+     `competitors-overview` rankings. `api/_lib/sitesNormalize.ts` turns them
+     into `RankingRecord[]`: one per domain × keyword × market, with the
+     snapshot dated by the weekly Ahrefs update. An unchecked keyword is never
+     read as NR. `api/cron-sync.ts` runs the same path on a schedule (Wed + Fri
+     04:00 UTC). OpenSEO and the Ranks API before it are no longer called. See
+     `docs/integrations/ahrefs.md`.
    - **Import Data** — user uploads an `.xlsx` via `UploadModal`;
      `src/lib/parser.ts` (`parseXlsx`) reads it, auto-detects the header row, and
-     filters to known brand domains. The only path for LP Sites, which OpenSEO
-     does not track.
+     filters to known brand domains. The only path for LP Sites, which the sync
+     does not read.
 2. **Persist** — Parsed records are wrapped in a `Snapshot` (id, rawDate, displayDate, records[]) and saved to `localStorage` via `src/lib/storage.ts`. Multiple snapshots are supported; legacy flat-record format is migrated on first load.
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
 4. **Display** — `RankingReports` is either an `OverviewGrid` (all brands, no active brand selected) or a `RankingTable` (filtered to the active brand + country/domain/keyword filters).
@@ -45,9 +47,10 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `src/lib/storage.ts` | `localStorage` persistence under key `rr_snapshots`. Handles legacy migration from the old single-snapshot format. |
 | `src/types/index.ts` | All shared TypeScript types (`RankingRecord`, `Snapshot`, `Brand`, `AppState`). |
 | `src/App.tsx` | `Layout` holds all state and callback handlers; passes everything to `RankingReports` via `RROutletContext`. Stub pages (BP Sites, Screenshots, GMB, FTDs) exist but are not implemented. |
-| `api/_lib/sitesNormalize.ts` | OpenSEO rank export → `RankingRecord` (re-exported for the frontend by `src/lib/sitesNormalize.ts`). A missing run date means "not checked", `position: null` means NR; Previous is the previous check, Change is signed (+ = improved). |
-| `api/_lib/openseo.ts` | Server-only OpenSEO client: domain list, BP filter, per-domain exports with bounded concurrency, one retry, operator-worded errors. |
-| `api/sites.ts` | Serverless proxy holding `OPENSEO_RANKINGS_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. Returns normalized records. |
+| `api/_lib/sitesNormalize.ts` | Ahrefs Rank Tracker projects → `RankingRecord` (re-exported for the frontend by `src/lib/sitesNormalize.ts`). Positions are credited to sites by competitor slot order; a null `serp_updated` means "not checked", `position: null` means NR; a site's own project wins over others, else the best same-day position; `cycleDate` dates the snapshot by the weekly update. |
+| `api/_lib/ahrefs.ts` | Server-only Ahrefs client: project list, BP filter (other clients' projects are never fetched), per-project competitors + rankings with bounded concurrency, one retry, operator-worded errors; fails if a response reports API units spent. |
+| `api/sites.ts` | Serverless proxy holding `AHREFS_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. Returns normalized records. |
+| `scripts/ahrefs-week-to-xlsx.mts` | Read-only: prints one Ahrefs week as the sync sees it, and can write it as an import-ready xlsx under `docs/references/` (gitignored). |
 
 ### Brands
 
