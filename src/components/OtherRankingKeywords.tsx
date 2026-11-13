@@ -125,11 +125,11 @@ export function OtherRankingKeywords({
           <table className="w-full border-collapse text-[12px]">
             <thead>
               <tr className="border-b border-[var(--border)] text-left text-[10px] uppercase tracking-[0.08em] text-[var(--muted)]">
-                <th className="px-3 py-2 font-semibold">Keyword</th>
-                <th className="px-3 py-2 font-semibold">Country</th>
-                <th className="hidden px-3 py-2 font-semibold sm:table-cell">Best site</th>
-                <th className="px-3 py-2 text-right font-semibold">Pos</th>
-                <th className="px-3 py-2 text-right font-semibold">Search vol</th>
+                <th className="px-2 py-2 sm:px-3 font-semibold">Keyword</th>
+                <th className="px-2 py-2 sm:px-3 font-semibold">Country</th>
+                <th className="hidden px-2 py-2 sm:px-3 font-semibold sm:table-cell">Best site</th>
+                <th className="px-2 py-2 sm:px-3 text-right font-semibold">Pos</th>
+                <th className="px-2 py-2 sm:px-3 text-right font-semibold">Search vol</th>
               </tr>
             </thead>
             <tbody>
@@ -140,7 +140,7 @@ export function OtherRankingKeywords({
                   : undefined
                 return (
                   <tr key={`${item.keyword}|${item.country}`} className="border-b border-[var(--border)] last:border-b-0">
-                    <td className="px-3 py-2 align-top text-[var(--ink)]">
+                    <td className="px-2 py-2 sm:px-3 align-top text-[var(--ink)]">
                       <div className="flex flex-wrap items-center gap-2">
                         {isHttpUrl(item.url) ? (
                           <a href={item.url} target="_blank" rel="noopener noreferrer" title={checked} className="hover:underline">
@@ -157,13 +157,19 @@ export function OtherRankingKeywords({
                       </div>
                       <div className="mt-0.5 text-[11px] text-[var(--muted)] sm:hidden">{item.site}</div>
                     </td>
-                    <td className="px-3 py-2 align-top font-mono text-[var(--text-2)]">{item.country}</td>
-                    <td className="hidden px-3 py-2 align-top text-[var(--text-2)] sm:table-cell">{item.site}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right align-top font-mono text-[var(--ink)]">
-                      {item.position}
-                      {kind && <span className="text-[var(--muted)]"> · {kind}</span>}
+                    <td className="px-2 py-2 sm:px-3 align-top font-mono text-[var(--text-2)]">{item.country}</td>
+                    <td className="hidden px-2 py-2 sm:px-3 align-top text-[var(--text-2)] sm:table-cell">{item.site}</td>
+                    <td className="px-2 py-2 sm:px-3 text-right align-top font-mono text-[var(--ink)]">
+                      <span className="whitespace-nowrap">{item.position}</span>
+                      {/* On phones the kind drops under the number, so Search vol stays on screen. */}
+                      {kind && (
+                        <span className="block whitespace-nowrap text-[10px] text-[var(--muted)] sm:inline sm:text-[12px]">
+                          <span className="hidden sm:inline"> · </span>
+                          {kind}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-right align-top font-mono text-[var(--text-2)]">
+                    <td className="px-2 py-2 sm:px-3 text-right align-top font-mono text-[var(--text-2)]">
                       {item.volume === null ? '—' : item.volume.toLocaleString()}
                     </td>
                   </tr>
