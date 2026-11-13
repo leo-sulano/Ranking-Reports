@@ -83,11 +83,12 @@ export function normalizeKeyword(keyword: string): string {
 }
 
 /**
- * One organic-keywords response → rows to store. A missing field or an
- * unreadable value means Ahrefs changed shape, so it throws rather than saving
- * blanks; a single row with no position or a blank keyword is skipped, so one
- * odd row cannot fail the same pair every day. Keywords that differ only in
- * case or spacing collapse to the best position.
+ * One organic-keywords response → rows to store. A missing field, or a
+ * response in which no row is readable, means Ahrefs changed shape: it throws
+ * rather than saving blanks (the job then halts). A single odd row — no
+ * position, a blank keyword, a value of the wrong type — is skipped, so one
+ * bad row cannot stop the job. Keywords that differ only in case or spacing
+ * collapse to the best position.
  */
 export function mapOrganicKeywords(
   body: unknown,
@@ -100,16 +101,26 @@ export function mapOrganicKeywords(
   if (!Array.isArray(list)) throw unexpected()
 
   const best = new Map<string, DiscoveryRow>()
+  let unreadable = 0
   for (const raw of list) {
-    if (typeof raw !== 'object' || raw === null) throw unexpected()
+    if (typeof raw !== 'object' || raw === null) {
+      unreadable += 1
+      continue
+    }
     const r = raw as Record<string, unknown>
+    // A field missing outright means Ahrefs changed the response, not one odd row.
     if (!SELECTED_FIELDS.every((field) => field in r)) throw unexpected()
 
     const { keyword, best_position: position, best_position_url: url, volume, last_update: checked } = r
     const kind = r.best_position_kind
     if (position === null || keyword === null) continue
-    if (typeof keyword !== 'string' || typeof position !== 'number' || !Number.isFinite(position)) throw unexpected()
-    if (volume !== null && (typeof volume !== 'number' || !Number.isFinite(volume))) throw unexpected()
+    if (
+      typeof keyword !== 'string' || typeof position !== 'number' || !Number.isFinite(position) ||
+      (volume !== null && (typeof volume !== 'number' || !Number.isFinite(volume)))
+    ) {
+      unreadable += 1
+      continue
+    }
     if (keyword.trim() === '') continue
 
     const row: DiscoveryRow = {
@@ -128,6 +139,7 @@ export function mapOrganicKeywords(
     const seen = best.get(key)
     if (!seen || row.position < seen.position) best.set(key, row)
   }
+  if (list.length > 0 && unreadable === list.length) throw unexpected()
   return [...best.values()]
 }
 

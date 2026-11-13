@@ -103,6 +103,16 @@ describe('mapOrganicKeywords', () => {
     expect(betterFirst.map((r) => r.position)).toEqual([3])
   })
 
+  it('skips a row whose values have the wrong type, keeping the rest', () => {
+    const rows = mapOrganicKeywords({ keywords: [
+      { ...ROW, keyword: 'spinsup app', best_position: '3' },
+      { ...ROW, keyword: 'spinsup vip', volume: 'lots' },
+      { ...ROW, keyword: 42 },
+      { ...ROW, keyword: 'spinsup login' },
+    ] }, CTX)
+    expect(rows.map((r) => r.keyword)).toEqual(['spinsup login'])
+  })
+
   const { best_position: _omitted, ...rowWithoutPosition } = ROW
   const { volume: _alsoOmitted, ...rowWithoutVolume } = ROW
   it.each([
