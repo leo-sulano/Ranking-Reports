@@ -24,13 +24,13 @@ const failure = (message: string) => new Error(`Could not load other ranking key
 export async function loadDiscoveryFetches(domains: readonly string[]): Promise<DiscoveryFetchInfo[]> {
   const { data, error } = await supabase
     .from('keyword_discovery_fetches')
-    .select('cycle,domain,country,fetched_at')
+    .select('cycle,domain,country,fetched_at,row_count')
     .in('domain', [...domains])
     .order('cycle', { ascending: false })
     .range(0, PAGE - 1)
   if (error) throw failure(error.message)
-  return ((data ?? []) as Array<{ cycle: string; domain: string; country: string; fetched_at: string }>)
-    .map((r) => ({ cycle: r.cycle, domain: r.domain, country: r.country, fetchedAt: r.fetched_at }))
+  return ((data ?? []) as Array<{ cycle: string; domain: string; country: string; fetched_at: string; row_count: number }>)
+    .map((r) => ({ cycle: r.cycle, domain: r.domain, country: r.country, fetchedAt: r.fetched_at, rowCount: r.row_count }))
 }
 
 interface StoredRow {

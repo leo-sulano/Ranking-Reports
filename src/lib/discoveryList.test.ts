@@ -8,8 +8,8 @@ import {
 const BRAND = { name: 'SpinsUp', mainDomain: 'spinsup.com', domains: ['spinsup.com', 'spinsup.io'] }
 const COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
-const fetched = (cycle: string, domain: string, country: string, fetchedAt = `${cycle}T05:00:00Z`): DiscoveryFetchInfo =>
-  ({ cycle, domain, country, fetchedAt })
+const fetched = (cycle: string, domain: string, country: string, fetchedAt = `${cycle}T05:00:00Z`, rowCount = 10): DiscoveryFetchInfo =>
+  ({ cycle, domain, country, fetchedAt, rowCount })
 /** Every domain × country of the brand fetched in `cycle`. */
 const fullCycle = (cycle: string) => BRAND.domains.flatMap((d) => COUNTRIES.map((c) => fetched(cycle, d, c)))
 
@@ -49,6 +49,16 @@ describe('newEligibleCountries', () => {
       fetched('2026-11-05', 'spinsup.com', 'CA'),
     ]
     expect(newEligibleCountries('2026-11-05', BRAND.domains, fetches)).toEqual(new Set(['AU']))
+  })
+
+  // Each pair stores at most 50 keywords: when last month's list was cut off,
+  // a keyword missing from it may simply have ranked below the cut.
+  it('withholds NEW where a previous list hit the 50-row cap', () => {
+    const fetches = [
+      fetched('2026-11-05', 'spinsup.com', 'AU', undefined, 50), fetched('2026-11-05', 'spinsup.io', 'AU', undefined, 12),
+      fetched('2026-11-05', 'spinsup.com', 'CA', undefined, 49), fetched('2026-11-05', 'spinsup.io', 'CA', undefined, 0),
+    ]
+    expect(newEligibleCountries('2026-11-05', BRAND.domains, fetches)).toEqual(new Set(['CA']))
   })
 
   it('allows none without a previous cycle', () => {

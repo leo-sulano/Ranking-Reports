@@ -7,7 +7,7 @@
  * src/lib/keywordDiscovery.ts, which imports a type from here).
  */
 import {
-  DISCOVERY_COUNTRIES, normalizeKeyword, trackedKey, type DiscoveryRow,
+  DISCOVERY_COUNTRIES, ROWS_PER_CALL, normalizeKeyword, trackedKey, type DiscoveryRow,
 } from '../../api/_lib/keywordDiscovery.js'
 
 export interface DiscoveryFetchInfo {
@@ -15,6 +15,8 @@ export interface DiscoveryFetchInfo {
   domain:    string
   country:   string
   fetchedAt: string
+  /** Keywords that fetch stored: ROWS_PER_CALL means Ahrefs' list was cut off there. */
+  rowCount:  number
 }
 
 export interface DiscoveryListItem {
@@ -66,8 +68,11 @@ export function previousCycle(cycle: string, brandDomains: readonly string[], fe
 }
 
 /**
- * Countries where the previous cycle has every one of the brand's domains, so
- * a keyword missing from it really was absent. NEW is shown only there.
+ * Countries where a keyword missing from the previous cycle really was absent,
+ * so NEW can be shown there: every one of the brand's domains was fetched for
+ * that country, and no fetch was cut off at ROWS_PER_CALL. A cut-off list only
+ * holds the top keywords by volume, so a keyword missing from it may simply
+ * have ranked below the cut.
  */
 export function newEligibleCountries(
   prevCycle: string | null,
@@ -75,9 +80,15 @@ export function newEligibleCountries(
   fetches: readonly DiscoveryFetchInfo[],
 ): Set<string> {
   if (!prevCycle) return new Set()
-  const have = brandFetchesByCycle(brandDomains, fetches).get(prevCycle) ?? new Set<string>()
-  const domains = [...lowerSet(brandDomains)]
-  return new Set(DISCOVERY_COUNTRIES.filter((c) => domains.every((d) => have.has(`${d}|${c}`))))
+  const mine = lowerSet(brandDomains)
+  const complete = new Set<string>()
+  for (const f of fetches) {
+    const domain = f.domain.toLowerCase()
+    if (f.cycle !== prevCycle || !mine.has(domain)) continue
+    if (f.rowCount < ROWS_PER_CALL) complete.add(`${domain}|${f.country.toUpperCase()}`)
+  }
+  const domains = [...mine]
+  return new Set(DISCOVERY_COUNTRIES.filter((c) => domains.every((d) => complete.has(`${d}|${c}`))))
 }
 
 /** When the brand's part of a cycle was finished: its latest fetch in that cycle. */

@@ -52,7 +52,7 @@ describe('loadDiscoveryFetches', () => {
       fetched_at: '2026-11-06T05:00:00+00:00',
     }] })
     expect(await loadDiscoveryFetches(DOMAINS)).toEqual([
-      { cycle: '2026-11-05', domain: 'spinsup.com', country: 'AU', fetchedAt: '2026-11-06T05:00:00+00:00' },
+      { cycle: '2026-11-05', domain: 'spinsup.com', country: 'AU', fetchedAt: '2026-11-06T05:00:00+00:00', rowCount: 12 },
     ])
     expect(db.calls).toHaveLength(1)
     expect(db.calls[0].table).toBe('keyword_discovery_fetches')
