@@ -6,6 +6,7 @@ import { PosBadge } from '../components/PosBadge'
 import { PinButton } from '../components/PinButton'
 import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
+import { OtherRankingKeywords } from '../components/OtherRankingKeywords'
 import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
@@ -719,6 +720,14 @@ function BrandView({
                 </>
               )
             })()}
+            <OtherRankingKeywords
+              brand={brand}
+              trackedRecords={latestSnap?.records ?? []}
+              selectedDomains={visibleDomains}
+              countries={activeCountries}
+              kwFilter={kwFilter}
+              kwExact={kwExact}
+            />
           </div>
         </>
       )}
