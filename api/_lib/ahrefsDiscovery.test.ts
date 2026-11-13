@@ -146,20 +146,44 @@ describe('fetchOrganicKeywords — errors and retries', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('retries a network failure once', async () => {
+  // A paid call that may already have been served and charged is never sent
+  // again in the same run; the next run picks the pair up.
+  it('does not retry a paid call after a network failure', async () => {
     stubFetch(() => { throw new TypeError('fetch failed') }, () => json(rows(3)))
-    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).resolves.toMatchObject({ rowCount: 3 })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/Could not reach Ahrefs for spinsup.com \(AU\)/)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('times out a request that does not answer, twice, then says so', async () => {
+  it('does not retry a paid call that timed out', async () => {
     fetchMock = vi.fn((_input: unknown, init: RequestInit = {}) => new Promise((_resolve, reject) => {
       init.signal?.addEventListener('abort', () => reject(init.signal?.reason))
     }))
     vi.stubGlobal('fetch', fetchMock)
     await expect(fetchOrganicKeywords(CONFIG, REQ, { ...FAST, requestTimeoutMs: 20 }))
       .rejects.toThrow(/did not answer within .* for spinsup.com \(AU\)/)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('never retries once a 2xx has arrived, and reports what that call was charged', async () => {
+    stubFetch(() => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"keywords":['))
+        controller.error(new Error('socket hang up'))
+      },
+    }), { status: 200, headers: { 'x-api-units-cost-total': '750', 'x-api-units-cost-total-actual': '700' } }))
+    const err = await fetchOrganicKeywords(CONFIG, REQ, FAST).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DiscoveryError)
+    expect((err as DiscoveryError).message).toMatch(/answer for spinsup.com \(AU\) was cut off/)
+    expect((err as DiscoveryError).unitsCharged).toBe(700)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks an over-charge as a halt, carrying its charge', async () => {
+    stubFetch(() => json(rows(2), 200, { 'x-api-units-cost-total-actual': '1000' }))
+    const err = await fetchOrganicKeywords(CONFIG, REQ).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DiscoveryError)
+    expect((err as DiscoveryError).halt).toBe(true)
+    expect((err as DiscoveryError).unitsCharged).toBe(1000)
   })
 
   it("passes the caller's own cancel through untouched", async () => {
@@ -183,6 +207,12 @@ describe('fetchKeyLimits', () => {
     expect(sentUrl().pathname).toBe('/v3/subscription-info/limits-and-usage')
     expect((fetchMock.mock.calls[0][1] as RequestInit & { headers: Record<string, string> }).headers.Authorization)
       .toBe('Bearer dk_test')
+  })
+
+  it('retries its free call once after a network failure', async () => {
+    stubFetch(() => { throw new TypeError('fetch failed') }, () => json({ limits_and_usage: LIMITS }))
+    await expect(fetchKeyLimits(CONFIG, FAST)).resolves.toMatchObject({ limit: 200000 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('reports a key without a limit as a null limit', async () => {

@@ -13,7 +13,7 @@
  */
 import { AHREFS_API_BASE, isAbortLike } from './ahrefs.js'
 import {
-  DISCOVERY_SELECT, MIN_CALL_UNITS, ROWS_PER_CALL, UNITS_PER_ROW, type DiscoveryCountry,
+  DISCOVERY_SELECT, MIN_CALL_UNITS, ROWS_PER_CALL, UNITS_PER_ROW, WORST_CASE_CALL_UNITS, type DiscoveryCountry,
 } from './keywordDiscovery.js'
 
 export const DISCOVERY_KEY_REJECTED =
@@ -29,10 +29,16 @@ const DEFAULT_MAX_RETRY_AFTER_MS = 5_000
 /** A failure already worded for whoever reads the cron log. Never carries the URL or the key. */
 export class DiscoveryError extends Error {
   readonly status?: number
-  constructor(message: string, status?: number) {
+  /** Units Ahrefs charged for the failed call, when it answered at all. */
+  readonly unitsCharged?: number
+  /** Ahrefs changed something (pricing, response shape): stop all calls until a person looks. */
+  readonly halt?: boolean
+  constructor(message: string, details: { status?: number; unitsCharged?: number; halt?: boolean } = {}) {
     super(message)
     this.name = 'DiscoveryError'
-    this.status = status
+    this.status = details.status
+    this.unitsCharged = details.unitsCharged
+    this.halt = details.halt
   }
 }
 
@@ -115,10 +121,23 @@ function upstreamError(text: string): string {
   }
 }
 
+/** What a call that answered was charged: the actual cost, else the nominal one, else the worst case. */
+function chargedUnits(headers: Headers, rowCount?: number): number {
+  return (
+    numericHeader(headers, 'x-api-units-cost-total-actual') ??
+    numericHeader(headers, 'x-api-units-cost-total') ??
+    (rowCount === undefined ? WORST_CASE_CALL_UNITS : expectedMaxUnits(rowCount))
+  )
+}
+
 /**
- * GET one endpoint and parse it, retrying once on a 429, a 5xx or a request
- * that failed in transit. A rejected key or any other refusal is not retried:
- * none of them fixes itself. `subject` names the request in error messages.
+ * GET one endpoint and parse it. A 429 or a 5xx is retried once: Ahrefs did
+ * not serve those requests. A rejected key or any other refusal is never
+ * retried, since none of them fixes itself. A PAID request is otherwise
+ * never sent twice: once a 2xx has arrived it has been charged, and after a
+ * timeout or network failure it may have been — the next run picks the pair
+ * up instead. A free request is also retried once after a transport failure.
+ * `subject` names the request in error messages.
  */
 async function getWithRetry(
   config: DiscoveryConfig,
@@ -126,6 +145,7 @@ async function getWithRetry(
   params: Record<string, string>,
   subject: string,
   opts: Resolved,
+  paid: boolean,
 ): Promise<{ headers: Headers; body: unknown }> {
   const query = new URLSearchParams(params).toString()
   const url = `${AHREFS_API_BASE}/${path}${query ? `?${query}` : ''}`
@@ -133,44 +153,58 @@ async function getWithRetry(
   for (let attempt = 1; ; attempt++) {
     const last = attempt >= 2
     const timeout = AbortSignal.timeout(opts.requestTimeoutMs)
+    let res: Response
     try {
-      const res = await fetch(url, {
+      res = await fetch(url, {
         method:   'GET',
         headers:  { Authorization: `Bearer ${config.key}`, Accept: 'application/json' },
         // Ahrefs does not redirect API calls; following one would send the key elsewhere.
         redirect: 'manual',
         signal:   opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
       })
-
-      if (res.status === 401 || res.status === 403) {
-        discard(res)
-        throw new DiscoveryError(DISCOVERY_KEY_REJECTED, res.status)
-      }
-      if ((res.status === 429 || res.status >= 500) && !last) {
-        const wait = res.status === 429 ? retryAfterMs(res, opts.retryDelayMs, opts.maxRetryAfterMs) : 0
-        discard(res)
-        await pause(wait, opts.signal)
-        continue
-      }
-      const text = await res.text()
-      if (res.status < 200 || res.status >= 300) {
-        throw new DiscoveryError(`Ahrefs returned HTTP ${res.status} for ${subject}${upstreamError(text)}`, res.status)
-      }
-      try {
-        return { headers: res.headers, body: JSON.parse(text) }
-      } catch {
-        throw new DiscoveryError(`Ahrefs returned something other than JSON for ${subject}`, res.status)
-      }
     } catch (err) {
-      if (err instanceof DiscoveryError) throw err
       // The caller's deadline or cancel: theirs to word, and never retried.
       if (opts.signal?.aborted) throw err
-      if (!last) continue
+      if (!last && !paid) continue
       throw new DiscoveryError(
         timeout.aborted || isAbortLike(err)
           ? `Ahrefs did not answer within ${opts.requestTimeoutMs / 1000} seconds for ${subject}`
           : `Could not reach Ahrefs for ${subject}: ${(err as Error).message}`,
       )
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      discard(res)
+      throw new DiscoveryError(DISCOVERY_KEY_REJECTED, { status: res.status })
+    }
+    if ((res.status === 429 || res.status >= 500) && !last) {
+      const wait = res.status === 429 ? retryAfterMs(res, opts.retryDelayMs, opts.maxRetryAfterMs) : 0
+      discard(res)
+      await pause(wait, opts.signal)
+      continue
+    }
+    const ok = res.status >= 200 && res.status < 300
+
+    let text: string
+    try {
+      text = await res.text()
+    } catch (err) {
+      if (opts.signal?.aborted) throw err
+      throw new DiscoveryError(`Ahrefs' answer for ${subject} was cut off`, {
+        status:       res.status,
+        unitsCharged: ok && paid ? chargedUnits(res.headers) : undefined,
+      })
+    }
+    if (!ok) {
+      throw new DiscoveryError(`Ahrefs returned HTTP ${res.status} for ${subject}${upstreamError(text)}`, { status: res.status })
+    }
+    try {
+      return { headers: res.headers, body: JSON.parse(text) }
+    } catch {
+      throw new DiscoveryError(`Ahrefs returned something other than JSON for ${subject}`, {
+        status:       res.status,
+        unitsCharged: paid ? chargedUnits(res.headers) : undefined,
+      })
     }
   }
 }
@@ -185,7 +219,9 @@ export interface KeyLimits {
 
 /** The discovery key's monthly limit, usage and reset date. Free: Ahrefs charges no units for it. */
 export async function fetchKeyLimits(config: DiscoveryConfig, opts?: CallOptions): Promise<KeyLimits> {
-  const { body } = await getWithRetry(config, 'subscription-info/limits-and-usage', {}, 'the key limits', resolved(opts))
+  const { body } = await getWithRetry(
+    config, 'subscription-info/limits-and-usage', {}, 'the key limits', resolved(opts), false,
+  )
   const limits = (body as { limits_and_usage?: Record<string, unknown> } | null)?.limits_and_usage
   const limit = limits?.units_limit_api_key
   const usage = limits?.units_usage_api_key
@@ -250,17 +286,17 @@ export async function fetchOrganicKeywords(
   }
   if (req.excludeWhere) params.where = req.excludeWhere
 
-  const { headers, body } = await getWithRetry(config, 'site-explorer/organic-keywords', params, subject, resolved(opts))
+  const { headers, body } = await getWithRetry(
+    config, 'site-explorer/organic-keywords', params, subject, resolved(opts), true,
+  )
   const list = (body as { keywords?: unknown } | null)?.keywords
   const rowCount = Array.isArray(list) ? list.length : 0
   const expected = expectedMaxUnits(rowCount)
-  const unitsActual =
-    numericHeader(headers, 'x-api-units-cost-total-actual') ??
-    numericHeader(headers, 'x-api-units-cost-total') ??
-    expected
+  const unitsActual = chargedUnits(headers, rowCount)
   if (unitsActual > expected + COST_MARGIN_UNITS) {
     throw new DiscoveryError(
       `Ahrefs charged ${unitsActual} units for ${subject}, more than the ${expected} expected — stopping; Ahrefs pricing may have changed`,
+      { unitsCharged: unitsActual, halt: true },
     )
   }
   return { body, rowCount, unitsActual }
