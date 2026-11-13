@@ -12,6 +12,9 @@ const { inserts, store } = vi.hoisted(() => ({
     loadTrackedRecords: vi.fn(),
     saveFetch:          vi.fn(),
     cycleTotals:        vi.fn(),
+    acquireRunLock:     vi.fn(),
+    releaseRunLock:     vi.fn(),
+    haltDiscovery:      vi.fn(),
   },
 }))
 
@@ -111,6 +114,9 @@ beforeEach(() => {
   store.loadTrackedRecords.mockReset().mockResolvedValue([])
   store.saveFetch.mockReset().mockResolvedValue(undefined)
   store.cycleTotals.mockReset().mockResolvedValue({ pairs: 185, units: 46300 })
+  store.acquireRunLock.mockReset().mockResolvedValue({ acquired: true, haltedReason: null })
+  store.releaseRunLock.mockReset().mockResolvedValue(undefined)
+  store.haltDiscovery.mockReset().mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -281,7 +287,9 @@ describe('api/cron-discovery — runs', () => {
     const { status } = await run()
 
     expect(status).toBe(502)
-    expect(loggedSummaries()).toEqual(['Keyword discovery failed: Ahrefs returned HTTP 500 for spinsup.com (CA): internal'])
+    expect(loggedSummaries()).toEqual([
+      'Keyword discovery failed: Ahrefs returned HTTP 500 for spinsup.com (CA): internal (after 2 calls, 65 units)',
+    ])
     expect(store.saveFetch).toHaveBeenCalledTimes(1)
     expect(store.saveFetch.mock.calls[0][1]).toMatchObject({ domain: 'spinsup.com', country: 'AU' })
   })
@@ -296,7 +304,89 @@ describe('api/cron-discovery — runs', () => {
 
     expect(status).toBe(502)
     expect(loggedSummaries()).toEqual([
-      'Keyword discovery failed: the run exceeded its 0.05s budget — Ahrefs did not finish responding in time',
+      'Keyword discovery failed: the run exceeded its 0.05s budget — Ahrefs did not finish responding in time (after 1 call, 0 units)',
     ])
+  })
+
+  it('never starts a call that could outlast its budget', () => {
+    // A started call's worst case: a timeout, a capped Retry-After wait, a second timeout.
+    expect(timing.minStartMs).toBeGreaterThanOrEqual(2 * timing.requestTimeoutMs + timing.maxRetryAfterMs)
+    // ...and the budget leaves room inside the 60 s cap for the /log write and the lock release.
+    expect(timing.budgetMs + 10_000).toBeLessThanOrEqual(60_000)
+  })
+})
+
+describe('api/cron-discovery — overlapping runs and halts', () => {
+  it('does nothing, and logs nothing, while another run holds the lock', async () => {
+    store.acquireRunLock.mockResolvedValue({ acquired: false })
+    const { status, body } = await run()
+    expect(status).toBe(200)
+    expect(body).toEqual({ ok: true, outcome: 'busy' })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(inserts).toEqual([])
+    expect(store.releaseRunLock).not.toHaveBeenCalled()
+  })
+
+  it('releases the lock before answering, after a good run and after a failed one', async () => {
+    const order: string[] = []
+    store.releaseRunLock.mockImplementation(async () => { order.push('release') })
+    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+
+    const res = makeRes()
+    res.status.mockImplementation(() => { order.push('respond'); return res })
+    await handler(cronReq(), res)
+    expect(order).toEqual(['release', 'respond'])
+
+    organic = (call) => (call === 0 ? oneRow() : json({ error: 'internal' }, 500))
+    stubAhrefs()
+    await run()
+    expect(store.releaseRunLock).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports a lock it could not take, and buys nothing', async () => {
+    store.acquireRunLock.mockRejectedValue(
+      new Error('Could not take the keyword discovery lock: relation "keyword_discovery_state" does not exist'))
+    expect((await run()).status).toBe(502)
+    expect(loggedSummaries()).toEqual([
+      'Keyword discovery failed: Could not take the keyword discovery lock: relation "keyword_discovery_state" does not exist',
+    ])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('refuses to spend while halted, until a person clears it', async () => {
+    store.acquireRunLock.mockResolvedValue({ acquired: true, haltedReason: 'Ahrefs charged 1000 units for spinsup.com (AU)' })
+    expect((await run()).status).toBe(500)
+    expect(loggedSummaries()).toEqual([
+      'Keyword discovery halted: Ahrefs charged 1000 units for spinsup.com (AU) — clear halted_reason in keyword_discovery_state to resume',
+    ])
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(store.releaseRunLock).toHaveBeenCalledTimes(1)
+  })
+
+  it('halts on an over-charge, saving the halt and saying what was spent', async () => {
+    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    organic = () => json({ keywords: [ROW, { ...ROW, keyword: 'spinsup app' }] }, 200, { 'x-api-units-cost-total-actual': '1000' })
+
+    expect((await run()).status).toBe(502)
+    const reason = 'Ahrefs charged 1000 units for spinsup.com (AU), more than the 50 expected — stopping; Ahrefs pricing may have changed'
+    expect(store.haltDiscovery).toHaveBeenCalledWith(expect.anything(), reason)
+    expect(loggedSummaries()).toEqual([
+      `Keyword discovery halted: ${reason} (after 1 call, 1,000 units) — no more calls until halted_reason is cleared in keyword_discovery_state`,
+    ])
+    expect(organicCalls()).toHaveLength(1)
+    expect(store.saveFetch).not.toHaveBeenCalled()
+  })
+
+  it('halts when Ahrefs changes the shape of its answer', async () => {
+    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    organic = () => json({ rows: [] }, 200, { 'x-api-units-cost-total-actual': '50' })
+
+    expect((await run()).status).toBe(502)
+    const reason = 'Ahrefs returned an unexpected organic-keywords response for spinsup.com (AU)'
+    expect(store.haltDiscovery).toHaveBeenCalledWith(expect.anything(), reason)
+    expect(loggedSummaries()).toEqual([
+      `Keyword discovery halted: ${reason} (after 1 call, 50 units) — no more calls until halted_reason is cleared in keyword_discovery_state`,
+    ])
+    expect(organicCalls()).toHaveLength(1)
   })
 })
