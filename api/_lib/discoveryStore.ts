@@ -107,3 +107,54 @@ export async function cycleTotals(admin: AdminClient, cycle: string): Promise<{ 
   const rows = (data ?? []) as Array<{ units: number }>
   return { pairs: rows.length, units: rows.reduce((sum, r) => sum + (Number(r.units) || 0), 0) }
 }
+
+const STATE = 'keyword_discovery_state'
+/** Longer than a run can last (maxDuration 60 s), so a killed run's lease simply runs out. */
+export const LOCK_LEASE_MS = 90_000
+const UNLOCKED = '1970-01-01T00:00:00.000Z'
+
+/**
+ * Take the run lease, so two overlapping runs (a duplicate cron delivery, a
+ * manual trigger during the scheduled one) never both buy the same pairs. The
+ * conditional update is atomic: of two racing runs, only one gets the row
+ * back. Also returns any halt stored on the row.
+ */
+export async function acquireRunLock(
+  admin: AdminClient,
+  now: Date = new Date(),
+): Promise<{ acquired: true; haltedReason: string | null } | { acquired: false }> {
+  const fail = (message: string) => new Error(`Could not take the keyword discovery lock: ${message}`)
+  const { data, error } = await admin
+    .from(STATE)
+    .update({ locked_until: new Date(now.getTime() + LOCK_LEASE_MS).toISOString() })
+    .eq('id', 1)
+    .lt('locked_until', now.toISOString())
+    .select('id,halted_reason')
+  if (error) throw fail(error.message)
+  const row = (data as Array<{ halted_reason: string | null }> | null)?.[0]
+  if (row) return { acquired: true, haltedReason: row.halted_reason ?? null }
+
+  // No row back: another run holds the lease — or the row was never created,
+  // which would otherwise look like a lease that is never free.
+  const { data: rows, error: readError } = await admin.from(STATE).select('id').eq('id', 1)
+  if (readError) throw fail(readError.message)
+  if (!rows || (rows as unknown[]).length === 0) {
+    throw fail('keyword_discovery_state has no row — re-run supabase/keyword-discovery.sql')
+  }
+  return { acquired: false }
+}
+
+export async function releaseRunLock(admin: AdminClient): Promise<void> {
+  const { error } = await admin.from(STATE).update({ locked_until: UNLOCKED }).eq('id', 1)
+  if (error) throw new Error(`Could not release the keyword discovery lock: ${error.message}`)
+}
+
+/**
+ * Stop all paid calls until a person clears the halt in Supabase. Used when
+ * Ahrefs changed something (pricing, response shape) that would otherwise make
+ * every run buy and fail on the same pair.
+ */
+export async function haltDiscovery(admin: AdminClient, reason: string, now: Date = new Date()): Promise<void> {
+  const { error } = await admin.from(STATE).update({ halted_reason: reason, halted_at: now.toISOString() }).eq('id', 1)
+  if (error) throw new Error(`Could not save the keyword discovery halt: ${error.message}`)
+}

@@ -2,7 +2,9 @@
 import { describe, it, expect } from 'vitest'
 import type { AdminClient } from './snapshotStore.js'
 import type { DiscoveryRow } from './keywordDiscovery.js'
-import { cycleTotals, loadFetchedPairs, loadTrackedRecords, saveFetch } from './discoveryStore.js'
+import {
+  acquireRunLock, cycleTotals, haltDiscovery, loadFetchedPairs, loadTrackedRecords, releaseRunLock, saveFetch,
+} from './discoveryStore.js'
 
 interface Call { table: string; op: string; args: unknown[]; chain: Array<[string, unknown[]]> }
 type Answer = { data?: unknown; error?: { message: string } | null }
@@ -18,15 +20,20 @@ function fakeAdmin(answer: (call: Call) => Answer) {
     from(table: string) {
       const call: Call = { table, op: '', args: [], chain: [] }
       const builder: Record<string, unknown> = {}
-      for (const op of ['select', 'insert', 'upsert', 'delete']) {
+      for (const op of ['select', 'insert', 'upsert', 'update', 'delete']) {
         builder[op] = (...args: unknown[]) => {
+          // `.update(...).select(...)`: the select only shapes what comes back.
+          if (call.op) {
+            call.chain.push([op, args])
+            return builder
+          }
           call.op = op
           call.args = args
           calls.push(call)
           return builder
         }
       }
-      for (const step of ['eq', 'in', 'order', 'limit', 'range']) {
+      for (const step of ['eq', 'lt', 'in', 'order', 'limit', 'range']) {
         builder[step] = (...args: unknown[]) => {
           call.chain.push([step, args])
           return builder
@@ -160,5 +167,68 @@ describe('cycleTotals', () => {
     expect(calls).toEqual([{
       table: 'keyword_discovery_fetches', op: 'select', args: ['units'], chain: [['eq', ['cycle', '2026-11-05']]],
     }])
+  })
+})
+
+describe('acquireRunLock', () => {
+  const NOW = new Date('2026-11-14T05:00:00.000Z')
+
+  it('takes the lease when it has run out, returning any stored halt', async () => {
+    const { admin, calls } = fakeAdmin(() => ({ data: [{ id: 1, halted_reason: null }] }))
+    expect(await acquireRunLock(admin, NOW)).toEqual({ acquired: true, haltedReason: null })
+    expect(calls).toEqual([{
+      table: 'keyword_discovery_state', op: 'update', args: [{ locked_until: '2026-11-14T05:01:30.000Z' }],
+      chain: [['eq', ['id', 1]], ['lt', ['locked_until', '2026-11-14T05:00:00.000Z']], ['select', ['id,halted_reason']]],
+    }])
+  })
+
+  it('passes on a halt stored on the row', async () => {
+    const { admin } = fakeAdmin(() => ({ data: [{ id: 1, halted_reason: 'Ahrefs charged 1000 units' }] }))
+    expect(await acquireRunLock(admin, NOW)).toEqual({ acquired: true, haltedReason: 'Ahrefs charged 1000 units' })
+  })
+
+  it('does not take a lease another run still holds', async () => {
+    const { admin, calls } = fakeAdmin((call) => (call.op === 'update' ? { data: [] } : { data: [{ id: 1 }] }))
+    expect(await acquireRunLock(admin, NOW)).toEqual({ acquired: false })
+    expect(calls[1]).toEqual({ table: 'keyword_discovery_state', op: 'select', args: ['id'], chain: [['eq', ['id', 1]]] })
+  })
+
+  it('says the state row is missing instead of waiting on it forever', async () => {
+    const { admin } = fakeAdmin(() => ({ data: [] }))
+    await expect(acquireRunLock(admin, NOW)).rejects.toThrow(/keyword_discovery_state has no row/)
+  })
+
+  it('names the failure', async () => {
+    const { admin } = fakeAdmin(() => ({ error: { message: 'relation "keyword_discovery_state" does not exist' } }))
+    await expect(acquireRunLock(admin, NOW))
+      .rejects.toThrow('Could not take the keyword discovery lock: relation "keyword_discovery_state" does not exist')
+  })
+})
+
+describe('releaseRunLock', () => {
+  it('ends the lease at once', async () => {
+    const { admin, calls } = fakeAdmin(() => ({}))
+    await releaseRunLock(admin)
+    expect(calls).toEqual([{
+      table: 'keyword_discovery_state', op: 'update', args: [{ locked_until: '1970-01-01T00:00:00.000Z' }],
+      chain: [['eq', ['id', 1]]],
+    }])
+  })
+})
+
+describe('haltDiscovery', () => {
+  it('stores why and when, so later runs refuse until a person clears it', async () => {
+    const { admin, calls } = fakeAdmin(() => ({}))
+    await haltDiscovery(admin, 'Ahrefs charged 1000 units', new Date('2026-11-14T05:00:00.000Z'))
+    expect(calls).toEqual([{
+      table: 'keyword_discovery_state', op: 'update',
+      args: [{ halted_reason: 'Ahrefs charged 1000 units', halted_at: '2026-11-14T05:00:00.000Z' }],
+      chain: [['eq', ['id', 1]]],
+    }])
+  })
+
+  it('names the failure', async () => {
+    const { admin } = fakeAdmin(() => ({ error: { message: 'timeout' } }))
+    await expect(haltDiscovery(admin, 'r')).rejects.toThrow('Could not save the keyword discovery halt: timeout')
   })
 })
