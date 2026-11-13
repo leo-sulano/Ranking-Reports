@@ -4,6 +4,10 @@
 Rank Tracker. The design and its reasons are in
 `docs/superpowers/specs/2026-11-09-ahrefs-rank-sync-design.md`.
 
+A second, separate integration — the monthly **other ranking keywords** pull,
+which does spend API units on its own key — is described at the end of this
+file.
+
 ## The key
 
 - `AHREFS_API_KEY`, server-only: set in Vercel (Production and Preview) and in
@@ -16,10 +20,12 @@ Rank Tracker. The design and its reasons are in
   too. The sync only ever fetches projects whose target is a BP domain.
 - A key stops working if the person who created it leaves the workspace. When
   that happens the sync fails with "Ahrefs rejected the key…".
-- Keep a small monthly unit cap on the key (Custom limit, e.g. 10,000). Every
-  call the sync makes is free, so the cap never gets in the way; it limits the
+- Keep a small monthly unit cap on this key (Custom limit, e.g. 10,000; it is
+  10,000 as of 2026-11-13). Every call the rankings sync makes with
+  `AHREFS_API_KEY` is free, so the cap never gets in the way; it limits the
   damage if the key leaks. The plan's 1M+ options exceed Standard's whole
-  monthly allowance, so they protect nothing.
+  monthly allowance, so they protect nothing. (The other-ranking-keywords pull
+  below is NOT free and uses its own key, never this one.)
 
 ## Endpoints
 
@@ -103,3 +109,109 @@ To replace a snapshot with that week:
    left join ranking_records r on r.snapshot_id = s.id
    where s.id = 'snap-bp-sites-<date>' group by s.source;
    ```
+
+## Other ranking keywords (paid Site Explorer units)
+
+Each BP Sites brand page has an "Other ranking keywords · not tracked"
+section: the keywords Ahrefs has seen the brand's sites rank for (top 100) in
+AU, CA, DE, IT and NZ that the newest BP snapshot does not track. The design is
+in `docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md`.
+
+### Its own key — this one spends units
+
+- `AHREFS_DISCOVERY_API_KEY` is server-only. It is set in Vercel (Production
+  and Preview) and in the local `.env`.
+- It must never be the same key as `AHREFS_API_KEY`; the job refuses to run
+  if they match.
+- The account owner created it on 2026-11-13 with a **200,000-unit monthly
+  limit**, and it expires 2027-11-13. The job refuses to run if the key has
+  no limit.
+- Keep **pay-as-you-go API units switched off** (Account settings → Limits &
+  usage). The Standard plan includes 800,000 units a month; with
+  pay-as-you-go on, Ahrefs bills anything beyond that automatically.
+
+### The request
+
+`GET site-explorer/organic-keywords`, one call per domain × country:
+
+- `target=<domain>`, `country=au|ca|de|it|nz`, `date=<today>`,
+  `mode=subdomains`;
+- `select=keyword,best_position,best_position_url,volume,last_update,best_position_kind`;
+- `order_by=volume:desc`, `limit=50`;
+- a `where` that leaves out the keywords the newest BP snapshot already tracks
+  for that brand and country:
+  `{"not":{"or":[{"field":"keyword","is":["eq","<keyword>"]},…]}}`. `eq` is
+  case-sensitive, so keywords go out lower-case.
+
+| | Units |
+|---|---|
+| Per row (volume 10, every other field 1) | 15 |
+| Minimum per call, even when empty | 50 |
+| Worst case per call (50 rows) | 750 |
+| Worst case per cycle (37 domains × 5 countries) | 138,750 |
+
+Ahrefs reports each call's real charge in `x-api-units-cost-total-actual`.
+`x-api-units-cost-total` is the nominal cost: on a free test target it shows,
+for example, 65 while the actual charge is 0.
+
+### Guards (`api/_lib/ahrefsDiscovery.ts`, `api/cron-discovery.ts`)
+
+- The job reads the key's limit and usage first, from
+  `subscription-info/limits-and-usage` (free).
+- It refuses to run with a missing key, a key equal to `AHREFS_API_KEY`, or a
+  key with no limit.
+- It never starts a call with fewer than 750 units left on the key.
+- It counts each call's cost from the `-actual` header. A missing header
+  counts as the nominal cost, then as the worst case; never as free.
+- It stops the run if a call costs more than its rows explain:
+  max(50, rows × 15) + 50.
+- It retries once on a 429 (honouring Retry-After, capped) or a 5xx, and
+  never on a 2xx. A 401/403 is reported as the discovery key being rejected.
+
+### Schedule and progress
+
+- **A cycle** is the Ahrefs billing month that the key's limit counts
+  against. It starts one month before `usage_reset_date` (usage resets on the
+  5th). Each cycle gets one pull.
+- **The cron.** `api/cron-discovery.ts` runs daily at 05:00 UTC
+  (`vercel.json`).
+  - Each run fetches the pairs the cycle still lacks, brand by brand, at most
+    one call a second, within a 40 s budget. That is about 30 calls, so a full
+    cycle (185 calls) takes about a week.
+  - Once the cycle is complete, runs return without calling Site Explorer
+    and without a /log line.
+- **The /log line.** Every run that does work leaves one line starting
+  "Keyword discovery", for example:
+  - "Keyword discovery — 30 calls, 2,140 units; SpinsUp complete for the
+    cycle from Nov 5, 2026; 125 calls left"
+  - "Keyword discovery — cycle from Nov 5, 2026 complete (185/185), 46,300
+    units in total"
+
+### Tables (`supabase/keyword-discovery.sql`)
+
+- `keyword_discovery_fetches` has one row per cycle × domain × country
+  fetched (row count, units, time). A pair with no row is fetched by the next
+  run; a pair with one is never re-bought that cycle.
+- `keyword_discovery` holds the keywords: position, position kind, URL,
+  volume and Ahrefs' check date.
+- Approved users can read (RLS `is_approved()`); only the service role writes.
+
+### The page
+
+- A brand shows its newest cycle in which every one of its domains has every
+  country.
+- NEW marks keywords missing from the previous cycle, but only where that
+  cycle is complete for the country.
+- The page re-checks "tracked" against the newest snapshot on load, so a
+  keyword drops out as soon as it is tracked.
+
+### Checking the integration without spending units
+
+```bash
+npx tsx scripts/ahrefs-discovery-check.mts
+```
+
+The script queries ahrefs.com, one of Ahrefs' free Site Explorer test targets
+(ahrefs.com, yep.com, firehose.com), with the real discovery key. It prints the
+key's limit, the cycle and the mapped rows, and exits 1 unless the key's usage
+is unchanged afterwards.
