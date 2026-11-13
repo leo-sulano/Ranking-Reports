@@ -37,7 +37,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 2. **Persist** — Parsed records are wrapped in a `Snapshot` (id, rawDate, displayDate, records[]) and saved to `localStorage` via `src/lib/storage.ts`. Multiple snapshots are supported; legacy flat-record format is migrated on first load.
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
 4. **Display** — `RankingReports` is either an `OverviewGrid` (all brands, no active brand selected) or a `RankingTable` (filtered to the active brand + country/domain/keyword filters).
-5. **Other ranking keywords** — `api/cron-discovery.ts` (daily) pulls Ahrefs
+5. **Other ranking keywords** — `api/cron-discovery.ts` (3× daily) pulls Ahrefs
    Site Explorer organic keywords for the 37 BP domains × 5 countries once per
    Ahrefs billing month into Supabase (`keyword_discovery*`,
    `supabase/keyword-discovery.sql`). Unlike the rankings sync this SPENDS API
@@ -61,7 +61,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `scripts/ahrefs-week-to-xlsx.mts` | Read-only: prints one Ahrefs week as the sync sees it, and can write it as an import-ready xlsx under `docs/references/` (gitignored). |
 | `api/_lib/keywordDiscovery.ts` | Browser-safe logic for other ranking keywords: domain × country pairs, the Ahrefs billing cycle, keyword normalization, organic-keywords response → rows, the tracked index, and the `where` that excludes tracked keywords. |
 | `api/_lib/ahrefsDiscovery.ts` | Server-only client for the PAID Site Explorer call: its own key (refuses the rankings key), the key's limits, cost read from `x-api-units-cost-total-actual`, an over-charge stop, one retry. `scripts/ahrefs-discovery-check.mts` exercises it at 0 units on a free test target. |
-| `api/cron-discovery.ts` | Daily cron: fetches the cycle's missing domain × country pairs within a 40 s budget, saves each through `api/_lib/discoveryStore.ts`, stops before the key's limit, and writes one /log line per run that did work. |
+| `api/cron-discovery.ts` | Cron (05:00, 11:00, 17:00 UTC): takes a run lease, refuses while halted, fetches the cycle's missing domain × country pairs within a 45 s budget, saves each through `api/_lib/discoveryStore.ts`, stops before the key's limit, halts on an Ahrefs pricing or response-shape change, and writes one /log line per run that did work. |
 | `src/components/OtherRankingKeywords.tsx` | The "Other ranking keywords · not tracked" section on BP Sites brand pages; list logic in `src/lib/discoveryList.ts`, loader in `src/lib/keywordDiscovery.ts`. |
 
 ### Brands

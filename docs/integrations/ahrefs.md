@@ -163,29 +163,57 @@ for example, 65 while the actual charge is 0.
 - It never starts a call with fewer than 750 units left on the key.
 - It counts each call's cost from the `-actual` header. A missing header
   counts as the nominal cost, then as the worst case; never as free.
-- It stops the run if a call costs more than its rows explain:
-  max(50, rows × 15) + 50.
-- It retries once on a 429 (honouring Retry-After, capped) or a 5xx, and
-  never on a 2xx. A 401/403 is reported as the discovery key being rejected.
+- It retries a paid call once on a 429 (honouring Retry-After, capped) or a
+  5xx, because Ahrefs did not serve those.
+  - It never sends a paid call twice after a timeout, a network failure or a
+    2xx, since that call may already have been charged. The next run picks
+    the pair up instead.
+  - A 2xx whose body is cut off still counts its charge.
+  - A 401/403 is reported as the discovery key being rejected.
+- **Run lease.** Each run first takes a 90 s lease on the
+  `keyword_discovery_state` row, with an atomic conditional update. Vercel can
+  deliver the same cron run twice, and someone can trigger it by hand. A run
+  that finds the lease taken returns `busy`, without spending or logging. The
+  lease is released before the run answers.
+- **Halt.** If a call costs more than its rows explain (max(50, rows × 15) +
+  50: pricing changed), or the answer no longer reads as organic keywords
+  (response shape changed), the job saves a halt.
+  - Every later run refuses, without calling Ahrefs, until someone clears it
+    in the Supabase SQL editor:
+
+    ```sql
+    update public.keyword_discovery_state set halted_reason = null, halted_at = null where id = 1;
+    ```
+  - A single oddly typed row is skipped rather than halting the job.
 
 ### Schedule and progress
 
 - **A cycle** is the Ahrefs billing month that the key's limit counts
   against. It starts one month before `usage_reset_date` (usage resets on the
   5th). Each cycle gets one pull.
-- **The cron.** `api/cron-discovery.ts` runs daily at 05:00 UTC
-  (`vercel.json`).
+- **The cron.** `api/cron-discovery.ts` runs three times a day: 05:00, 11:00
+  and 17:00 UTC, three `vercel.json` entries on the same path. On Hobby,
+  each entry may fire at any point in its hour.
   - Each run fetches the pairs the cycle still lacks, brand by brand, at most
-    one call a second, within a 40 s budget. That is about 30 calls, so a full
-    cycle (185 calls) takes about a week.
+    one call a second, within a 45 s budget.
+  - A call only starts with at least 21 s of the budget left: a timeout, a
+    capped Retry-After wait and a second timeout. That leaves calls about 24 s
+    to start in, so roughly 12–24 calls a run depending on how fast Ahrefs
+    and Supabase answer.
+  - A full cycle (185 calls) therefore takes about 3–6 days.
   - Once the cycle is complete, runs return without calling Site Explorer
-    and without a /log line.
+    and without a /log line. The first few /log lines show the real calls per
+    run.
 - **The /log line.** Every run that does work leaves one line starting
   "Keyword discovery", for example:
-  - "Keyword discovery — 30 calls, 2,140 units; SpinsUp complete for the
+  - "Keyword discovery — 24 calls, 2,140 units; SpinsUp complete for the
     cycle from Nov 5, 2026; 125 calls left"
   - "Keyword discovery — cycle from Nov 5, 2026 complete (185/185), 46,300
     units in total"
+  - "Keyword discovery failed: … (after 2 calls, 65 units)": a passing
+    error; the next run carries on.
+  - "Keyword discovery halted: … — no more calls until halted_reason is
+    cleared in keyword_discovery_state": see Halt above.
 
 ### Tables (`supabase/keyword-discovery.sql`)
 
@@ -194,14 +222,20 @@ for example, 65 while the actual charge is 0.
   run; a pair with one is never re-bought that cycle.
 - `keyword_discovery` holds the keywords: position, position kind, URL,
   volume and Ahrefs' check date.
-- Approved users can read (RLS `is_approved()`); only the service role writes.
+- `keyword_discovery_state` is one row holding the run lease and any halt.
+  It has no RLS policy at all, so only the service role touches it.
+- On the two other tables, approved users can read (RLS `is_approved()`) and
+  only the service role writes.
 
 ### The page
 
 - A brand shows its newest cycle in which every one of its domains has every
   country.
-- NEW marks keywords missing from the previous cycle, but only where that
-  cycle is complete for the country.
+- NEW marks keywords missing from the previous cycle, but only in a country
+  where that cycle has every domain and none of those lists was cut off at 50
+  keywords. A cut-off list holds only the top keywords by volume, so a
+  missing keyword may simply have ranked below the cut. On big domains NEW is
+  therefore rare.
 - The page re-checks "tracked" against the newest snapshot on load, so a
   keyword drops out as soon as it is tracked.
 

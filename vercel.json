@@ -4,6 +4,8 @@
   ],
   "crons": [
     { "path": "/api/cron-sync", "schedule": "0 4 * * 3,5" },
-    { "path": "/api/cron-discovery", "schedule": "0 5 * * *" }
+    { "path": "/api/cron-discovery", "schedule": "0 5 * * *" },
+    { "path": "/api/cron-discovery", "schedule": "0 11 * * *" },
+    { "path": "/api/cron-discovery", "schedule": "0 17 * * *" }
   ]
 }
