@@ -118,12 +118,13 @@ export function buildDiscoveryList(input: {
   newEligible:     ReadonlySet<string>
   tracked:         ReadonlyMap<string, ReadonlySet<string>>
   brand:           { name: string; mainDomain: string; domains: readonly string[] }
-  selectedDomains: readonly string[]
   countries:       readonly string[]
   kwFilter:        string
   kwExact:         boolean
 }): DiscoveryListItem[] {
-  const selected = lowerSet(input.selectedDomains)
+  // Every one of the brand's sites, whatever the page's Sites filter shows:
+  // that filter hides the main site by default.
+  const brandSites = lowerSet(input.brand.domains)
   const countries = new Set(input.countries.map((c) => c.toUpperCase()))
   // Same matching as the BP Sites keyword search.
   const filter = input.kwFilter.trim().toLowerCase()
@@ -135,7 +136,7 @@ export function buildDiscoveryList(input: {
 
   const groups = new Map<string, DiscoveryRow[]>()
   for (const row of input.rows) {
-    if (!selected.has(row.domain.toLowerCase()) || !countries.has(row.country)) continue
+    if (!brandSites.has(row.domain.toLowerCase()) || !countries.has(row.country)) continue
     const normalized = normalizeKeyword(row.keyword)
     if (input.tracked.get(trackedKey(input.brand.name, row.country))?.has(normalized)) continue
     const keyword = row.keyword.toLowerCase()

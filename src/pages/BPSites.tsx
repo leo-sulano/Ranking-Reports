@@ -723,7 +723,6 @@ function BrandView({
             <OtherRankingKeywords
               brand={brand}
               trackedRecords={latestSnap?.records ?? []}
-              selectedDomains={visibleDomains}
               countries={activeCountries}
               kwFilter={kwFilter}
               kwExact={kwExact}
