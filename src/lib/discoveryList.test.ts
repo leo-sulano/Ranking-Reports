@@ -94,7 +94,7 @@ describe('buildDiscoveryList', () => {
   })
   const input = (over: Partial<Parameters<typeof buildDiscoveryList>[0]>) => ({
     rows: [] as DiscoveryRow[], prevRows: [] as DiscoveryRow[], newEligible: new Set<string>(),
-    tracked: new Map<string, Set<string>>(), brand: BRAND, selectedDomains: BRAND.domains, countries: COUNTRIES,
+    tracked: new Map<string, Set<string>>(), brand: BRAND, countries: COUNTRIES,
     kwFilter: '', kwExact: false, ...over,
   })
   const keywords = (items: Array<{ keyword: string; country: string }>) => items.map((i) => `${i.keyword}|${i.country}`)
@@ -137,14 +137,18 @@ describe('buildDiscoveryList', () => {
     expect(list[0]).toMatchObject({ site: 'spinsup.io', volume: 300 })
   })
 
-  it('follows the Sites and Countries filters', () => {
-    const rows = [
-      row({ keyword: 'spinsup app', domain: 'spinsup.com', position: 1 }),
-      row({ keyword: 'spinsup app', domain: 'spinsup.io', position: 6 }),
-      row({ keyword: 'spinsup casino', country: 'CA' }),
-    ]
-    expect(buildDiscoveryList(input({ rows, selectedDomains: ['spinsup.io'] })).map((i) => [i.keyword, i.site, i.position]))
-      .toEqual([['spinsup app', 'spinsup.io', 6]])
+  // The page's Sites filter hides the main site by default; this list must not.
+  it("lists every one of the brand's sites, main site included, and no other brand's", () => {
+    const list = buildDiscoveryList(input({ rows: [
+      row({ keyword: 'spin up casino', domain: 'spinsup.com', country: 'CA', position: 1 }),
+      row({ keyword: 'spinsup login', domain: 'spinsup.io', position: 2 }),
+      row({ keyword: 'spinjo bonus', domain: 'spinjo.com', position: 1 }),
+    ] }))
+    expect(list.map((i) => [i.keyword, i.site])).toEqual([['spin up casino', 'spinsup.com'], ['spinsup login', 'spinsup.io']])
+  })
+
+  it('follows the Countries filter', () => {
+    const rows = [row({ keyword: 'spinsup app' }), row({ keyword: 'spinsup casino', country: 'CA' })]
     expect(keywords(buildDiscoveryList(input({ rows, countries: ['CA'] })))).toEqual(['spinsup casino|CA'])
   })
 

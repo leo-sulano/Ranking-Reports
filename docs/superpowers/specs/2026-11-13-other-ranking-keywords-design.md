@@ -43,8 +43,9 @@ Rank Tracker endpoints the rankings sync uses. The Standard plan includes
 6. **What the client sees** (sketch approved): a section on each brand's BP
    Sites page, under the matrix. It has one row per keyword and country,
    showing the brand's best-ranking site, its position and the search volume.
-   NEW marks keywords missing from the previous month's list. It follows the
-   page's Sites and Countries filters, and a keyword drops out once it is
+   NEW marks keywords missing from the previous month's list. It covers all
+   of the brand's sites, follows the page's Countries filter, and a keyword
+   drops out once it is
    tracked. It shows an "As of" date and has no manual refresh. Runs are
    logged on /log.
 
@@ -310,8 +311,8 @@ fortune play bonus codes         CA       fortuneplay.io      21       450
     date filter shows.
   - The check runs in the browser on load, so a newly tracked keyword drops
     out after the next weekly sync, without waiting for the next pull.
-- **Rows.** One row per keyword × country, among the sites selected in the
-  Sites filter.
+- **Rows.** One row per keyword × country, across all of the brand's sites,
+  the main site included.
   - The best (lowest) position wins. On a tie, the main domain comes first,
     then `brands.ts` order.
   - Columns: keyword (plus NEW), country, best site, position, search volume.
@@ -323,8 +324,13 @@ fortune play bonus codes         CA       fortuneplay.io      21       450
   previous cycle. NEW is shown only for countries where that previous cycle
   has a fetch for every one of the brand's domains; otherwise there is no NEW
   for that country. The first cycle has no NEW at all.
-- **Filters.** Sites, Countries and the keyword search apply. The position,
+- **Filters.** Countries and the keyword search apply. The Sites, position,
   date and stats-card filters do not.
+  - **Changed 2026-11-18:** the list first followed the Sites filter too. That
+    filter hides the main site by default, so a brand whose untracked
+    keywords were all on its main site (SpinsUp: 2, both on spinsup.com)
+    showed "Nothing matches the filters" until someone ticked the main site.
+    The best-site column already says which site ranks.
 - **Order and length.** Sort by search volume, highest first (missing volume
   last), then by position. Show 25 rows, then "Show all N".
 - **Header.**

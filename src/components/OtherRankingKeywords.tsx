@@ -35,7 +35,6 @@ const isHttpUrl = (url: string) => /^https?:\/\//i.test(url)
 export function OtherRankingKeywords({
   brand,
   trackedRecords,
-  selectedDomains,
   countries,
   kwFilter,
   kwExact,
@@ -43,7 +42,6 @@ export function OtherRankingKeywords({
   brand:           Brand
   /** The brand's records in the newest BP snapshot: what is tracked now. */
   trackedRecords:  readonly RankingRecord[]
-  selectedDomains: readonly string[]
   countries:       readonly string[]
   kwFilter:        string
   kwExact:         boolean
@@ -86,16 +84,16 @@ export function OtherRankingKeywords({
     if (loaded.status !== 'ready') return []
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      selectedDomains, countries, kwFilter, kwExact,
+      countries, kwFilter, kwExact,
     })
-  }, [loaded, tracked, brand, selectedDomains, countries, kwFilter, kwExact])
+  }, [loaded, tracked, brand, countries, kwFilter, kwExact])
 
   // Tells "everything is tracked" apart from "the filters hide everything".
   const untrackedTotal = useMemo(() => {
     if (loaded.status !== 'ready') return 0
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      selectedDomains: brand.domains, countries: ALL_COUNTRIES, kwFilter: '', kwExact: false,
+      countries: ALL_COUNTRIES, kwFilter: '', kwExact: false,
     }).length
   }, [loaded, tracked, brand])
 
@@ -202,7 +200,8 @@ export function OtherRankingKeywords({
         )}
       </div>
       <p className="max-w-3xl text-[12px] leading-relaxed text-[var(--muted)]">
-        Keywords Ahrefs has seen these sites rank for in the top 100 that aren't in the tracked list. Ahrefs re-checks
+        Keywords Ahrefs has seen this brand's sites, the main site included, rank for in the top 100 that aren't in the
+        tracked list. The Sites filter doesn't apply here. Ahrefs re-checks
         these less often than the weekly tracker, so a position can be a few weeks old.
       </p>
       {body}
