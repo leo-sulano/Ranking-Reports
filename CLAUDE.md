@@ -38,7 +38,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
 4. **Display** — `RankingReports` is either an `OverviewGrid` (all brands, no active brand selected) or a `RankingTable` (filtered to the active brand + country/domain/keyword filters).
 5. **Other ranking keywords** — `api/cron-discovery.ts` (3× daily) pulls Ahrefs
-   Site Explorer organic keywords for the 37 BP domains × 5 countries once per
+   Site Explorer organic keywords for the 36 BP domains × each brand's markets once per
    Ahrefs billing month into Supabase (`keyword_discovery*`,
    `supabase/keyword-discovery.sql`). Unlike the rankings sync this SPENDS API
    units, so it uses its own capped key, `AHREFS_DISCOVERY_API_KEY`, and stops
@@ -67,6 +67,8 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 ### Brands
 
 Nine brands are registered in `src/lib/brands.ts`: Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePlay, RocketSpin, PlayMojo, Rollero. Each brand has a `mainDomain` (sorted first in domain filters) plus alias domains.
+
+A brand can narrow its markets with `countries` (RoosterBet: AU, CA, IT, NZ since 2026-11-25); `brandCountries` gives the column list and `isReported` hides records outside a brand's markets on every page, without deleting them. Sites taken off a brand go on `RETIRED_DOMAINS` (casinoroosters.com), so the sync skips them quietly.
 
 ### Tailwind
 
