@@ -7,7 +7,7 @@
  * src/lib/keywordDiscovery.ts, which imports a type from here).
  */
 import {
-  DISCOVERY_COUNTRIES, ROWS_PER_CALL, normalizeKeyword, trackedKey, type DiscoveryRow,
+  DISCOVERY_COUNTRIES, LEGACY_ROWS_PER_CALL, normalizeKeyword, trackedKey, type DiscoveryRow,
 } from '../../api/_lib/keywordDiscovery.js'
 
 export interface DiscoveryFetchInfo {
@@ -89,7 +89,7 @@ export function newEligibleCountries(
   for (const f of fetches) {
     const domain = f.domain.toLowerCase()
     if (f.cycle !== prevCycle || !mine.has(domain)) continue
-    if (f.rowCount < ROWS_PER_CALL) complete.add(`${domain}|${f.country.toUpperCase()}`)
+    if (f.rowCount < LEGACY_ROWS_PER_CALL) complete.add(`${domain}|${f.country.toUpperCase()}`)
   }
   const domains = [...mine]
   return new Set(DISCOVERY_COUNTRIES.filter((c) => domains.every((d) => complete.has(`${d}|${c}`))))

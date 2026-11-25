@@ -3,13 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler, { runSummary, timing } from './cron-discovery.js'
 import { BRANDS } from './_lib/brands.js'
-import { discoveryPairs, pairKey, type DiscoveryCountry } from './_lib/keywordDiscovery.js'
+import { ALL_COUNTRIES_FETCH, discoveryTargets, pairKey } from './_lib/keywordDiscovery.js'
 
 const { inserts, store } = vi.hoisted(() => ({
   inserts: [] as { table: string; rows: unknown }[],
   store: {
     loadFetchedPairs:   vi.fn(),
-    loadTrackedRecords: vi.fn(),
     saveFetch:          vi.fn(),
     cycleTotals:        vi.fn(),
     acquireRunLock:     vi.fn(),
@@ -44,7 +43,7 @@ const LIMITS = {
   units_limit_api_key: 200000, units_usage_api_key: 0, api_key_expiration_date: '2027-11-13T23:59:58Z',
 }
 const ROW = {
-  keyword: 'spinsup review', best_position: 4, best_position_url: 'https://spinsup.com/review', volume: 300,
+  keyword: 'spinsup review', keyword_country: 'au', best_position: 4, best_position_url: 'https://spinsup.com/review', volume: 300,
   last_update: '2026-11-02T09:00:00Z', best_position_kind: 'organic',
 }
 /** One row, charged 65 units: what most calls look like. */
@@ -69,11 +68,10 @@ const organicCalls = () => fetchMock.mock.calls
   .map((c) => new URL(String(c[0])))
   .filter((u) => u.pathname === '/v3/site-explorer/organic-keywords')
 
-/** Only these pairs are still missing; every other pair of the cycle is already fetched. */
-function onlyMissing(pairs: Array<[domain: string, country: DiscoveryCountry]>) {
-  const missing = new Set(pairs.map(([d, c]) => pairKey(d, c)))
+/** Only these sites are still missing; every other live site of the cycle is already fetched (country ALL). */
+function onlyMissing(domains: string[]) {
   store.loadFetchedPairs.mockResolvedValue(new Set(
-    discoveryPairs(BRANDS).map((p) => pairKey(p.domain, p.country)).filter((k) => !missing.has(k)),
+    discoveryTargets(BRANDS).filter((t) => !domains.includes(t.domain)).map((t) => pairKey(t.domain, ALL_COUNTRIES_FETCH)),
   ))
 }
 
@@ -111,7 +109,6 @@ beforeEach(() => {
   organic = () => oneRow()
   stubAhrefs()
   store.loadFetchedPairs.mockReset().mockResolvedValue(new Set())
-  store.loadTrackedRecords.mockReset().mockResolvedValue([])
   store.saveFetch.mockReset().mockResolvedValue(undefined)
   store.cycleTotals.mockReset().mockResolvedValue({ pairs: 185, units: 46300 })
   store.acquireRunLock.mockReset().mockResolvedValue({ acquired: true, haltedReason: null })
@@ -130,11 +127,11 @@ afterEach(() => {
 })
 
 describe('runSummary', () => {
-  const BASE = { cycle: '2026-11-05', calls: 30, units: 2140, completedBrands: [] as string[], left: 125, total: 185 }
+  const BASE = { cycle: '2026-11-05', calls: 30, units: 2140, completedBrands: [] as string[], left: 6, total: 36 }
 
   it('reports progress, naming the brands that finished', () => {
     expect(runSummary({ ...BASE, completedBrands: ['FortunePlay', 'Rollero'] })).toBe(
-      'Keyword discovery — 30 calls, 2,140 units; FortunePlay and Rollero complete for the cycle from Nov 5, 2026; 125 calls left',
+      'Keyword discovery — 30 calls, 2,140 units; FortunePlay and Rollero complete for the cycle from Nov 5, 2026; 6 calls left',
     )
     expect(runSummary({ ...BASE, completedBrands: ['SpinsUp', 'Spinjo', 'Rollero'] })).toContain(
       '; SpinsUp, Spinjo and Rollero complete for',
@@ -148,13 +145,18 @@ describe('runSummary', () => {
 
   it('says why a run stopped for units', () => {
     expect(runSummary({ ...BASE, unitsLeftAtStop: 700 })).toBe(
-      'Keyword discovery — 30 calls, 2,140 units for the cycle from Nov 5, 2026; 125 calls left; stopped: the discovery key has 700 units left this month',
+      'Keyword discovery — 30 calls, 2,140 units for the cycle from Nov 5, 2026; 6 calls left; stopped: the discovery key has 700 units left this month',
     )
   })
 
   it('reports a finished cycle with its total units', () => {
     expect(runSummary({ ...BASE, left: 0, cycleUnits: 46300 }))
-      .toBe('Keyword discovery — cycle from Nov 5, 2026 complete (185/185), 46,300 units in total')
+      .toBe('Keyword discovery — cycle from Nov 5, 2026 complete (36/36), 46,300 units in total')
+  })
+
+  it('names the sites whose list hit the 200-keyword limit', () => {
+    expect(runSummary({ ...BASE, cutOff: ['a.com', 'b.com'] }))
+      .toBe('Keyword discovery — 30 calls, 2,140 units; a.com and b.com hit the 200-keyword limit for the cycle from Nov 5, 2026; 6 calls left')
   })
 })
 
@@ -211,21 +213,18 @@ describe('api/cron-discovery — runs', () => {
     expect(organicCalls()).toEqual([])
   })
 
-  it('fetches only the missing pairs, in order, leaving tracked keywords out, and finishes the cycle', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA'], ['spinsup.com', 'DE']])
-    store.loadTrackedRecords.mockResolvedValue([{ domain: 'spinsup.io', keyword: 'SpinsUp Bonus', country: 'AU' }])
+  it('fetches only the missing sites, every country at once, and finishes the cycle', async () => {
+    onlyMissing(['spinsup.com', 'spinsup.io'])
 
     const { status, body } = await run()
 
     expect(status).toBe(200)
-    expect(organicCalls().map((u) => [u.searchParams.get('target'), u.searchParams.get('country')]))
-      .toEqual([['spinsup.com', 'au'], ['spinsup.com', 'ca'], ['spinsup.com', 'de']])
-    expect(organicCalls().map((u) => u.searchParams.get('where'))).toEqual([
-      '{"not":{"or":[{"field":"keyword","is":["eq","spinsup bonus"]}]}}', null, null,
-    ])
-    expect(store.saveFetch).toHaveBeenCalledTimes(3)
+    expect(organicCalls().map((u) => u.searchParams.get('target'))).toEqual(['spinsup.com', 'spinsup.io'])
+    expect(organicCalls().map((u) => [u.searchParams.has('country'), u.searchParams.has('where')]))
+      .toEqual([[false, false], [false, false]])
+    expect(store.saveFetch).toHaveBeenCalledTimes(2)
     expect(store.saveFetch.mock.calls[0][1]).toEqual({
-      cycle: '2026-11-05', domain: 'spinsup.com', country: 'AU', units: 65,
+      cycle: '2026-11-05', domain: 'spinsup.com', units: 65,
       rows: [{
         cycle: '2026-11-05', brand: 'SpinsUp', domain: 'spinsup.com', country: 'AU', keyword: 'spinsup review',
         position: 4, positionKind: 'organic', url: 'https://spinsup.com/review', volume: 300,
@@ -233,13 +232,31 @@ describe('api/cron-discovery — runs', () => {
       }],
     })
     expect(store.cycleTotals).toHaveBeenCalledWith(expect.anything(), '2026-11-05')
-    // 177 = every brand's BP domains × its markets (RoosterBet has no DE).
-    expect(loggedSummaries()).toEqual(['Keyword discovery — cycle from Nov 5, 2026 complete (177/177), 46,300 units in total'])
-    expect(body).toMatchObject({ ok: true, outcome: 'complete', calls: 3, units: 195, left: 0 })
+    expect(loggedSummaries()).toEqual(['Keyword discovery — cycle from Nov 5, 2026 complete (36/36), 46,300 units in total'])
+    expect(body).toMatchObject({ ok: true, outcome: 'complete', calls: 2, units: 130, left: 0 })
+  })
+
+  it('names the sites whose list hit the 200-keyword limit', async () => {
+    onlyMissing(['spinsup.com', 'spinsup.io'])
+    const rows200 = { keywords: Array.from({ length: 200 }, (_, i) => ({ ...ROW, keyword: `spinsup kw ${i}` })) }
+    // The first call takes the whole budget, so the run stops after it with one site left.
+    let clock = Date.now()
+    vi.spyOn(Date, 'now').mockImplementation(() => clock)
+    organic = () => {
+      clock += 40_000
+      return json(rows200, 200, { 'x-api-units-cost-total-actual': '3200' })
+    }
+
+    await run()
+
+    expect(store.saveFetch).toHaveBeenCalledTimes(1)
+    expect(loggedSummaries()).toEqual([
+      'Keyword discovery — 1 call, 3,200 units; spinsup.com hit the 200-keyword limit for the cycle from Nov 5, 2026; 1 call left',
+    ])
   })
 
   it('sends only the discovery key, never the rankings key', async () => {
-    onlyMissing([['spinsup.com', 'AU']])
+    onlyMissing(['spinsup.com'])
     await run()
     expect(fetchMock.mock.calls.length).toBeGreaterThan(1)
     for (const [, init] of fetchMock.mock.calls as Array<[unknown, RequestInit]>) {
@@ -248,7 +265,7 @@ describe('api/cron-discovery — runs', () => {
   })
 
   it('stops starting calls when its time budget runs low, and reports what is left', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA'], ['spinjo.com', 'AU'], ['spinjo.com', 'CA'], ['spinjo.com', 'DE']])
+    onlyMissing(['spinsup.com', 'spinsup.io', 'spinjo.com', 'spinjo.io', 'spinjocasino.com'])
     let clock = Date.now()
     vi.spyOn(Date, 'now').mockImplementation(() => clock)
     organic = () => {
@@ -268,8 +285,9 @@ describe('api/cron-discovery — runs', () => {
   })
 
   it('stops when the key runs low on units mid-run', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
-    limits = { ...LIMITS, units_usage_api_key: 198600 }
+    onlyMissing(['spinsup.com', 'spinsup.io'])
+    // 3,800 left: enough for one worst-case call (3,200), not after it cost 700.
+    limits = { ...LIMITS, units_usage_api_key: 196200 }
     const rows46 = { keywords: Array.from({ length: 46 }, (_, i) => ({ ...ROW, keyword: `spinsup kw ${i}` })) }
     organic = () => json(rows46, 200, { 'x-api-units-cost-total-actual': '700' })
 
@@ -277,22 +295,22 @@ describe('api/cron-discovery — runs', () => {
 
     expect(organicCalls()).toHaveLength(1)
     expect(loggedSummaries()).toEqual([
-      'Keyword discovery — 1 call, 700 units for the cycle from Nov 5, 2026; 1 call left; stopped: the discovery key has 700 units left this month',
+      'Keyword discovery — 1 call, 700 units for the cycle from Nov 5, 2026; 1 call left; stopped: the discovery key has 3,100 units left this month',
     ])
   })
 
   it('fails loudly on an Ahrefs error, keeping the pairs it already saved', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    onlyMissing(['spinsup.com', 'spinsup.io'])
     organic = (call) => (call === 0 ? oneRow() : json({ error: 'internal' }, 500))
 
     const { status } = await run()
 
     expect(status).toBe(502)
     expect(loggedSummaries()).toEqual([
-      'Keyword discovery failed: Ahrefs returned HTTP 500 for spinsup.com (CA): internal (after 2 calls, 65 units)',
+      'Keyword discovery failed: Ahrefs returned HTTP 500 for spinsup.io: internal (after 2 calls, 65 units)',
     ])
     expect(store.saveFetch).toHaveBeenCalledTimes(1)
-    expect(store.saveFetch.mock.calls[0][1]).toMatchObject({ domain: 'spinsup.com', country: 'AU' })
+    expect(store.saveFetch.mock.calls[0][1]).toMatchObject({ domain: 'spinsup.com' })
   })
 
   it('names its own budget when Ahrefs is still answering at the deadline', async () => {
@@ -331,7 +349,7 @@ describe('api/cron-discovery — overlapping runs and halts', () => {
   it('releases the lock before answering, after a good run and after a failed one', async () => {
     const order: string[] = []
     store.releaseRunLock.mockImplementation(async () => { order.push('release') })
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    onlyMissing(['spinsup.com', 'spinsup.io'])
 
     const res = makeRes()
     res.status.mockImplementation(() => { order.push('respond'); return res })
@@ -355,21 +373,21 @@ describe('api/cron-discovery — overlapping runs and halts', () => {
   })
 
   it('refuses to spend while halted, until a person clears it', async () => {
-    store.acquireRunLock.mockResolvedValue({ acquired: true, haltedReason: 'Ahrefs charged 1000 units for spinsup.com (AU)' })
+    store.acquireRunLock.mockResolvedValue({ acquired: true, haltedReason: 'Ahrefs charged 1000 units for spinsup.com' })
     expect((await run()).status).toBe(500)
     expect(loggedSummaries()).toEqual([
-      'Keyword discovery halted: Ahrefs charged 1000 units for spinsup.com (AU) — clear halted_reason in keyword_discovery_state to resume',
+      'Keyword discovery halted: Ahrefs charged 1000 units for spinsup.com — clear halted_reason in keyword_discovery_state to resume',
     ])
     expect(fetchMock).not.toHaveBeenCalled()
     expect(store.releaseRunLock).toHaveBeenCalledTimes(1)
   })
 
   it('halts on an over-charge, saving the halt and saying what was spent', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    onlyMissing(['spinsup.com', 'spinsup.io'])
     organic = () => json({ keywords: [ROW, { ...ROW, keyword: 'spinsup app' }] }, 200, { 'x-api-units-cost-total-actual': '1000' })
 
     expect((await run()).status).toBe(502)
-    const reason = 'Ahrefs charged 1000 units for spinsup.com (AU), more than the 50 expected — stopping; Ahrefs pricing may have changed'
+    const reason = 'Ahrefs charged 1000 units for spinsup.com, more than the 50 expected — stopping; Ahrefs pricing may have changed'
     expect(store.haltDiscovery).toHaveBeenCalledWith(expect.anything(), reason)
     expect(loggedSummaries()).toEqual([
       `Keyword discovery halted: ${reason} (after 1 call, 1,000 units) — no more calls until halted_reason is cleared in keyword_discovery_state`,
@@ -379,11 +397,11 @@ describe('api/cron-discovery — overlapping runs and halts', () => {
   })
 
   it('halts when Ahrefs changes the shape of its answer', async () => {
-    onlyMissing([['spinsup.com', 'AU'], ['spinsup.com', 'CA']])
+    onlyMissing(['spinsup.com', 'spinsup.io'])
     organic = () => json({ rows: [] }, 200, { 'x-api-units-cost-total-actual': '50' })
 
     expect((await run()).status).toBe(502)
-    const reason = 'Ahrefs returned an unexpected organic-keywords response for spinsup.com (AU)'
+    const reason = 'Ahrefs returned an unexpected organic-keywords response for spinsup.com'
     expect(store.haltDiscovery).toHaveBeenCalledWith(expect.anything(), reason)
     expect(loggedSummaries()).toEqual([
       `Keyword discovery halted: ${reason} (after 1 call, 50 units) — no more calls until halted_reason is cleared in keyword_discovery_state`,

@@ -6,7 +6,7 @@ import {
 } from './ahrefsDiscovery.js'
 
 const CONFIG = { key: 'dk_test' }
-const REQ = { domain: 'spinsup.com', country: 'AU', date: '2026-12-06' } as const
+const REQ = { domain: 'spinsup.com', date: '2026-12-06' } as const
 /** Keeps retry waits out of the test run. */
 const FAST = { retryDelayMs: 0, maxRetryAfterMs: 10 }
 
@@ -16,7 +16,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 /** An organic-keywords body with `n` complete rows, as Ahrefs returns them. */
 const rows = (n: number) => ({
   keywords: Array.from({ length: n }, (_, i) => ({
-    keyword: `spinsup keyword ${i}`, best_position: i + 1, best_position_url: 'https://spinsup.com/', volume: 100 - i,
+    keyword: `spinsup keyword ${i}`, keyword_country: 'au', best_position: i + 1, best_position_url: 'https://spinsup.com/', volume: 100 - i,
     last_update: '2026-12-01T08:00:00Z', best_position_kind: 'organic',
   })),
 })
@@ -52,7 +52,7 @@ describe('discoveryConfig / sharesSyncKey', () => {
 })
 
 describe('fetchOrganicKeywords — the request', () => {
-  it('asks for one domain and country, top 50 by volume, with the discovery key', async () => {
+  it('asks for one domain, every country, top 200 by volume, with the discovery key', async () => {
     stubFetch(() => json(rows(1)))
     await fetchOrganicKeywords(CONFIG, REQ)
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -60,20 +60,13 @@ describe('fetchOrganicKeywords — the request', () => {
     const url = new URL(input)
     expect(url.origin + url.pathname).toBe('https://api.ahrefs.com/v3/site-explorer/organic-keywords')
     expect(Object.fromEntries(url.searchParams)).toEqual({
-      target: 'spinsup.com', country: 'au', date: '2026-12-06', mode: 'subdomains',
-      select: 'keyword,best_position,best_position_url,volume,last_update,best_position_kind',
-      order_by: 'volume:desc', limit: '50',
+      target: 'spinsup.com', date: '2026-12-06', mode: 'subdomains',
+      select: 'keyword,keyword_country,best_position,best_position_url,volume,last_update,best_position_kind',
+      order_by: 'volume:desc', limit: '200',
     })
     expect(init.method ?? 'GET').toBe('GET')
     expect(init.redirect).toBe('manual')
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer dk_test')
-  })
-
-  it('adds the where clause when there are keywords to exclude', async () => {
-    stubFetch(() => json(rows(1)))
-    const where = '{"not":{"or":[{"field":"keyword","is":["eq","spinsup"]}]}}'
-    await fetchOrganicKeywords(CONFIG, { ...REQ, excludeWhere: where })
-    expect(sentUrl().searchParams.get('where')).toBe(where)
   })
 })
 
@@ -96,8 +89,8 @@ describe('fetchOrganicKeywords — units', () => {
     expect((await fetchOrganicKeywords(CONFIG, REQ)).unitsActual).toBe(50)
   })
 
-  it('expects at most max(50, 15 units a row)', () => {
-    expect([0, 10, 50].map(expectedMaxUnits)).toEqual([50, 150, 750])
+  it('expects at most max(50, 16 units a row)', () => {
+    expect([0, 3, 10, 200].map(expectedMaxUnits)).toEqual([50, 50, 160, 3200])
   })
 
   it('accepts a cost up to 50 units over what the rows explain', async () => {
@@ -108,7 +101,7 @@ describe('fetchOrganicKeywords — units', () => {
   it('stops when a call costs more than its rows can explain', async () => {
     stubFetch(() => json(rows(2), 200, { 'x-api-units-cost-total-actual': '1000' }))
     await expect(fetchOrganicKeywords(CONFIG, REQ))
-      .rejects.toThrow(/1000 units for spinsup.com \(AU\), more than the 50 expected/)
+      .rejects.toThrow(/1000 units for spinsup\.com, more than the 50 expected/)
   })
 })
 
@@ -130,19 +123,19 @@ describe('fetchOrganicKeywords — errors and retries', () => {
 
   it('gives up after a second 429', async () => {
     stubFetch(() => json({}, 429), () => json({}, 429))
-    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 429 for spinsup.com \(AU\)/)
+    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 429 for spinsup\.com/)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it("gives up after a second 5xx, quoting Ahrefs' own error", async () => {
     stubFetch(() => json({ error: 'internal' }, 500), () => json({ error: 'internal' }, 500))
-    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 500 for spinsup.com \(AU\): internal/)
+    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 500 for spinsup\.com: internal/)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('does not retry a request Ahrefs refused as bad', async () => {
     stubFetch(() => json({ error: 'bad where' }, 400))
-    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 400 for spinsup.com \(AU\): bad where/)
+    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/HTTP 400 for spinsup\.com: bad where/)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -150,7 +143,7 @@ describe('fetchOrganicKeywords — errors and retries', () => {
   // again in the same run; the next run picks the pair up.
   it('does not retry a paid call after a network failure', async () => {
     stubFetch(() => { throw new TypeError('fetch failed') }, () => json(rows(3)))
-    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/Could not reach Ahrefs for spinsup.com \(AU\)/)
+    await expect(fetchOrganicKeywords(CONFIG, REQ, FAST)).rejects.toThrow(/Could not reach Ahrefs for spinsup\.com/)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -160,7 +153,7 @@ describe('fetchOrganicKeywords — errors and retries', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
     await expect(fetchOrganicKeywords(CONFIG, REQ, { ...FAST, requestTimeoutMs: 20 }))
-      .rejects.toThrow(/did not answer within .* for spinsup.com \(AU\)/)
+      .rejects.toThrow(/did not answer within .* for spinsup\.com/)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -173,7 +166,7 @@ describe('fetchOrganicKeywords — errors and retries', () => {
     }), { status: 200, headers: { 'x-api-units-cost-total': '750', 'x-api-units-cost-total-actual': '700' } }))
     const err = await fetchOrganicKeywords(CONFIG, REQ, FAST).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(DiscoveryError)
-    expect((err as DiscoveryError).message).toMatch(/answer for spinsup.com \(AU\) was cut off/)
+    expect((err as DiscoveryError).message).toMatch(/answer for spinsup\.com was cut off/)
     expect((err as DiscoveryError).unitsCharged).toBe(700)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
