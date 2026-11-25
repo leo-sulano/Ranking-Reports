@@ -5,55 +5,71 @@ import { DOMAIN_TO_BRAND, brandCountries } from '../lib/brands'
 import { formatDisplayDate } from '../lib/parser'
 import { trackedIndex } from '../lib/keywordDiscovery'
 import { buildDiscoveryList, positionKindLabel } from '../lib/discoveryList'
-import { useDiscovery } from '../lib/useDiscovery'
+import type { DiscoveryLoad } from '../lib/useDiscovery'
 
 /**
- * "Other ranking keywords · not tracked" — under the matrix on a BP Sites
- * brand page. Shows what the monthly Ahrefs job (api/cron-discovery.ts) found
- * the brand's sites ranking for, minus what the newest snapshot tracks.
- * Design: docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md
+ * "Ranking in other countries · not tracked" — under the matrix on a BP Sites
+ * brand page. Countries outside the brand's markets where the monthly Ahrefs
+ * job (api/cron-discovery.ts) found its sites ranking, minus what the newest
+ * snapshot tracks. Keywords in the brand's markets join the table instead.
+ * Design: docs/superpowers/specs/2026-11-25-all-countries-keywords-design.md
  */
 
 const INITIAL_ROWS = 25
 
 const isHttpUrl = (url: string) => /^https?:\/\//i.test(url)
 
+/** "Norway" for "NO"; the code itself when the browser can't name it. */
+function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
 export function OtherRankingKeywords({
   brand,
+  discovery: loaded,
   trackedRecords,
-  countries,
   kwFilter,
   kwExact,
 }: {
   brand:           Brand
+  /** The page's single load of the brand's ranking keywords (useDiscovery). */
+  discovery:       DiscoveryLoad
   /** The brand's records in the newest BP snapshot: what is tracked now. */
   trackedRecords:  readonly RankingRecord[]
-  countries:       readonly string[]
   kwFilter:        string
   kwExact:         boolean
 }) {
-  const loaded = useDiscovery(brand)
   const [showAll, setShowAll] = useState(false)
   useEffect(() => setShowAll(false), [brand])
 
   const tracked = useMemo(() => trackedIndex(trackedRecords, DOMAIN_TO_BRAND), [trackedRecords])
+  // Outside the brand's markets, whatever the page's Countries chips show:
+  // the chips only hold the markets, whose keywords join the table.
+  const isOther = useMemo(() => {
+    const markets = brandCountries(brand)
+    return (country: string) => !markets.includes(country)
+  }, [brand])
 
   const list = useMemo(() => {
     if (loaded.status !== 'ready') return []
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      country: (c) => countries.includes(c), kwFilter, kwExact,
+      country: isOther, kwFilter, kwExact,
     })
-  }, [loaded, tracked, brand, countries, kwFilter, kwExact])
+  }, [loaded, tracked, brand, isOther, kwFilter, kwExact])
 
   // Tells "everything is tracked" apart from "the filters hide everything".
   const untrackedTotal = useMemo(() => {
     if (loaded.status !== 'ready') return 0
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      country: (c) => brandCountries(brand).includes(c), kwFilter: '', kwExact: false,
+      country: isOther, kwFilter: '', kwExact: false,
     }).length
-  }, [loaded, tracked, brand])
+  }, [loaded, tracked, brand, isOther])
 
   const visible = showAll ? list : list.slice(0, INITIAL_ROWS)
 
@@ -71,7 +87,7 @@ export function OtherRankingKeywords({
   } else if (list.length === 0) {
     body = (
       <p className="text-[12px] text-[var(--muted)]">
-        {untrackedTotal === 0 ? 'Every keyword Ahrefs sees for these sites is already tracked.' : 'Nothing matches the filters.'}
+        {untrackedTotal === 0 ? "Ahrefs' index shows no rankings in other countries for these sites." : 'Nothing matches the search.'}
       </p>
     )
   } else {
@@ -113,7 +129,7 @@ export function OtherRankingKeywords({
                       </div>
                       <div className="mt-0.5 text-[11px] text-[var(--muted)] sm:hidden">{item.site}</div>
                     </td>
-                    <td className="px-2 py-2 sm:px-3 align-top font-mono text-[var(--text-2)]">{item.country}</td>
+                    <td className="px-2 py-2 sm:px-3 align-top font-mono text-[var(--text-2)]" title={countryName(item.country)}>{item.country}</td>
                     <td className="hidden px-2 py-2 sm:px-3 align-top text-[var(--text-2)] sm:table-cell">{item.site}</td>
                     <td className="px-2 py-2 sm:px-3 text-right align-top font-mono text-[var(--ink)]">
                       <span className="whitespace-nowrap">{item.position}</span>
@@ -150,7 +166,7 @@ export function OtherRankingKeywords({
   return (
     <section className="flex flex-col gap-3 border-t border-[var(--border)] pt-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <h2 className="font-display text-[15px] tracking-wider text-[var(--ink)]">Other ranking keywords · not tracked</h2>
+        <h2 className="font-display text-[15px] tracking-wider text-[var(--ink)]">Ranking in other countries · not tracked</h2>
         {loaded.status === 'ready' && loaded.completedAt && (
           <span className="font-mono text-[11px] text-[var(--muted)]">
             As of {formatDisplayDate(loaded.completedAt.slice(0, 10))} · from Ahrefs, monthly
@@ -158,9 +174,9 @@ export function OtherRankingKeywords({
         )}
       </div>
       <p className="max-w-3xl text-[12px] leading-relaxed text-[var(--muted)]">
-        Keywords Ahrefs has seen this brand's sites, the main site included, rank for in the top 100 that aren't in the
-        tracked list. The Sites filter doesn't apply here. Ahrefs re-checks
-        these less often than the weekly tracker, so a position can be a few weeks old.
+        Countries outside this brand's markets where Ahrefs' index shows its sites, the main site included, in Google's
+        top 100, and the keywords aren't tracked. From Ahrefs' index, refreshed monthly. It knows fewer keywords than
+        Google really shows; Google Search Console is the complete source.
       </p>
       {body}
     </section>
