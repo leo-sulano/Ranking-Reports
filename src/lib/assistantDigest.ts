@@ -1,6 +1,6 @@
 import type { Snapshot, RankingRecord } from '../types'
 import type { CategoryId } from './categories'
-import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from './brands'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, isReported } from './brands'
 import { parsePosition } from './parser'
 import type {
   HistoryDigest, BrandSnapshotStat, Mover, Transition, RangeMovers,
@@ -166,7 +166,9 @@ function buildPositionLookup(
 
 export function buildHistoryDigest(snapshots: Snapshot[], category: CategoryId): HistoryDigest {
   const inCat = snapshots.filter((s) => s.category === category)
+  // Records outside their brand's markets stay stored but are not reported.
   const capped = inCat.slice(0, MAX_SNAPSHOTS)
+    .map((s) => ({ ...s, records: s.records.filter((r) => isReported(r.domain, r.country)) }))
 
   const brandSet = new Set<string>()
   const timeline = capped.map((s) => {

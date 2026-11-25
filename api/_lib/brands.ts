@@ -21,7 +21,24 @@ export interface Brand {
   mainDomain: string
   domains: string[]
   lpDomains: string[]
+  /**
+   * The only markets reported for this brand, BP and LP sites alike; absent =
+   * every market. Records outside them stay stored, but the pages, the
+   * assistant and the monthly keyword pull leave them out — see isReported.
+   */
+  countries?: readonly string[]
 }
+
+/** The markets the dashboard reports, in column order. */
+export const ALL_COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ'] as const
+
+/**
+ * Sites taken off a brand. Their stored history stays, but nothing shows
+ * them, and the Ahrefs sync skips them without a warning while a Rank Tracker
+ * project still lists one as a competitor.
+ *   casinoroosters.com — RoosterBet, retired 2026-11-25 at the client's request.
+ */
+export const RETIRED_DOMAINS: ReadonlySet<string> = new Set(['casinoroosters.com'])
 
 export const BRANDS: Brand[] = [
   {
@@ -52,13 +69,14 @@ export const BRANDS: Brand[] = [
       'rooster.bet',
       'roosters.bet',
       'roostersbet.com',
-      'casinoroosters.com',
     ],
     lpDomains: [
       'roosterbet.club',
       'roosterbet.io',
       'roosterbet.info',
     ],
+    // The client's focus from 2026-11-25; DE is no longer reported.
+    countries: ['AU', 'CA', 'IT', 'NZ'],
   },
   {
     name: 'LuckyVibe',
@@ -268,4 +286,22 @@ export function normalizeCountry(raw: unknown): string {
   if (s.length === 2) return s.toUpperCase()
 
   return s.toUpperCase()
+}
+
+/** The brand's market columns, in the dashboard's order. */
+export function brandCountries(brand: Pick<Brand, 'countries'>): string[] {
+  return ALL_COUNTRIES.filter((c) => !brand.countries || brand.countries.includes(c))
+}
+
+/**
+ * True when `domain` is one of a brand's sites (BP or LP) and `country` is one
+ * of that brand's markets. A brand without its own market list keeps every
+ * country. A retired or unknown site is never reported.
+ */
+export function isReported(domain: string, country: string): boolean {
+  const d = domain.toLowerCase()
+  const name = DOMAIN_TO_BRAND[d] ?? LP_DOMAIN_TO_BRAND[d]
+  const brand = name ? BRAND_BY_NAME[name] : undefined
+  if (!brand) return false
+  return !brand.countries || brand.countries.includes(normalizeCountry(country))
 }

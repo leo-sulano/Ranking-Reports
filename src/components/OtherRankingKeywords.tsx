@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { Brand, RankingRecord } from '../types'
-import { DOMAIN_TO_BRAND } from '../lib/brands'
+import { DOMAIN_TO_BRAND, brandCountries } from '../lib/brands'
 import { formatDisplayDate } from '../lib/parser'
 import { loadDiscoveryFetches, loadDiscoveryRows, trackedIndex, type DiscoveryRow } from '../lib/keywordDiscovery'
 import {
@@ -16,7 +16,6 @@ import {
  */
 
 const INITIAL_ROWS = 25
-const ALL_COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
 type Loaded =
   | { status: 'loading' }
@@ -56,7 +55,8 @@ export function OtherRankingKeywords({
     ;(async () => {
       try {
         const fetches = await loadDiscoveryFetches(brand.domains)
-        const shown = completeCycles(brand.domains, fetches)[0] ?? null
+        // A cycle is complete once every site has each of the brand's markets.
+        const shown = completeCycles(brand.domains, fetches, brandCountries(brand))[0] ?? null
         const prev = shown ? previousCycle(shown, brand.domains, fetches) : null
         const rows = await loadDiscoveryRows(brand.domains, [shown, prev].filter((c): c is string => c !== null))
         if (cancelled) return
@@ -93,7 +93,7 @@ export function OtherRankingKeywords({
     if (loaded.status !== 'ready') return 0
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      countries: ALL_COUNTRIES, kwFilter: '', kwExact: false,
+      countries: brandCountries(brand), kwFilter: '', kwExact: false,
     }).length
   }, [loaded, tracked, brand])
 

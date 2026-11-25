@@ -8,7 +8,7 @@
 // forward keys on a byte-compared country, so a second, subtly different
 // normalizer here would break GSV/SV/AFF inheritance between synced and
 // uploaded snapshots.
-import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, normalizeCountry } from './brands.js'
+import { DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, RETIRED_DOMAINS, normalizeCountry } from './brands.js'
 
 /**
  * Structurally identical to the app's RankingRecord. Declared here because
@@ -255,9 +255,10 @@ export function normalizeAhrefs(projects: AhrefsProject[]): NormalizeResult {
             position: slot.position, date, prevPosition: slot.position_prev ?? null, prevDate,
           })
           candidates.set(key, seen)
-        } else if (!LP_DOMAIN_TO_BRAND[slotHost]) {
-          // Unknown to brands.ts, or another brand's site. LP domains are
-          // known and deliberately out of scope, so they are not listed.
+        } else if (!LP_DOMAIN_TO_BRAND[slotHost] && !RETIRED_DOMAINS.has(slotHost)) {
+          // Unknown to brands.ts, or another brand's site. LP domains and
+          // retired sites are known and deliberately out of scope, so they
+          // are not listed.
           skipped.set(slotHost, (skipped.get(slotHost) ?? 0) + 1)
         }
       })

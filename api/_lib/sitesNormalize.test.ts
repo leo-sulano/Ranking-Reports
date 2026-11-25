@@ -189,6 +189,14 @@ describe('normalizeAhrefs', () => {
     expect(unknownDomains).toEqual([{ domain: 'rooster.bet', count: 1 }, { domain: 'spinjo.de', count: 1 }])
   })
 
+  it('skips a retired site in a competitor slot without listing it', () => {
+    const { records, unknownDomains } = normalizeAhrefs([project(5, 'roosters.bet/',
+      ['casinoroosters.com/', 'roostersbet.com/'], [row('rooster casino', 'AU', [
+        ['https://roosters.bet/', 2, 2], ['https://casinoroosters.com/', 6, 6], ['https://roostersbet.com/', 3, 3]])])])
+    expect(records.map((r) => r.domain).sort()).toEqual(['roosters.bet', 'roostersbet.com'])
+    expect(unknownDomains).toEqual([])
+  })
+
   it('ignores a project whose target is not a BP domain', () => {
     expect(normalizeAhrefs([project(4, 'trybet.ca/', ['rooster.bet/'], [row('trybet', 'CA',
       [['https://trybet.ca/', 1, 1], ['https://rooster.bet/', 2, 2]])])]))

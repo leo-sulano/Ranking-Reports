@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, brandToSlug, isReported } from '../lib/brands'
 import { parsePosition, parseChange } from '../lib/parser'
 import type { Brand, RankingRecord, RROutletContext } from '../types'
 
@@ -34,7 +34,12 @@ export function Home() {
   }, [kwModal, metricModal])
 
   const latestSnapshot = ctx.snapshots.find((s) => s.category === 'bp-sites') ?? ctx.snapshots[0]
-  const records: RankingRecord[] = latestSnapshot?.records ?? []
+  // Records outside their brand's markets (RoosterBet's DE) or on a retired
+  // site stay stored but are not reported.
+  const records: RankingRecord[] = useMemo(
+    () => (latestSnapshot?.records ?? []).filter((r) => isReported(r.domain, r.country)),
+    [latestSnapshot],
+  )
 
   const totals = useMemo(() => {
     const keywords = new Set(records.map((r) => r.keyword.toLowerCase()))
@@ -109,7 +114,7 @@ export function Home() {
         // Use the most recent bp-sites snapshot that has records for this brand
         let own: RankingRecord[] = []
         for (const snap of snaps) {
-          const found = snap.records.filter((r) => bpSet.has(r.domain.toLowerCase()))
+          const found = snap.records.filter((r) => bpSet.has(r.domain.toLowerCase()) && isReported(r.domain, r.country))
           if (found.length > 0) { own = found; break }
         }
         let p1 = 0, t3 = 0, t10 = 0

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot, SnapshotMeta } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandCountries, brandToSlug, isReported } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { PinButton } from '../components/PinButton'
 import { usePinnedGroups } from '../lib/usePinnedGroups'
@@ -11,8 +11,6 @@ import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
-
-const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
 // ─── Color palette (Google Sheets standard "light *3*" tier for cells) ───────
 //
@@ -244,6 +242,8 @@ function BrandView({
     () => new Set(brand.domains.map((d) => d.toLowerCase())),
     [brand],
   )
+  // The brand's market columns — RoosterBet has no DE.
+  const countryOrder = useMemo(() => brandCountries(brand), [brand])
 
   const mainDomain = brand.mainDomain.toLowerCase()
   const bpDomains  = useMemo(
@@ -282,13 +282,13 @@ function BrandView({
     [visibleDomains, bpDomains],
   )
 
-  // Snapshots that actually have data for this brand
+  // Snapshots that actually have data for this brand, in its markets only
   const brandSnapshots = useMemo(
     () =>
       snapshots
         .map((snap) => ({
           ...snap,
-          records: snap.records.filter((r) => brandDomainSet.has(r.domain.toLowerCase())),
+          records: snap.records.filter((r) => brandDomainSet.has(r.domain.toLowerCase()) && isReported(r.domain, r.country)),
         }))
         .filter((snap) => snap.records.length > 0),
     [snapshots, brandDomainSet],
@@ -301,10 +301,10 @@ function BrandView({
   const [activeCountries, setActiveCountries] = useState<string[]>(() => {
     const param = searchParams.get('countries')
     if (param) {
-      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => countryOrder.includes(c))
       if (parsed.length > 0) return parsed
     }
-    return COUNTRY_ORDER
+    return countryOrder
   })
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
 
@@ -322,11 +322,11 @@ function BrandView({
   const countriesUrlParam = searchParams.get('countries') ?? ''
   useEffect(() => {
     if (countriesUrlParam) {
-      const parsed = countriesUrlParam.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      const parsed = countriesUrlParam.split(',').map((c) => c.trim().toUpperCase()).filter((c) => countryOrder.includes(c))
       if (parsed.length > 0) { setActiveCountries(parsed); return }
     }
-    setActiveCountries(COUNTRY_ORDER)
-  }, [countriesUrlParam])
+    setActiveCountries(countryOrder)
+  }, [countriesUrlParam, countryOrder])
 
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
   const [modalCard, setModalCard] = useState<CardFilterKey | null>(null)
@@ -373,7 +373,7 @@ function BrandView({
       const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
       setSearchParams((sp) => {
         const p = new URLSearchParams(sp)
-        if (next.length === COUNTRY_ORDER.length) p.delete('countries')
+        if (next.length === countryOrder.length) p.delete('countries')
         else p.set('countries', next.join(','))
         return p
       }, { replace: true })
@@ -477,7 +477,7 @@ function BrandView({
   }, [latestSnap, kwFilter, kwExact])
 
   // Country columns honor the chip filter, but preserve canonical order
-  const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
+  const visibleCountries = countryOrder.filter((c) => activeCountries.includes(c))
 
   return (
     <>
@@ -549,7 +549,7 @@ function BrandView({
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
             </span>
-            {COUNTRY_ORDER.map((c) => {
+            {countryOrder.map((c) => {
               const active = activeCountries.includes(c)
               return (
                 <button

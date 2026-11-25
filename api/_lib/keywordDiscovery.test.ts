@@ -6,10 +6,11 @@ import {
 } from './keywordDiscovery.js'
 
 describe('discoveryPairs', () => {
-  it('covers exactly the 37 BP domains in all five countries, brand by brand, and no LP-only domain', () => {
+  it("covers exactly the 36 BP domains in each brand's markets, brand by brand, and no LP-only domain", () => {
     const pairs = discoveryPairs(BRANDS)
-    expect(pairs).toHaveLength(185)
-    expect(new Set(pairs.map((p) => pairKey(p.domain, p.country))).size).toBe(185)
+    // 36 domains × 5 countries, less DE for RoosterBet's 3 sites.
+    expect(pairs).toHaveLength(177)
+    expect(new Set(pairs.map((p) => pairKey(p.domain, p.country))).size).toBe(177)
     expect(pairs.slice(0, 5)).toEqual(
       ['AU', 'CA', 'DE', 'IT', 'NZ'].map((country) => ({ brand: 'Lucky 7even', domain: 'lucky7even.com', country })),
     )
@@ -22,6 +23,20 @@ describe('discoveryPairs', () => {
     const lpOnly = Object.keys(LP_DOMAIN_TO_BRAND).filter((d) => !(d in DOMAIN_TO_BRAND))
     expect(lpOnly.length).toBeGreaterThan(0)
     for (const d of lpOnly) expect(domains.has(d)).toBe(false)
+  })
+
+  it('buys nothing for RoosterBet in DE or for the retired casinoroosters.com', () => {
+    const pairs = discoveryPairs(BRANDS)
+    const rooster = pairs.filter((p) => p.brand === 'RoosterBet')
+    expect(rooster.map((p) => pairKey(p.domain, p.country))).toEqual(
+      ['rooster.bet', 'roosters.bet', 'roostersbet.com'].flatMap((d) => ['AU', 'CA', 'IT', 'NZ'].map((c) => `${d}|${c}`)),
+    )
+    expect(pairs.some((p) => p.domain === 'casinoroosters.com')).toBe(false)
+  })
+
+  it("asks only for a brand's own markets when it lists them", () => {
+    expect(discoveryPairs([{ name: 'X', domains: ['x.com'], countries: ['IT', 'AU'] }]))
+      .toEqual([{ brand: 'X', domain: 'x.com', country: 'AU' }, { brand: 'X', domain: 'x.com', country: 'IT' }])
   })
 
   it('lower-cases the domains it is given', () => {
