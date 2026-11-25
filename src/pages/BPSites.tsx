@@ -11,6 +11,7 @@ import { computeStats, parsePosition, parseChange, effectiveDelta, formatDisplay
 import { useDiscovery } from '../lib/useDiscovery'
 import { trackedIndex } from '../lib/keywordDiscovery'
 import { buildFoundRows, type FoundRow } from '../lib/discoveryList'
+import { nrLabelFor } from '../lib/nrLabel'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -1170,6 +1171,8 @@ function SnapshotMatrix({
   })
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
+  // Ahrefs weeks say "Not on page 1"; earlier weeks keep "Not in top 100".
+  const nrLabel = nrLabelFor(snapshot)
 
   // ── Domain groups, pinned ones first — pinned groups freeze beside the
   //    keyword column, mirroring the fixed TOTALS pattern on Reg & FTDs. ──
@@ -1466,7 +1469,7 @@ function SnapshotMatrix({
                           ...pinStyle(gi, ci, 4),
                         }}
                       >
-                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
+                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} nrLabel={nrLabel} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                       </td>
                     )
                   })
@@ -1835,7 +1838,7 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
               </span>
             </div>
             <ChartRow
-              condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not in top 100"</span></>}
+              condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not on page 1"</span> (weeks from Nov 3, 2026 on; earlier weeks say "Not in top 100")</>}
               badge="NOT RANKED"
               badgeColor="var(--mx-muted)"
             />

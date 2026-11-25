@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import * as XLSX from 'xlsx'
-import { parseXlsx } from './parser'
+import { parsePosition, parseXlsx } from './parser'
 
 /** A flat, single-sheet upload built from rows (header first). */
 function workbook(rows: string[][]): ArrayBuffer {
@@ -22,5 +22,12 @@ describe('parseXlsx — retired sites', () => {
     ]))
     expect(result.snapshots[0].records.map((r) => r.domain)).toEqual(['roosters.bet', 'casinoroosters.com'])
     expect(result.unknownDomains.map((u) => u.domain)).toEqual(['example.com'])
+  })
+})
+
+describe('parsePosition — the "Not on page 1" label', () => {
+  it('reads the label as NR, so an exported table re-imports', () => {
+    expect(parsePosition('Not on page 1')).toBe('NR')
+    expect(parsePosition('not on page 1')).toBe('NR')
   })
 })
