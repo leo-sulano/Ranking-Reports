@@ -164,7 +164,7 @@ retired sites are never bought):
 | Per row (volume 10, every other field 1) | 16 |
 | Minimum per call, even when empty | 50 |
 | Worst case per call (200 rows) | 3,200 |
-| Typical cycle (36 sites, ~95 rows) | ~1,800–2,000 |
+| Typical cycle (36 sites, ~95 rows: 23 empty sites at the 50 minimum, the rest at 16 a row) | ~2,800 |
 
 Ahrefs reports each call's real charge in `x-api-units-cost-total-actual`.
 `x-api-units-cost-total` is the nominal cost: on a free test target it shows,
@@ -217,11 +217,11 @@ for example, 65 while the actual charge is 0.
     capped Retry-After wait and a second timeout. That leaves calls about 24 s
     to start in, so roughly 12–24 calls a run depending on how fast Ahrefs
     and Supabase answer.
-  - A full cycle is 36 calls, so it takes one or two runs. (Per-country
+  - A full cycle is 36 calls, so it takes two or three runs. (Per-country
     cycles were 185 calls, 177 for a few weeks, and took 3–6 days.)
   - **The switch-over.** A cycle fetched per country has no `ALL` fetch rows,
     so the first run after the 2026-11-25 deploy buys the current cycle again
-    for every site, about 2,000 units, and the page shows all countries from
+    for every site, about 2,800 units, and the page shows all countries from
     then on.
   - Once the cycle is complete, runs return without calling Site Explorer
     and without a /log line. The first few /log lines show the real calls per

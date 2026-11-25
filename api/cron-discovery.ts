@@ -73,11 +73,12 @@ export function runSummary(r: {
   cutOff?: string[]
 }): string {
   const from = formatDisplayDate(r.cycle)
+  const cutOffNote = r.cutOff && r.cutOff.length > 0 ? `; ${listOf(r.cutOff)} hit the ${ROWS_PER_CALL}-keyword limit` : ''
   if (r.left === 0 && r.cycleUnits !== undefined) {
-    return `Keyword discovery — cycle from ${from} complete (${r.total}/${r.total}), ${r.cycleUnits.toLocaleString('en-US')} units in total`
+    return `Keyword discovery — cycle from ${from} complete (${r.total}/${r.total}), ${r.cycleUnits.toLocaleString('en-US')} units in total${cutOffNote}`
   }
   let summary = `Keyword discovery — ${r.calls} call${r.calls === 1 ? '' : 's'}, ${r.units.toLocaleString('en-US')} units`
-  if (r.cutOff && r.cutOff.length > 0) summary += `; ${listOf(r.cutOff)} hit the ${ROWS_PER_CALL}-keyword limit`
+  summary += cutOffNote
   if (r.completedBrands.length > 0) summary += `; ${listOf(r.completedBrands)} complete`
   summary += ` for the cycle from ${from}; ${r.left} call${r.left === 1 ? '' : 's'} left`
   if (r.unitsLeftAtStop !== undefined) {

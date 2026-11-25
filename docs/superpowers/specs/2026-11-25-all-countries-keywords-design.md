@@ -29,7 +29,7 @@ Recording and transcript: `docs/references/2026-11-25/` (gitignored).
   sites have none**. fortuneplay.casino shows 0 there, though the weekly Rank
   Tracker has it at #1 for 7 Italian keywords.
 - **The cost.** One organic-keywords call per site with no country filter
-  costs max(50, rows × 16) units. Today that is about 36 × 50 ≈ 1.8-2k a
+  costs max(50, rows × 16) units. Today that is about 2.8k (corrected at the final review: the ~23 sites with no keywords still cost the 50 minimum) a
   month, against ~11.5k for this month's per-country pull (185 calls). The
   discovery key's cap is 200k a month.
 - **"Not ranking" means "not on page 1".** A sample of 70 Google pages saved
@@ -90,7 +90,7 @@ Recording and transcript: `docs/references/2026-11-25/` (gitignored).
 
 | | Gives | Cost | Catch |
 |---|---|---|---|
-| A. Ahrefs, all countries | What Ivan promised: automatic, every country | ~2k units a month, cheaper than now | Only what Ahrefs' index knows (95 rankings today) |
+| A. Ahrefs, all countries | What Ivan promised: automatic, every country | ~2.8k units a month, cheaper than now | Only what Ahrefs' index knows (95 rankings today) |
 | B. Google Search Console | Every search and country with impressions | Free | Needs read access to each brand's GSC; positions are averages |
 | **C. A now, B when access arrives** | A soon, then the complete picture | As A, then free | Two pieces of work |
 
@@ -139,7 +139,7 @@ Within A, storage:
   - The older per-country fetch rows of the same cycle stay as history.
 - **The switch-over.**
   - From deploy on, the current cycle (from 2026-11-05) lacks the 36 `ALL`
-    targets, so the next run buys them, about 2k units.
+    targets, so the next run buys them, about 2.8k units.
   - All-countries data then appears within a day of deploy, instead of
     waiting for the Dec 5 cycle. Merging approves that spend; the PR says so.
 - **Unchanged.** The run lease, halt, budget, /log line and lock. The /log
@@ -289,7 +289,7 @@ The rows of the shown cycle split by country:
 - **Monthly cadence stays.** Index positions refresh slowly. Weekly would
   cost ~8k units a month and mostly repeat the same data.
 - **The 200-row limit.**
-- **The switch-over buys the current cycle at once,** ~2k units, so Meny
+- **The switch-over buys the current cycle at once,** ~2.8k units, so Meny
   sees all countries this week.
 - **The "Not on page 1" wording** and the 2026-11-03 boundary.
 - **Found rows only in the latest week's table.**

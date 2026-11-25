@@ -284,6 +284,17 @@ describe('buildFoundRows', () => {
     expect(Object.keys(rows[0].cells['rooster.bet'])).toEqual(['AU'])
   })
 
+  // Final review #1: the page hides the main site by default; a keyword found
+  // only there must not become a row of dashes.
+  it('follows the Sites filter, dropping keywords found only on hidden sites', () => {
+    const rows = found({
+      rows: [row({ keyword: 'main only' }), row({ keyword: 'both' }), row({ keyword: 'both', domain: 'roosters.bet' })],
+      sites: ['roosters.bet'],
+    })
+    expect(rows.map((r) => r.keyword)).toEqual(['both'])
+    expect(Object.keys(rows[0].cells)).toEqual(['roosters.bet'])
+  })
+
   it('follows the keyword search and sorts by search volume', () => {
     const rows = found({ rows: [
       row({ keyword: 'rooster login', volume: 50 }), row({ keyword: 'rooster bet login', volume: 900 }),

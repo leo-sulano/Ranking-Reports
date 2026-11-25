@@ -491,9 +491,10 @@ function BrandView({
     // They are not tracked keywords, so a position or card filter hides them.
     if (discovery.status !== 'ready' || posFilter !== 'all' || cardFilter !== null) return null
     const countries = countryOrder.filter((c) => activeCountries.includes(c))
-    const rows = buildFoundRows({ rows: discovery.rows, tracked, brand, countries, kwFilter, kwExact })
+    const sites = showMain ? [mainDomain, ...visibleBpDomains] : visibleBpDomains
+    const rows = buildFoundRows({ rows: discovery.rows, tracked, brand, sites, countries, kwFilter, kwExact })
     return { rows, asOf: discovery.completedAt }
-  }, [discovery, tracked, brand, countryOrder, activeCountries, kwFilter, kwExact, posFilter, cardFilter])
+  }, [discovery, tracked, brand, showMain, mainDomain, visibleBpDomains, countryOrder, activeCountries, kwFilter, kwExact, posFilter, cardFilter])
 
   return (
     <>

@@ -206,8 +206,9 @@ export interface FoundRow {
 
 /**
  * Rows that join the brand's table: keywords Ahrefs' index has the brand's
- * live sites ranking for in `countries` (its markets, as the page's chips
- * show them), not tracked there for the brand, matching the keyword search.
+ * live sites (those the Sites filter shows) ranking for in `countries` (its
+ * markets, as the page's chips show them), not tracked there for the brand,
+ * matching the keyword search — so no row is all dashes.
  * One row per keyword; each (site, country) cell keeps that site's best
  * position. Sorted by search volume (missing last), then best position.
  */
@@ -215,11 +216,15 @@ export function buildFoundRows(input: {
   rows:     readonly DiscoveryRow[]
   tracked:  ReadonlyMap<string, ReadonlySet<string>>
   brand:    { name: string; domains: readonly string[] }
+  /** The sites the page's Sites filter shows; every live site of the brand when omitted. */
+  sites?:   readonly string[]
   countries: readonly string[]
   kwFilter: string
   kwExact:  boolean
 }): FoundRow[] {
-  const sites = lowerSet(input.brand.domains)
+  const live = lowerSet(input.brand.domains)
+  const shown = input.sites ? lowerSet(input.sites) : live
+  const sites = new Set([...live].filter((d) => shown.has(d)))
   const countries = new Set(input.countries.map((c) => c.toUpperCase()))
   const filter = input.kwFilter.trim().toLowerCase()
   const groups = new Map<string, { row: FoundRow; best: number }>()

@@ -149,6 +149,12 @@ describe('runSummary', () => {
     )
   })
 
+  // Final review #2: the run that finishes a cycle must still name a cut-off site.
+  it('names cut-off sites on the line that finishes the cycle', () => {
+    expect(runSummary({ ...BASE, left: 0, cycleUnits: 2800, cutOff: ['lucky7even.com'] }))
+      .toBe('Keyword discovery — cycle from Nov 5, 2026 complete (36/36), 2,800 units in total; lucky7even.com hit the 200-keyword limit')
+  })
+
   it('reports a finished cycle with its total units', () => {
     expect(runSummary({ ...BASE, left: 0, cycleUnits: 46300 }))
       .toBe('Keyword discovery — cycle from Nov 5, 2026 complete (36/36), 46,300 units in total')
