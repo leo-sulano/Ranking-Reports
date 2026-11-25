@@ -53,7 +53,7 @@ Where these disagree with Ahrefs' docs, the observation wins.
 | `serp_updated: null` means never checked | No record — never NR |
 | All BP projects update weekly on Tuesday (10:42–20:02 UTC on 2026-11-03); a few keywords are re-checked Wed–Sun, a few keep the previous week's check | The snapshot is dated by the weekly update day (`cycleDate`), never by a re-check |
 | The largest response was 45 rows | No paging; a response that reaches `limit` fails the sync |
-| The same site appears in 2–3 projects, and same-day positions can differ between them | A site's own project wins; otherwise the best same-day position |
+| The same site appears in 2–3 projects, and same-day positions can differ between them | A site's own project wins whenever it checked the keyword in this weekly update, even if another project re-checked it later (2026-11-25: a Roostersbet.com re-check had overwritten roosters.bet's own #3 in CA); otherwise the newest check, then the best same-day position |
 
 ## Coverage (2026-11-09)
 
