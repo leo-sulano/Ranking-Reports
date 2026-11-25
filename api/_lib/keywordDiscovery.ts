@@ -8,9 +8,10 @@
  *
  * Design: docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md
  */
-import { normalizeCountry } from './brands.js'
+import { ALL_COUNTRIES, normalizeCountry } from './brands.js'
 
-export const DISCOVERY_COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ'] as const
+/** The dashboard's markets; a brand may narrow them (Brand.countries). */
+export const DISCOVERY_COUNTRIES = ALL_COUNTRIES
 export type DiscoveryCountry = (typeof DISCOVERY_COUNTRIES)[number]
 
 /** Keywords asked for per domain × country, highest search volume first. */

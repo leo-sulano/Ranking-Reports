@@ -68,11 +68,11 @@ Where these disagree with Ahrefs' docs, the observation wins.
 
 **Changed 2026-11-25 (client focus):** RoosterBet is reported in AU, CA, IT
 and NZ only (`countries` on its `brands.ts` entry), and casinoroosters.com is
-retired (`RETIRED_DOMAINS`), leaving 36 BP domains. The sync still saves
-RoosterBet's DE rows if Ahrefs tracks them; the pages, Home and the assistant
-hide them (`isReported`), and nothing is deleted. A retired site in a
-competitor slot is skipped without the "skipped" warning. Restoring either is
-a one-line change in `brands.ts`.
+retired (`retiredDomains`), leaving 36 live BP domains. The sync still saves
+both — RoosterBet's DE rows and casinoroosters.com in its competitor slot —
+because replacing a week deletes and rewrites it; the pages, Home and the
+assistant hide them (`isReported`), and nothing is deleted. Restoring either
+is a one-line change in `brands.ts`.
 
 ## Schedule
 

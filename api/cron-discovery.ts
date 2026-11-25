@@ -17,11 +17,11 @@ import {
 
 /**
  * Cron, three times a day: pulls one Ahrefs billing month ("cycle") of other
- * ranking keywords — the keywords Ahrefs sees each BP site ranking for in AU,
- * CA, DE, IT and NZ, minus the ones already tracked — into Supabase for the BP
- * Sites brand pages.
+ * ranking keywords — the keywords Ahrefs sees each BP site ranking for in its
+ * brand's markets (AU, CA, DE, IT, NZ; RoosterBet has no DE), minus the ones
+ * already tracked — into Supabase for the BP Sites brand pages.
  *
- * A cycle is 185 calls (37 domains × 5 countries) and Ahrefs allows 60 a
+ * A cycle is 177 calls (36 domains × each brand's markets) and Ahrefs allows 60 a
  * minute, so one run cannot finish it: each run fetches whatever pairs the
  * cycle still lacks, saving each as it goes, until its time budget runs low.
  * Once every pair is in, runs return at once without calling Site Explorer and

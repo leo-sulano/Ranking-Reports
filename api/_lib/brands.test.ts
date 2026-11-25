@@ -1,18 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
-  BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, RETIRED_DOMAINS, brandCountries, isReported,
+  ALL_COUNTRIES, BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, RETIRED_DOMAINS, brandCountries, isReported,
 } from './brands.js'
 
 describe('RoosterBet markets (client focus from 2026-11-25: AU, CA, IT, NZ)', () => {
   it('no longer lists casinoroosters.com as a RoosterBet site', () => {
     expect(BRAND_BY_NAME['RoosterBet'].domains).not.toContain('casinoroosters.com')
-    expect(DOMAIN_TO_BRAND['casinoroosters.com']).toBeUndefined()
-    expect(LP_DOMAIN_TO_BRAND['casinoroosters.com']).toBeUndefined()
+    expect(RETIRED_DOMAINS.has('casinoroosters.com')).toBe(true)
   })
 
-  it('keeps casinoroosters.com on the retired list, so the sync skips it quietly', () => {
-    expect(RETIRED_DOMAINS.has('casinoroosters.com')).toBe(true)
+  // The sync deletes and rewrites a week it replaces, and so does an xlsx
+  // re-upload: a retired site must still be read in, or its stored rows go.
+  it('still maps casinoroosters.com to RoosterBet, so the sync and imports keep storing it', () => {
+    expect(DOMAIN_TO_BRAND['casinoroosters.com']).toBe('RoosterBet')
+    expect(LP_DOMAIN_TO_BRAND['casinoroosters.com']).toBeUndefined()
   })
 
   it('reports RoosterBet in AU, CA, IT and NZ only, in the usual column order', () => {
@@ -26,11 +28,21 @@ describe('RoosterBet markets (client focus from 2026-11-25: AU, CA, IT, NZ)', ()
   })
 })
 
-describe('retired domains', () => {
-  it('belong to no brand', () => {
-    for (const d of RETIRED_DOMAINS) {
-      expect(DOMAIN_TO_BRAND[d]).toBeUndefined()
-      expect(LP_DOMAIN_TO_BRAND[d]).toBeUndefined()
+describe('brand config', () => {
+  it("keeps each retired site out of its brand's live sites but under its brand", () => {
+    for (const b of BRANDS) {
+      for (const d of b.retiredDomains ?? []) {
+        expect(b.domains).not.toContain(d)
+        expect(DOMAIN_TO_BRAND[d]).toBe(b.name)
+        expect(RETIRED_DOMAINS.has(d)).toBe(true)
+      }
+    }
+  })
+
+  // A typo such as 'de' or 'Germany' would silently hide a whole market.
+  it('lists only known markets, in upper case', () => {
+    for (const b of BRANDS) {
+      for (const c of b.countries ?? []) expect(ALL_COUNTRIES).toContain(c)
     }
   })
 })

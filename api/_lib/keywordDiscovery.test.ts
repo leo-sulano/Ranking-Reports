@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { BRANDS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND } from './brands.js'
+import { BRANDS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, RETIRED_DOMAINS } from './brands.js'
 import {
   cycleStart, discoveryPairs, excludeKeywordsWhere, mapOrganicKeywords, normalizeKeyword, pairKey, trackedIndex,
 } from './keywordDiscovery.js'
@@ -19,7 +19,8 @@ describe('discoveryPairs', () => {
     // brands.ts lists lucky7evencasino.org as both a BP and an LP domain, so
     // it belongs here; a domain that is ONLY an LP domain never does.
     const domains = new Set(pairs.map((p) => p.domain))
-    expect([...domains].sort()).toEqual(Object.keys(DOMAIN_TO_BRAND).sort())
+    // Retired sites are still stored (DOMAIN_TO_BRAND) but never bought.
+    expect([...domains].sort()).toEqual(Object.keys(DOMAIN_TO_BRAND).filter((d) => !RETIRED_DOMAINS.has(d)).sort())
     const lpOnly = Object.keys(LP_DOMAIN_TO_BRAND).filter((d) => !(d in DOMAIN_TO_BRAND))
     expect(lpOnly.length).toBeGreaterThan(0)
     for (const d of lpOnly) expect(domains.has(d)).toBe(false)

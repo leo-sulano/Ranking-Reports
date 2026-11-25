@@ -27,18 +27,18 @@ export interface Brand {
    * assistant and the monthly keyword pull leave them out — see isReported.
    */
   countries?: readonly string[]
+  /**
+   * BP sites taken off the brand. They stay in DOMAIN_TO_BRAND, so the sync
+   * and imports keep storing their rows (a replaced week is deleted and
+   * rewritten, which would otherwise drop them), but they are not in
+   * `domains`, so no page lists them, isReported hides their records and the
+   * monthly keyword pull skips them. Restoring one = moving it back to `domains`.
+   */
+  retiredDomains?: string[]
 }
 
 /** The markets the dashboard reports, in column order. */
 export const ALL_COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ'] as const
-
-/**
- * Sites taken off a brand. Their stored history stays, but nothing shows
- * them, and the Ahrefs sync skips them without a warning while a Rank Tracker
- * project still lists one as a competitor.
- *   casinoroosters.com — RoosterBet, retired 2026-11-25 at the client's request.
- */
-export const RETIRED_DOMAINS: ReadonlySet<string> = new Set(['casinoroosters.com'])
 
 export const BRANDS: Brand[] = [
   {
@@ -75,8 +75,10 @@ export const BRANDS: Brand[] = [
       'roosterbet.io',
       'roosterbet.info',
     ],
-    // The client's focus from 2026-11-25; DE is no longer reported.
+    // The client's focus from 2026-11-25: DE is no longer reported, and
+    // casinoroosters.com is off the dashboard.
     countries: ['AU', 'CA', 'IT', 'NZ'],
+    retiredDomains: ['casinoroosters.com'],
   },
   {
     name: 'LuckyVibe',
@@ -231,9 +233,17 @@ export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.name, b]),
 )
 
-// domain (lowercase) → brand name. BP/MAIN domains only.
+// domain (lowercase) → brand name. BP/MAIN domains only, retired ones
+// included: this map decides what the sync and imports store, not what shows.
 export const DOMAIN_TO_BRAND: Record<string, string> = {}
-BRANDS.forEach((b) => b.domains.forEach((d) => { DOMAIN_TO_BRAND[d.toLowerCase()] = b.name }))
+BRANDS.forEach((b) => [...b.domains, ...(b.retiredDomains ?? [])].forEach((d) => {
+  DOMAIN_TO_BRAND[d.toLowerCase()] = b.name
+}))
+
+/** Every brand's retired BP sites (lowercase). See Brand.retiredDomains. */
+export const RETIRED_DOMAINS: ReadonlySet<string> = new Set(
+  BRANDS.flatMap((b) => (b.retiredDomains ?? []).map((d) => d.toLowerCase())),
+)
 
 // Landing-page domain → brand name. Kept separate from DOMAIN_TO_BRAND so the
 // BP and LP namespaces don't bleed across category-tagged uploads.
@@ -300,6 +310,7 @@ export function brandCountries(brand: Pick<Brand, 'countries'>): string[] {
  */
 export function isReported(domain: string, country: string): boolean {
   const d = domain.toLowerCase()
+  if (RETIRED_DOMAINS.has(d)) return false
   const name = DOMAIN_TO_BRAND[d] ?? LP_DOMAIN_TO_BRAND[d]
   const brand = name ? BRAND_BY_NAME[name] : undefined
   if (!brand) return false

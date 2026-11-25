@@ -68,7 +68,7 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 
 Nine brands are registered in `src/lib/brands.ts`: Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePlay, RocketSpin, PlayMojo, Rollero. Each brand has a `mainDomain` (sorted first in domain filters) plus alias domains.
 
-A brand can narrow its markets with `countries` (RoosterBet: AU, CA, IT, NZ since 2026-11-25); `brandCountries` gives the column list and `isReported` hides records outside a brand's markets on every page, without deleting them. Sites taken off a brand go on `RETIRED_DOMAINS` (casinoroosters.com), so the sync skips them quietly.
+A brand can narrow its markets with `countries` (RoosterBet: AU, CA, IT, NZ since 2026-11-25) and take sites off with `retiredDomains` (RoosterBet: casinoroosters.com). Both only hide: the sync and imports still store those rows (replacing a week deletes and rewrites it, so dropping them on the way in would delete history). `brandCountries` gives the column list, and `isReported` hides the rows on the brand pages, Home and the assistant; the import/sync summary still counts them, as a receipt of what was stored. The monthly keyword pull skips both.
 
 ### Tailwind
 
