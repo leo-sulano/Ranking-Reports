@@ -170,13 +170,48 @@ describe('normalizeAhrefs', () => {
     expect(at(records, 'roostersbet.com')?.position).toBe('7')
   })
 
-  it('takes the newer check when two projects checked on different days', () => {
+  it("takes another project's check when the site's own project did not check it in this update", () => {
+    // Own project last checked it the week before; project 2 checked it in this update.
     const { records } = normalizeAhrefs([
-      project(1, 'roostersbet.com/', [], [row('roosterbet casino', 'AU', [['https://roostersbet.com/', 1, null]])]),
+      project(1, 'roostersbet.com/', [], [row('roosterbet casino', 'AU', [['https://roostersbet.com/', 1, null]],
+        { serp_updated: OCT27, serp_updated_prev: null })]),
       project(2, 'roosters.bet/', ['roostersbet.com/'], [row('roosterbet casino', 'AU',
-        [[null, null, null], ['https://roostersbet.com/', 5, null]], { serp_updated: '2026-11-04T09:00:00Z' })]),
+        [[null, null, null], ['https://roostersbet.com/', 5, null]])]),
     ])
-    expect(at(records, 'roostersbet.com')).toMatchObject({ position: '5', date: '2026-11-04' })
+    expect(at(records, 'roostersbet.com')).toMatchObject({ position: '5', date: '2026-11-03' })
+  })
+
+  // Seen live 2026-11-25: roosters.bet's own project had it at 3 in the Nov 24
+  // update; the Roostersbet.com project re-checked on Nov 25 without finding it,
+  // and the newer check used to win. The team reads the site's own project.
+  describe("a later re-check by another project in the same update", () => {
+    /** roosters.bet's own project: the disputed keyword plus two more, all in this update (Nov 3). */
+    const ownProject = (disputed: number | null) => project(1, 'roosters.bet/', [], [
+      row('rooster bet casino', 'CA', [[disputed === null ? null : 'https://roosters.bet/', disputed, null]]),
+      row('roosterbet', 'CA', [[null, null, null]]),
+      row('rooster bet', 'CA', [[null, null, null]]),
+    ])
+    /** The other project re-checks the disputed keyword the next day. */
+    const recheck = (seen: number | null) => project(2, 'roostersbet.com/', ['roosters.bet/'], [
+      row('rooster bet casino', 'CA', [[null, null, null], [seen === null ? null : 'https://roosters.bet/', seen, null]],
+        { serp_updated: '2026-11-04T00:29:08Z' }),
+    ])
+    const disputed = (records: { domain: string; keyword: string }[]) =>
+      records.find((r) => r.domain === 'roosters.bet' && r.keyword === 'rooster bet casino')
+
+    it("does not overwrite the site's own ranking", () => {
+      expect(disputed(normalizeAhrefs([ownProject(3), recheck(null)]).records))
+        .toMatchObject({ position: '3', date: '2026-11-03' })
+    })
+
+    it("does not overwrite the site's own NR", () => {
+      expect(disputed(normalizeAhrefs([ownProject(null), recheck(3)]).records))
+        .toMatchObject({ position: 'NR', date: '2026-11-03' })
+    })
+
+    it('still dates the snapshot by the update, not the re-check', () => {
+      expect(normalizeAhrefs([ownProject(3), recheck(null)]).rawDate).toBe('2026-11-03')
+    })
   })
 
   it("keeps only the target brand's domains and lists the unknown ones", () => {

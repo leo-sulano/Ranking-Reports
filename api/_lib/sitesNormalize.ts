@@ -205,9 +205,11 @@ function outranks(a: number | null, b: number | null): boolean {
  * Only projects whose target is a BP domain count, and each produces records
  * for its own brand's domains only. A keyword Ahrefs has not checked yet
  * produces no record — unchecked is not "not ranking". A site seen by several
- * projects takes its own project's number, else the best position from the
- * newest check day. Throws a SyncDataError, worded for the operator, when the
- * data cannot be credited to the right site.
+ * projects takes its own project's number whenever that project checked the
+ * keyword in this weekly update, even if another project re-checked it later;
+ * otherwise the newest check, its own project's on that day, else the best
+ * position. Throws a SyncDataError, worded for the operator, when the data
+ * cannot be credited to the right site.
  */
 export function normalizeAhrefs(projects: AhrefsProject[]): NormalizeResult {
   const skipped = new Map<string, number>()
@@ -264,11 +266,20 @@ export function normalizeAhrefs(projects: AhrefsProject[]): NormalizeResult {
     }
   }
 
+  // The weekly update this batch belongs to, read from every check seen.
+  const update = cycleDate([...candidates.values()].flat())
+
   const records: SyncRecord[] = []
   for (const seen of candidates.values()) {
     const main = MAIN_LANGUAGE[seen[0].country]
     const inMain = seen.filter((o) => o.language === main)
-    const pool = inMain.length > 0 ? inMain : seen
+    const byLanguage = inMain.length > 0 ? inMain : seen
+    // The site's own project wins whenever it checked the keyword in this
+    // update: it is what the team reads in Ahrefs, and another project's later
+    // re-check must not overwrite it. Otherwise the newest check wins — the
+    // own project's on that day, else the best position.
+    const ownInUpdate = update ? byLanguage.filter((o) => o.own && o.date >= update) : []
+    const pool = ownInUpdate.length > 0 ? ownInUpdate : byLanguage
     let newest = ''
     for (const o of pool) if (o.date > newest) newest = o.date
     const sameDay = pool.filter((o) => o.date === newest)
