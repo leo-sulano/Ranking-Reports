@@ -24,6 +24,12 @@ describe('completeCycles', () => {
       .toEqual(['2026-12-05', '2026-11-05'])
   })
 
+  it("needs only the brand's own markets when it has them", () => {
+    const noDe = fullCycle('2026-12-05').filter((f) => f.country !== 'DE')
+    expect(completeCycles(BRAND.domains, noDe, ['AU', 'CA', 'IT', 'NZ'])).toEqual(['2026-12-05'])
+    expect(completeCycles(BRAND.domains, noDe)).toEqual([])
+  })
+
   it("is not fooled by another brand's fetches", () => {
     const almost = fullCycle('2026-11-05').filter((f) => !(f.domain === 'spinsup.com' && f.country === 'AU'))
     expect(completeCycles(BRAND.domains, [...almost, fetched('2026-11-05', 'spinjo.com', 'AU')])).toEqual([])

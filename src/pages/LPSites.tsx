@@ -1,15 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, RROutletContext, Snapshot, SnapshotMeta } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandToSlug } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandCountries, brandToSlug, isReported } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { PinButton } from '../components/PinButton'
 import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { computeStats, parsePosition, parseChange } from '../lib/parser'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
-
-const COUNTRY_ORDER = ['AU', 'CA', 'DE', 'IT', 'NZ']
 
 // LP block palette — recycle the Google-Sheets pastel tier used by BP so the
 // two pages feel like siblings. Each LP domain claims one block.
@@ -211,6 +209,8 @@ function BrandView({
     () => new Set(lpDomains.map((d) => d.toLowerCase())),
     [lpDomains],
   )
+  // The brand's market columns — RoosterBet has no DE.
+  const countryOrder = useMemo(() => brandCountries(brand), [brand])
 
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -234,7 +234,7 @@ function BrandView({
       snapshots
         .map((snap) => ({
           ...snap,
-          records: snap.records.filter((r) => brandDomainSet.has(r.domain.toLowerCase())),
+          records: snap.records.filter((r) => brandDomainSet.has(r.domain.toLowerCase()) && isReported(r.domain, r.country)),
         }))
         .filter((snap) => snap.records.length > 0),
     [snapshots, brandDomainSet],
@@ -245,10 +245,10 @@ function BrandView({
   const [activeCountries, setActiveCountries] = useState<string[]>(() => {
     const param = searchParams.get('countries')
     if (param) {
-      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_ORDER.includes(c))
+      const parsed = param.split(',').map((c) => c.trim().toUpperCase()).filter((c) => countryOrder.includes(c))
       if (parsed.length > 0) return parsed
     }
-    return COUNTRY_ORDER
+    return countryOrder
   })
   const [kwFilter, setKwFilter] = useState(() => searchParams.get('kw') ?? '')
   const [cardFilter, setCardFilter] = useState<CardFilterKey | null>(null)
@@ -288,7 +288,7 @@ function BrandView({
       const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
       setSearchParams((sp) => {
         const p = new URLSearchParams(sp)
-        if (next.length === COUNTRY_ORDER.length) p.delete('countries')
+        if (next.length === countryOrder.length) p.delete('countries')
         else p.set('countries', next.join(','))
         return p
       }, { replace: true })
@@ -316,7 +316,7 @@ function BrandView({
     return Object.keys(labels).filter((kl) => !filter || kl.includes(filter) || labels[kl].toLowerCase().includes(filter)).length
   }, [latestSnap, kwFilter])
 
-  const visibleCountries = COUNTRY_ORDER.filter((c) => activeCountries.includes(c))
+  const visibleCountries = countryOrder.filter((c) => activeCountries.includes(c))
 
   return (
     <>
@@ -385,7 +385,7 @@ function BrandView({
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)] mr-1">
               Countries
             </span>
-            {COUNTRY_ORDER.map((c) => {
+            {countryOrder.map((c) => {
               const active = activeCountries.includes(c)
               return (
                 <button

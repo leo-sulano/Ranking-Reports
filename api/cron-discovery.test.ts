@@ -233,7 +233,8 @@ describe('api/cron-discovery — runs', () => {
       }],
     })
     expect(store.cycleTotals).toHaveBeenCalledWith(expect.anything(), '2026-11-05')
-    expect(loggedSummaries()).toEqual(['Keyword discovery — cycle from Nov 5, 2026 complete (185/185), 46,300 units in total'])
+    // 177 = every brand's BP domains × its markets (RoosterBet has no DE).
+    expect(loggedSummaries()).toEqual(['Keyword discovery — cycle from Nov 5, 2026 complete (177/177), 46,300 units in total'])
     expect(body).toMatchObject({ ok: true, outcome: 'complete', calls: 3, units: 195, left: 0 })
   })
 

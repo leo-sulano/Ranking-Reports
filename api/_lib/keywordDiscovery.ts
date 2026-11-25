@@ -8,9 +8,10 @@
  *
  * Design: docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md
  */
-import { normalizeCountry } from './brands.js'
+import { ALL_COUNTRIES, normalizeCountry } from './brands.js'
 
-export const DISCOVERY_COUNTRIES = ['AU', 'CA', 'DE', 'IT', 'NZ'] as const
+/** The dashboard's markets; a brand may narrow them (Brand.countries). */
+export const DISCOVERY_COUNTRIES = ALL_COUNTRIES
 export type DiscoveryCountry = (typeof DISCOVERY_COUNTRIES)[number]
 
 /** Keywords asked for per domain × country, highest search volume first. */
@@ -42,12 +43,15 @@ export interface DiscoveryRow {
   ahrefsChecked: string | null
 }
 
-/** Every BP domain × country, brand by brand, in brands.ts order. */
-export function discoveryPairs(brands: ReadonlyArray<{ name: string; domains: readonly string[] }>): DiscoveryPair[] {
+/** Every BP domain × the brand's markets (all of them unless it lists its own), brand by brand, in brands.ts order. */
+export function discoveryPairs(
+  brands: ReadonlyArray<{ name: string; domains: readonly string[]; countries?: readonly string[] }>,
+): DiscoveryPair[] {
   const pairs: DiscoveryPair[] = []
   for (const brand of brands) {
+    const countries = DISCOVERY_COUNTRIES.filter((c) => !brand.countries || brand.countries.includes(c))
     for (const domain of brand.domains) {
-      for (const country of DISCOVERY_COUNTRIES) {
+      for (const country of countries) {
         pairs.push({ brand: brand.name, domain: domain.toLowerCase(), country })
       }
     }

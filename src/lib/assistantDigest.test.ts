@@ -6,21 +6,21 @@ function rec(domain: string, keyword: string, country: string, position: string)
   return { domain, keyword, country, position, previous: '', change: '', date: '' }
 }
 
-// rooster.bet → RoosterBet (bp). Two snapshots, newest first.
+// spinsup.com → SpinsUp (bp), a brand reported in every market. Two snapshots, newest first.
 const snaps: Snapshot[] = [
   {
     id: 's2', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26',
     records: [
-      rec('rooster.bet', 'casino', 'Germany', '2'),    // was 5 → improved, delta -3
-      rec('rooster.bet', 'slots',  'Germany', 'NR'),   // was 8 → fell out
-      rec('rooster.bet', 'bonus',  'Germany', '11'),   // not top10
+      rec('spinsup.com', 'casino', 'Germany', '2'),    // was 5 → improved, delta -3
+      rec('spinsup.com', 'slots',  'Germany', 'NR'),   // was 8 → fell out
+      rec('spinsup.com', 'bonus',  'Germany', '11'),   // not top10
     ],
   },
   {
     id: 's1', category: 'bp-sites', rawDate: '2026-05-13', displayDate: '13 May 26',
     records: [
-      rec('rooster.bet', 'casino', 'Germany', '5'),
-      rec('rooster.bet', 'slots',  'Germany', '8'),
+      rec('spinsup.com', 'casino', 'Germany', '5'),
+      rec('spinsup.com', 'slots',  'Germany', '8'),
     ],
   },
 ]
@@ -30,7 +30,7 @@ describe('buildHistoryDigest', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
     const latest = d.timeline[0]
     expect(latest.date).toBe('20 May 26')
-    const rb = latest.perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = latest.perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.rankingKeywords).toBe(2)   // '2' and '11' are numeric; 'NR' excluded
     expect(rb.top3).toBe(1)              // only position 2
     expect(rb.top10).toBe(1)             // position 2 (<=10); 11 excluded
@@ -45,7 +45,7 @@ describe('buildHistoryDigest', () => {
   it('computes movers between the two newest snapshots, negative = improved', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
     const casino = d.movers.find((m) => m.keyword === 'casino')!
-    expect(casino).toMatchObject({ brand: 'RoosterBet', from: '5', to: '2', delta: -3 })
+    expect(casino).toMatchObject({ brand: 'SpinsUp', from: '5', to: '2', delta: -3 })
   })
 
   it('returns empty timeline/movers for no snapshots', () => {
@@ -62,7 +62,7 @@ describe('buildHistoryDigest', () => {
 describe('byCountry', () => {
   it('aggregates per-country stats within a brand', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
-    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.byCountry).toHaveLength(1)
     const de = rb.byCountry[0]
     expect(de.country).toBe('Germany')
@@ -74,26 +74,26 @@ describe('byCountry', () => {
 
   it('caps byCountry at 8 countries sorted by rankingKeywords desc', () => {
     const countries = ['DE', 'GB', 'AU', 'NZ', 'CA', 'US', 'ZA', 'IE', 'MT']
-    const manyRecs = countries.map((c, i) => rec('rooster.bet', `kw${i}`, c, String(i + 1)))
+    const manyRecs = countries.map((c, i) => rec('spinsup.com', `kw${i}`, c, String(i + 1)))
     const d = buildHistoryDigest(
       [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records: manyRecs }],
       'bp-sites',
     )
-    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.byCountry).toHaveLength(8)
   })
 
   it('sorts byCountry by rankingKeywords desc', () => {
     const records = [
-      rec('rooster.bet', 'kw1', 'GB', '2'),
-      rec('rooster.bet', 'kw2', 'GB', '4'),  // GB: 2 keywords
-      rec('rooster.bet', 'kw3', 'DE', '1'),  // DE: 1 keyword
+      rec('spinsup.com', 'kw1', 'GB', '2'),
+      rec('spinsup.com', 'kw2', 'GB', '4'),  // GB: 2 keywords
+      rec('spinsup.com', 'kw3', 'DE', '1'),  // DE: 1 keyword
     ]
     const d = buildHistoryDigest(
       [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
       'bp-sites',
     )
-    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.byCountry[0].country).toBe('GB')   // 2 keywords — sorted first
     expect(rb.byCountry[1].country).toBe('DE')   // 1 keyword — sorted second
   })
@@ -105,18 +105,18 @@ describe('byCountry', () => {
 describe('topKeywords', () => {
   it('returns the 5 best numeric positions, excludes NR', () => {
     const records = [
-      rec('rooster.bet', 'kw1', 'DE', '3'),
-      rec('rooster.bet', 'kw2', 'DE', '1'),
-      rec('rooster.bet', 'kw3', 'DE', 'NR'),
-      rec('rooster.bet', 'kw4', 'DE', '7'),
-      rec('rooster.bet', 'kw5', 'DE', '2'),
-      rec('rooster.bet', 'kw6', 'DE', '5'),
+      rec('spinsup.com', 'kw1', 'DE', '3'),
+      rec('spinsup.com', 'kw2', 'DE', '1'),
+      rec('spinsup.com', 'kw3', 'DE', 'NR'),
+      rec('spinsup.com', 'kw4', 'DE', '7'),
+      rec('spinsup.com', 'kw5', 'DE', '2'),
+      rec('spinsup.com', 'kw6', 'DE', '5'),
     ]
     const d = buildHistoryDigest(
       [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
       'bp-sites',
     )
-    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.topKeywords).toHaveLength(5)
     expect(rb.topKeywords[0]).toMatchObject({ keyword: 'kw2', position: 1 })
     expect(rb.topKeywords.some((k) => k.keyword === 'kw3')).toBe(false)
@@ -124,14 +124,14 @@ describe('topKeywords', () => {
 
   it('returns all keywords when fewer than 5 numeric positions exist', () => {
     const records = [
-      rec('rooster.bet', 'kw1', 'DE', '3'),
-      rec('rooster.bet', 'kw2', 'DE', 'NR'),
+      rec('spinsup.com', 'kw1', 'DE', '3'),
+      rec('spinsup.com', 'kw2', 'DE', 'NR'),
     ]
     const d = buildHistoryDigest(
       [{ id: 'x', category: 'bp-sites', rawDate: '2026-05-20', displayDate: '20 May 26', records }],
       'bp-sites',
     )
-    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'SpinsUp')!
     expect(rb.topKeywords).toHaveLength(1)
     expect(rb.topKeywords[0]).toMatchObject({ keyword: 'kw1', position: 3 })
   })
@@ -146,17 +146,17 @@ function gainedLostSnaps(): Snapshot[] {
     {
       id: 's2', category: 'bp-sites' as const, rawDate: '2026-05-20', displayDate: '20 May 26',
       records: [
-        rec('rooster.bet', 'casino', 'Germany', '5'),  // numeric → numeric — NOT a transition
-        rec('rooster.bet', 'slots',  'Germany', 'NR'), // numeric → NR — lost
-        rec('rooster.bet', 'poker',  'Germany', '8'),  // NR → numeric — gained
+        rec('spinsup.com', 'casino', 'Germany', '5'),  // numeric → numeric — NOT a transition
+        rec('spinsup.com', 'slots',  'Germany', 'NR'), // numeric → NR — lost
+        rec('spinsup.com', 'poker',  'Germany', '8'),  // NR → numeric — gained
       ],
     },
     {
       id: 's1', category: 'bp-sites' as const, rawDate: '2026-05-13', displayDate: '13 May 26',
       records: [
-        rec('rooster.bet', 'casino', 'Germany', '3'),
-        rec('rooster.bet', 'slots',  'Germany', '6'),
-        rec('rooster.bet', 'poker',  'Germany', 'NR'),
+        rec('spinsup.com', 'casino', 'Germany', '3'),
+        rec('spinsup.com', 'slots',  'Germany', '6'),
+        rec('spinsup.com', 'poker',  'Germany', 'NR'),
       ],
     },
   ]
@@ -189,15 +189,15 @@ describe('gained and lost', () => {
 const threeSnaps: Snapshot[] = [
   {
     id: 's3', category: 'bp-sites', rawDate: '2026-06-01', displayDate: '01 Jun 26',
-    records: [rec('rooster.bet', 'casino', 'DE', '2')],
+    records: [rec('spinsup.com', 'casino', 'DE', '2')],
   },
   {
     id: 's2', category: 'bp-sites', rawDate: '2026-05-15', displayDate: '15 May 26',
-    records: [rec('rooster.bet', 'casino', 'DE', '5')],
+    records: [rec('spinsup.com', 'casino', 'DE', '5')],
   },
   {
     id: 's1', category: 'bp-sites', rawDate: '2026-05-01', displayDate: '01 May 26',
-    records: [rec('rooster.bet', 'casino', 'DE', '10')],
+    records: [rec('spinsup.com', 'casino', 'DE', '10')],
   },
 ]
 
@@ -227,15 +227,15 @@ describe('rangeMovers', () => {
 describe('positions lookup', () => {
   it('maps domain → country → keyword → position string for all latest records', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
-    // snaps latest: rooster.bet casino/Germany/'2', bonus/Germany/'11'
-    expect(d.positions['rooster.bet']['Germany']['casino']).toBe('2')
-    expect(d.positions['rooster.bet']['Germany']['bonus']).toBe('11')
+    // snaps latest: spinsup.com casino/Germany/'2', bonus/Germany/'11'
+    expect(d.positions['spinsup.com']['Germany']['casino']).toBe('2')
+    expect(d.positions['spinsup.com']['Germany']['bonus']).toBe('11')
   })
 
   it('includes NR keywords — not filtered out', () => {
     const d = buildHistoryDigest(snaps, 'bp-sites')
     // snaps latest: slots/Germany/'NR'
-    expect(d.positions['rooster.bet']['Germany']['slots']).toBe('NR')
+    expect(d.positions['spinsup.com']['Germany']['slots']).toBe('NR')
   })
 
   it('returns empty object when no snapshots provided', () => {
@@ -247,18 +247,58 @@ describe('positions lookup', () => {
     const twoSnaps: Snapshot[] = [
       {
         id: 's2', category: 'bp-sites' as const, rawDate: '2026-05-20', displayDate: '20 May 26',
-        records: [rec('rooster.bet', 'casino', 'Germany', '5')],
+        records: [rec('spinsup.com', 'casino', 'Germany', '5')],
       },
       {
         id: 's1', category: 'bp-sites' as const, rawDate: '2026-05-13', displayDate: '13 May 26',
         records: [
-          rec('rooster.bet', 'casino', 'Germany', '8'),
-          rec('rooster.bet', 'poker', 'Germany', '3'),  // only in prior snapshot
+          rec('spinsup.com', 'casino', 'Germany', '8'),
+          rec('spinsup.com', 'poker', 'Germany', '3'),  // only in prior snapshot
         ],
       },
     ]
     const d = buildHistoryDigest(twoSnaps, 'bp-sites')
-    expect(d.positions['rooster.bet']['Germany']['casino']).toBe('5')        // latest value wins
-    expect(d.positions['rooster.bet']?.['Germany']?.['poker']).toBeUndefined() // prior-only absent
+    expect(d.positions['spinsup.com']['Germany']['casino']).toBe('5')        // latest value wins
+    expect(d.positions['spinsup.com']?.['Germany']?.['poker']).toBeUndefined() // prior-only absent
+  })
+})
+
+// ---------------------------------------------------------------------------
+// brand markets
+// ---------------------------------------------------------------------------
+describe("records outside a brand's markets", () => {
+  // RoosterBet is reported in AU, CA, IT and NZ only; its DE rows stay stored.
+  const marketSnaps: Snapshot[] = [
+    {
+      id: 's2', category: 'bp-sites', rawDate: '2026-11-24', displayDate: '24 Nov 26',
+      records: [
+        rec('rooster.bet', 'casino', 'DE', '2'),
+        rec('rooster.bet', 'casino', 'AU', '4'),
+        rec('roosters.bet', 'bonus', 'Germany', '8'),
+      ],
+    },
+    {
+      id: 's1', category: 'bp-sites', rawDate: '2026-11-17', displayDate: '17 Nov 26',
+      records: [
+        rec('rooster.bet', 'casino', 'DE', '9'),
+        rec('rooster.bet', 'casino', 'AU', '6'),
+        rec('roosters.bet', 'bonus', 'Germany', 'NR'),
+      ],
+    },
+  ]
+
+  it('leave the per-country stats', () => {
+    const d = buildHistoryDigest(marketSnaps, 'bp-sites')
+    const rb = d.timeline[0].perBrand.find((b) => b.brand === 'RoosterBet')!
+    expect(rb.byCountry.map((c) => c.country)).toEqual(['AU'])
+    expect(rb.rankingKeywords).toBe(1)
+  })
+
+  it('leave the movers, the gains and the positions', () => {
+    const d = buildHistoryDigest(marketSnaps, 'bp-sites')
+    expect(d.movers.map((m) => m.country)).toEqual(['AU'])
+    expect(d.gained).toEqual([])
+    expect(Object.keys(d.positions['rooster.bet'])).toEqual(['AU'])
+    expect(d.positions['roosters.bet']).toBeUndefined()
   })
 })

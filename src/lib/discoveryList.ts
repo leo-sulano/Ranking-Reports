@@ -51,9 +51,13 @@ function brandFetchesByCycle(brandDomains: readonly string[], fetches: readonly 
   return byCycle
 }
 
-/** Cycles in which every one of the brand's domains has every country, newest first. */
-export function completeCycles(brandDomains: readonly string[], fetches: readonly DiscoveryFetchInfo[]): string[] {
-  const needed = [...lowerSet(brandDomains)].flatMap((d) => DISCOVERY_COUNTRIES.map((c) => `${d}|${c}`))
+/** Cycles in which every one of the brand's domains has each of its markets, newest first. */
+export function completeCycles(
+  brandDomains: readonly string[],
+  fetches: readonly DiscoveryFetchInfo[],
+  countries: readonly string[] = DISCOVERY_COUNTRIES,
+): string[] {
+  const needed = [...lowerSet(brandDomains)].flatMap((d) => countries.map((c) => `${d}|${c.toUpperCase()}`))
   return [...brandFetchesByCycle(brandDomains, fetches)]
     .filter(([, have]) => needed.every((pair) => have.has(pair)))
     .map(([cycle]) => cycle)

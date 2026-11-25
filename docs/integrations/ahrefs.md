@@ -66,6 +66,14 @@ Where these disagree with Ahrefs' docs, the observation wins.
   `brands.ts`; the sync summary lists them as skipped. Adding them is a
   one-line change to `brands.ts`.
 
+**Changed 2026-11-25 (client focus):** RoosterBet is reported in AU, CA, IT
+and NZ only (`countries` on its `brands.ts` entry), and casinoroosters.com is
+retired (`retiredDomains`), leaving 36 live BP domains. The sync still saves
+both — RoosterBet's DE rows and casinoroosters.com in its competitor slot —
+because replacing a week deletes and rewrites it; the pages, Home and the
+assistant hide them (`isReported`), and nothing is deleted. Restoring either
+is a one-line change in `brands.ts`.
+
 ## Schedule
 
 `api/cron-sync.ts` runs Wed and Fri at 04:00 UTC, after Tuesday's update has
@@ -148,7 +156,7 @@ in `docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md`.
 | Per row (volume 10, every other field 1) | 15 |
 | Minimum per call, even when empty | 50 |
 | Worst case per call (50 rows) | 750 |
-| Worst case per cycle (37 domains × 5 countries) | 138,750 |
+| Worst case per cycle (177 pairs: 36 domains × each brand's markets) | 132,750 |
 
 Ahrefs reports each call's real charge in `x-api-units-cost-total-actual`.
 `x-api-units-cost-total` is the nominal cost: on a free test target it shows,
@@ -200,7 +208,8 @@ for example, 65 while the actual charge is 0.
     capped Retry-After wait and a second timeout. That leaves calls about 24 s
     to start in, so roughly 12–24 calls a run depending on how fast Ahrefs
     and Supabase answer.
-  - A full cycle (185 calls) therefore takes about 3–6 days.
+  - A full cycle (177 calls since the Dec 5, 2026 cycle; 185 before) therefore
+    takes about 3–6 days.
   - Once the cycle is complete, runs return without calling Site Explorer
     and without a /log line. The first few /log lines show the real calls per
     run.

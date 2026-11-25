@@ -4,7 +4,7 @@
 export type { Brand } from '../../api/_lib/brands.js'
 export {
   BRANDS, BRAND_BY_NAME, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, COUNTRY_LABELS,
-  normalizeCountry,
+  normalizeCountry, brandCountries, isReported,
 } from '../../api/_lib/brands.js'
 
 import { BRANDS } from '../../api/_lib/brands.js'
