@@ -3,10 +3,9 @@ import { ChevronDown } from 'lucide-react'
 import type { Brand, RankingRecord } from '../types'
 import { DOMAIN_TO_BRAND, brandCountries } from '../lib/brands'
 import { formatDisplayDate } from '../lib/parser'
-import { loadDiscoveryFetches, loadDiscoveryRows, trackedIndex, type DiscoveryRow } from '../lib/keywordDiscovery'
-import {
-  buildDiscoveryList, completeCycles, cycleCompletedAt, newEligibleCountries, positionKindLabel, previousCycle,
-} from '../lib/discoveryList'
+import { trackedIndex } from '../lib/keywordDiscovery'
+import { buildDiscoveryList, positionKindLabel } from '../lib/discoveryList'
+import { useDiscovery } from '../lib/useDiscovery'
 
 /**
  * "Other ranking keywords · not tracked" — under the matrix on a BP Sites
@@ -16,18 +15,6 @@ import {
  */
 
 const INITIAL_ROWS = 25
-
-type Loaded =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | {
-      status:      'ready'
-      shown:       string | null
-      completedAt: string | null
-      rows:        DiscoveryRow[]
-      prevRows:    DiscoveryRow[]
-      newEligible: Set<string>
-    }
 
 const isHttpUrl = (url: string) => /^https?:\/\//i.test(url)
 
@@ -45,38 +32,9 @@ export function OtherRankingKeywords({
   kwFilter:        string
   kwExact:         boolean
 }) {
-  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' })
+  const loaded = useDiscovery(brand)
   const [showAll, setShowAll] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoaded({ status: 'loading' })
-    setShowAll(false)
-    ;(async () => {
-      try {
-        const fetches = await loadDiscoveryFetches(brand.domains)
-        // A cycle is complete once every site has each of the brand's markets.
-        const shown = completeCycles(brand.domains, fetches, brandCountries(brand))[0] ?? null
-        const prev = shown ? previousCycle(shown, brand.domains, fetches) : null
-        const rows = await loadDiscoveryRows(brand.domains, [shown, prev].filter((c): c is string => c !== null))
-        if (cancelled) return
-        setLoaded({
-          status:      'ready',
-          shown,
-          completedAt: shown ? cycleCompletedAt(shown, brand.domains, fetches) : null,
-          rows:        rows.filter((r) => r.cycle === shown),
-          prevRows:    rows.filter((r) => r.cycle === prev),
-          newEligible: newEligibleCountries(prev, brand.domains, fetches),
-        })
-      } catch (err) {
-        console.error(err)
-        if (!cancelled) setLoaded({ status: 'error' })
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [brand])
+  useEffect(() => setShowAll(false), [brand])
 
   const tracked = useMemo(() => trackedIndex(trackedRecords, DOMAIN_TO_BRAND), [trackedRecords])
 
@@ -84,7 +42,7 @@ export function OtherRankingKeywords({
     if (loaded.status !== 'ready') return []
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      countries, kwFilter, kwExact,
+      country: (c) => countries.includes(c), kwFilter, kwExact,
     })
   }, [loaded, tracked, brand, countries, kwFilter, kwExact])
 
@@ -93,7 +51,7 @@ export function OtherRankingKeywords({
     if (loaded.status !== 'ready') return 0
     return buildDiscoveryList({
       rows: loaded.rows, prevRows: loaded.prevRows, newEligible: loaded.newEligible, tracked, brand,
-      countries: brandCountries(brand), kwFilter: '', kwExact: false,
+      country: (c) => brandCountries(brand).includes(c), kwFilter: '', kwExact: false,
     }).length
   }, [loaded, tracked, brand])
 
