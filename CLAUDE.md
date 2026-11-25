@@ -37,14 +37,15 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 2. **Persist** — Parsed records are wrapped in a `Snapshot` (id, rawDate, displayDate, records[]) and saved to `localStorage` via `src/lib/storage.ts`. Multiple snapshots are supported; legacy flat-record format is migrated on first load.
 3. **State** — All app state lives in a single `AppState` object managed by `useState` in the `Layout` component (`src/App.tsx`). There is no global state library. State is passed to the `RankingReports` page via React Router's `useOutletContext`.
 4. **Display** — `RankingReports` is either an `OverviewGrid` (all brands, no active brand selected) or a `RankingTable` (filtered to the active brand + country/domain/keyword filters).
-5. **Other ranking keywords** — `api/cron-discovery.ts` (3× daily) pulls Ahrefs
-   Site Explorer organic keywords for the 36 BP domains × each brand's markets once per
+5. **Ranking keywords from Ahrefs' index** — `api/cron-discovery.ts` (3× daily) pulls Ahrefs
+   Site Explorer organic keywords for every live BP site, every country (one call per site), once per
    Ahrefs billing month into Supabase (`keyword_discovery*`,
    `supabase/keyword-discovery.sql`). Unlike the rankings sync this SPENDS API
    units, so it uses its own capped key, `AHREFS_DISCOVERY_API_KEY`, and stops
-   before the key's monthly limit. `src/components/OtherRankingKeywords.tsx`
-   shows them under each BP Sites brand matrix, minus what the newest snapshot
-   tracks. See `docs/integrations/ahrefs.md`.
+   before the key's monthly limit. On each BP Sites brand page (loaded once by
+   `src/lib/useDiscovery.ts`) untracked keywords in the brand's markets join the
+   latest table ("Also ranking"), and other countries are listed under it
+   (`src/components/OtherRankingKeywords.tsx`). See `docs/integrations/ahrefs.md`.
 
 ### Key Files
 
@@ -59,16 +60,17 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `api/_lib/ahrefs.ts` | Server-only Ahrefs client: project list, BP filter (other clients' projects are never fetched), per-project competitors + rankings with bounded concurrency, one retry, operator-worded errors; fails if a response reports API units spent. |
 | `api/sites.ts` | Serverless proxy holding `AHREFS_API_KEY`; the browser never sees the key or the upstream URL. Requires the caller's Supabase session (verified via `api/_lib/requestAuth.ts`) — it is not a public endpoint. Returns normalized records. |
 | `scripts/ahrefs-week-to-xlsx.mts` | Read-only: prints one Ahrefs week as the sync sees it, and can write it as an import-ready xlsx under `docs/references/` (gitignored). |
-| `api/_lib/keywordDiscovery.ts` | Browser-safe logic for other ranking keywords: domain × country pairs, the Ahrefs billing cycle, keyword normalization, organic-keywords response → rows, the tracked index, and the `where` that excludes tracked keywords. |
+| `api/_lib/keywordDiscovery.ts` | Browser-safe logic for ranking keywords from Ahrefs' index: one target per live site (`ALL` fetches, 200 rows, 16 units a row), the Ahrefs billing cycle, keyword normalization, organic-keywords response → rows in each row's own country, and the tracked index. |
 | `api/_lib/ahrefsDiscovery.ts` | Server-only client for the PAID Site Explorer call: its own key (refuses the rankings key), the key's limits, cost read from `x-api-units-cost-total-actual`, an over-charge stop, one retry. `scripts/ahrefs-discovery-check.mts` exercises it at 0 units on a free test target. |
-| `api/cron-discovery.ts` | Cron (05:00, 11:00, 17:00 UTC): takes a run lease, refuses while halted, fetches the cycle's missing domain × country pairs within a 45 s budget, saves each through `api/_lib/discoveryStore.ts`, stops before the key's limit, halts on an Ahrefs pricing or response-shape change, and writes one /log line per run that did work. |
-| `src/components/OtherRankingKeywords.tsx` | The "Other ranking keywords · not tracked" section on BP Sites brand pages; list logic in `src/lib/discoveryList.ts`, loader in `src/lib/keywordDiscovery.ts`. |
+| `api/cron-discovery.ts` | Cron (05:00, 11:00, 17:00 UTC): takes a run lease, refuses while halted, fetches the cycle's missing sites (every country each) within a 45 s budget, saves each through `api/_lib/discoveryStore.ts`, stops before the key's limit, halts on an Ahrefs pricing or response-shape change, and writes one /log line per run that did work. |
+| `src/components/OtherRankingKeywords.tsx` | The "Ranking in other countries · not tracked" list under each BP Sites brand table; the in-market "Also ranking" rows render in `src/pages/BPSites.tsx`. Shaping in `src/lib/discoveryList.ts` (`buildFoundRows`, `buildDiscoveryList`), loading in `src/lib/useDiscovery.ts` / `src/lib/keywordDiscovery.ts`. |
+| `src/lib/nrLabel.ts` | What a not-ranking cell says: "Not on page 1" for Ahrefs-era BP weeks (from 2026-11-03; Ahrefs saves only Google's first page), "Not in top 100" for older BP weeks and LP Sites. |
 
 ### Brands
 
 Nine brands are registered in `src/lib/brands.ts`: Lucky 7even, RoosterBet, LuckyVibe, SpinsUp, Spinjo, FortunePlay, RocketSpin, PlayMojo, Rollero. Each brand has a `mainDomain` (sorted first in domain filters) plus alias domains.
 
-A brand can narrow its markets with `countries` (RoosterBet: AU, CA, IT, NZ since 2026-11-25) and take sites off with `retiredDomains` (RoosterBet: casinoroosters.com). Both only hide: the sync and imports still store those rows (replacing a week deletes and rewrites it, so dropping them on the way in would delete history). `brandCountries` gives the column list, and `isReported` hides the rows on the brand pages, Home and the assistant; the import/sync summary still counts them, as a receipt of what was stored. The monthly keyword pull skips both.
+A brand can narrow its markets with `countries` (RoosterBet: AU, CA, IT, NZ since 2026-11-25) and take sites off with `retiredDomains` (RoosterBet: casinoroosters.com). Both only hide: the sync and imports still store those rows (replacing a week deletes and rewrites it, so dropping them on the way in would delete history). `brandCountries` gives the column list, and `isReported` hides the rows on the brand pages, Home and the assistant; the import/sync summary still counts them, as a receipt of what was stored. The monthly keyword pull skips retired sites but not narrowed markets: a brand's keywords outside its markets are listed under its table (RoosterBet's DE included).
 
 ### Tailwind
 

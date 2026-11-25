@@ -1,5 +1,7 @@
 # Other Ranking Keywords — Design
 
+> **Superseded in part (2026-11-25):** the pull now covers every country with one call per site, and the page splits the results into table rows and an other-countries list. See `docs/superpowers/specs/2026-11-25-all-countries-keywords-design.md`.
+
 **Date:** 2026-11-13
 **Status:** Approved by the user on 2026-11-13. Updated after approval with
 the probe results: the key limit is 200,000, non-organic positions are kept

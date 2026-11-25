@@ -118,12 +118,21 @@ To replace a snapshot with that week:
    where s.id = 'snap-bp-sites-<date>' group by s.source;
    ```
 
-## Other ranking keywords (paid Site Explorer units)
+## Ranking keywords from Ahrefs' index (paid Site Explorer units)
 
-Each BP Sites brand page has an "Other ranking keywords · not tracked"
-section: the keywords Ahrefs has seen the brand's sites rank for (top 100) in
-AU, CA, DE, IT and NZ that the newest BP snapshot does not track. The design is
-in `docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md`.
+Since 2026-11-25 the monthly pull covers **every country**: one call per live
+BP site. On each BP Sites brand page, the untracked keywords in the brand's
+markets join the latest week's table ("Also ranking · from Ahrefs' index,
+monthly"), and keywords in any other country are listed under it ("Ranking in
+other countries · not tracked"). Designs:
+`docs/superpowers/specs/2026-11-25-all-countries-keywords-design.md` (this
+version) and `docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md`
+(the first one, per country).
+
+Ahrefs' index is far from everything a site ranks for: on 2026-11-25 it knew 95
+keyword rankings across all 36 live sites, and 26 sites had none
+(`site-explorer/metrics`, 50 units a site). Google Search Console is the
+complete source.
 
 ### Its own key — this one spends units
 
@@ -140,23 +149,22 @@ in `docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md`.
 
 ### The request
 
-`GET site-explorer/organic-keywords`, one call per domain × country:
+`GET site-explorer/organic-keywords`, one call per live BP site (36 today;
+retired sites are never bought):
 
-- `target=<domain>`, `country=au|ca|de|it|nz`, `date=<today>`,
-  `mode=subdomains`;
-- `select=keyword,best_position,best_position_url,volume,last_update,best_position_kind`;
-- `order_by=volume:desc`, `limit=50`;
-- a `where` that leaves out the keywords the newest BP snapshot already tracks
-  for that brand and country:
-  `{"not":{"or":[{"field":"keyword","is":["eq","<keyword>"]},…]}}`. `eq` is
-  case-sensitive, so keywords go out lower-case.
+- `target=<domain>`, `date=<today, UTC>` (Ahrefs rejects a date still in
+  the future in UTC), `mode=subdomains`, **no `country`**: Ahrefs then
+  returns every country and fills each row's `keyword_country`;
+- `select=keyword,keyword_country,best_position,best_position_url,volume,last_update,best_position_kind`;
+- `order_by=volume:desc`, `limit=200` (the largest site had 40 rows);
+- no `where`: the page leaves out what the newest snapshot tracks.
 
 | | Units |
 |---|---|
-| Per row (volume 10, every other field 1) | 15 |
+| Per row (volume 10, every other field 1) | 16 |
 | Minimum per call, even when empty | 50 |
-| Worst case per call (50 rows) | 750 |
-| Worst case per cycle (177 pairs: 36 domains × each brand's markets) | 132,750 |
+| Worst case per call (200 rows) | 3,200 |
+| Typical cycle (36 sites, ~95 rows) | ~1,800–2,000 |
 
 Ahrefs reports each call's real charge in `x-api-units-cost-total-actual`.
 `x-api-units-cost-total` is the nominal cost: on a free test target it shows,
@@ -168,14 +176,14 @@ for example, 65 while the actual charge is 0.
   `subscription-info/limits-and-usage` (free).
 - It refuses to run with a missing key, a key equal to `AHREFS_API_KEY`, or a
   key with no limit.
-- It never starts a call with fewer than 750 units left on the key.
+- It never starts a call with fewer than 3,200 units left on the key.
 - It counts each call's cost from the `-actual` header. A missing header
   counts as the nominal cost, then as the worst case; never as free.
 - It retries a paid call once on a 429 (honouring Retry-After, capped) or a
   5xx, because Ahrefs did not serve those.
   - It never sends a paid call twice after a timeout, a network failure or a
     2xx, since that call may already have been charged. The next run picks
-    the pair up instead.
+    the site up instead.
   - A 2xx whose body is cut off still counts its charge.
   - A 401/403 is reported as the discovery key being rejected.
 - **Run lease.** Each run first takes a 90 s lease on the
@@ -183,7 +191,7 @@ for example, 65 while the actual charge is 0.
   deliver the same cron run twice, and someone can trigger it by hand. A run
   that finds the lease taken returns `busy`, without spending or logging. The
   lease is released before the run answers.
-- **Halt.** If a call costs more than its rows explain (max(50, rows × 15) +
+- **Halt.** If a call costs more than its rows explain (max(50, rows × 16) +
   50: pricing changed), or the answer no longer reads as organic keywords
   (response shape changed), the job saves a halt.
   - Every later run refuses, without calling Ahrefs, until someone clears it
@@ -192,7 +200,8 @@ for example, 65 while the actual charge is 0.
     ```sql
     update public.keyword_discovery_state set halted_reason = null, halted_at = null where id = 1;
     ```
-  - A single oddly typed row is skipped rather than halting the job.
+  - A single odd row (no position, no country, a wrong type) is skipped
+    rather than halting the job.
 
 ### Schedule and progress
 
@@ -202,23 +211,29 @@ for example, 65 while the actual charge is 0.
 - **The cron.** `api/cron-discovery.ts` runs three times a day: 05:00, 11:00
   and 17:00 UTC, three `vercel.json` entries on the same path. On Hobby,
   each entry may fire at any point in its hour.
-  - Each run fetches the pairs the cycle still lacks, brand by brand, at most
+  - Each run fetches the sites the cycle still lacks, brand by brand, at most
     one call a second, within a 45 s budget.
   - A call only starts with at least 21 s of the budget left: a timeout, a
     capped Retry-After wait and a second timeout. That leaves calls about 24 s
     to start in, so roughly 12–24 calls a run depending on how fast Ahrefs
     and Supabase answer.
-  - A full cycle (177 calls since the Dec 5, 2026 cycle; 185 before) therefore
-    takes about 3–6 days.
+  - A full cycle is 36 calls, so it takes one or two runs. (Per-country
+    cycles were 185 calls, 177 for a few weeks, and took 3–6 days.)
+  - **The switch-over.** A cycle fetched per country has no `ALL` fetch rows,
+    so the first run after the 2026-11-25 deploy buys the current cycle again
+    for every site, about 2,000 units, and the page shows all countries from
+    then on.
   - Once the cycle is complete, runs return without calling Site Explorer
     and without a /log line. The first few /log lines show the real calls per
     run.
 - **The /log line.** Every run that does work leaves one line starting
   "Keyword discovery", for example:
-  - "Keyword discovery — 24 calls, 2,140 units; SpinsUp complete for the
-    cycle from Nov 5, 2026; 125 calls left"
-  - "Keyword discovery — cycle from Nov 5, 2026 complete (185/185), 46,300
+  - "Keyword discovery — 24 calls, 1,410 units; SpinsUp complete for the
+    cycle from Dec 5, 2026; 12 calls left"
+  - "Keyword discovery — cycle from Dec 5, 2026 complete (36/36), 1,900
     units in total"
+  - "…; spinsup.com hit the 200-keyword limit for …": that site's list was
+    cut off, so lower-volume keywords may be missing; raise ROWS_PER_CALL.
   - "Keyword discovery failed: … (after 2 calls, 65 units)": a passing
     error; the next run carries on.
   - "Keyword discovery halted: … — no more calls until halted_reason is
@@ -226,11 +241,14 @@ for example, 65 while the actual charge is 0.
 
 ### Tables (`supabase/keyword-discovery.sql`)
 
-- `keyword_discovery_fetches` has one row per cycle × domain × country
-  fetched (row count, units, time). A pair with no row is fetched by the next
-  run; a pair with one is never re-bought that cycle.
-- `keyword_discovery` holds the keywords: position, position kind, URL,
-  volume and Ahrefs' check date.
+- `keyword_discovery_fetches` has one row per cycle × site fetched, with
+  country `ALL` (row count, units, time). A site with no row is fetched by
+  the next run; a site with one is never re-bought that cycle. Cycles before
+  2026-11-25 hold one row per site × country instead.
+- `keyword_discovery` holds the keywords, each in its own country: position,
+  position kind, URL, volume and Ahrefs' check date. Saving a site's `ALL`
+  fetch first clears that site's rows for the cycle in every country, so per-
+  country and all-country rows never mix.
 - `keyword_discovery_state` is one row holding the run lease and any halt.
   It has no RLS policy at all, so only the service role touches it.
 - On the two other tables, approved users can read (RLS `is_approved()`) and
@@ -238,15 +256,32 @@ for example, 65 while the actual charge is 0.
 
 ### The page
 
-- A brand shows its newest cycle in which every one of its domains has every
-  country.
-- NEW marks keywords missing from the previous cycle, but only in a country
-  where that cycle has every domain and none of those lists was cut off at 50
-  keywords. A cut-off list holds only the top keywords by volume, so a
-  missing keyword may simply have ranked below the cut. On big domains NEW is
-  therefore rare.
-- The page re-checks "tracked" against the newest snapshot on load, so a
-  keyword drops out as soon as it is tracked.
+- A brand shows its newest cycle in which every one of its live sites has an
+  `ALL` fetch (or, for older cycles, a fetch for each of its markets).
+- **In the brand's markets** (`brandCountries`): untracked keywords join the
+  latest week's table below the tracked ones, one row per keyword, a cell per
+  site and country ("–" where the index has nothing). The Sites, Countries and
+  keyword filters apply; a position or card filter hides them. They are not
+  counted in the stats, Home or the assistant.
+- **Other countries**: listed under the table, whatever the Countries chips
+  show (the chips only hold the markets). RoosterBet's DE is listed here.
+- NEW (list only) marks keywords missing from the previous cycle, only in a
+  country every site's previous list covered without being cut off: an
+  `ALL` fetch under 200 rows covers every country; a per-country fetch under
+  50 rows covers its own.
+- The page re-checks "tracked" (per brand and country) against the newest
+  snapshot on load, so a keyword drops out as soon as it is tracked.
+
+### Saved page depth: "Not on page 1"
+
+Rank Tracker saves only Google's first page for each search. In a sample of 70
+saved pages (14 projects × 5 countries, 2026-11-24) the deepest organic result
+had median position 9 and never passed 25; across all 1,511 synced cells the
+deepest ranking was #24. So in BP weeks from 2026-11-03 (the first Ahrefs
+week) a not-ranking cell reads "Not on page 1" (`src/lib/nrLabel.ts`); older
+BP weeks and LP Sites keep "Not in top 100". Read a saved page with the free
+`rank-tracker/serp-overview` (project_id, keyword, country, language_code,
+device, date).
 
 ### Checking the integration without spending units
 
@@ -254,7 +289,8 @@ for example, 65 while the actual charge is 0.
 npx tsx scripts/ahrefs-discovery-check.mts
 ```
 
-The script queries ahrefs.com, one of Ahrefs' free Site Explorer test targets
-(ahrefs.com, yep.com, firehose.com), with the real discovery key. It prints the
-key's limit, the cycle and the mapped rows, and exits 1 unless the key's usage
-is unchanged afterwards.
+The script sends the job's own request (one site, every country) to
+ahrefs.com, one of Ahrefs' free Site Explorer test targets (ahrefs.com,
+yep.com, firehose.com), with the real discovery key. It prints the key's
+limit, the cycle, the countries and the mapped rows, and exits 1 unless the
+key's usage is unchanged afterwards and the rows span several countries.
