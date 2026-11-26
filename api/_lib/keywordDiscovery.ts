@@ -10,29 +10,39 @@
  */
 import { ALL_COUNTRIES, normalizeCountry } from './brands.js'
 
-/** The dashboard's markets; a brand may narrow them (Brand.countries). */
+/**
+ * The dashboard's markets. Cycles fetched before 2026-11-25 hold one fetch per
+ * site × market; a brand page still reads them (src/lib/discoveryList.ts).
+ */
 export const DISCOVERY_COUNTRIES = ALL_COUNTRIES
-export type DiscoveryCountry = (typeof DISCOVERY_COUNTRIES)[number]
 
-/** Keywords asked for per domain × country, highest search volume first. */
-export const ROWS_PER_CALL = 50
+/** The fetch-row country of one call that covered every country for a site. */
+export const ALL_COUNTRIES_FETCH = 'ALL'
+
+/** Keywords asked for per site, every country, highest search volume first. */
+export const ROWS_PER_CALL = 200
+/** What a per-country fetch (before 2026-11-25) asked for: a row count this high means its list was cut off. */
+export const LEGACY_ROWS_PER_CALL = 50
 /** Per-row API units for DISCOVERY_SELECT: volume costs 10, every other field 1. */
-export const UNITS_PER_ROW = 15
+export const UNITS_PER_ROW = 16
 /** Ahrefs charges at least this for any billable request, even one that returns nothing. */
 export const MIN_CALL_UNITS = 50
 /** ROWS_PER_CALL × UNITS_PER_ROW. A call is never started with fewer units left on the key. */
-export const WORST_CASE_CALL_UNITS = 750
-export const DISCOVERY_SELECT = 'keyword,best_position,best_position_url,volume,last_update,best_position_kind'
+export const WORST_CASE_CALL_UNITS = ROWS_PER_CALL * UNITS_PER_ROW
+export const DISCOVERY_SELECT =
+  'keyword,keyword_country,best_position,best_position_url,volume,last_update,best_position_kind'
 
 const SELECTED_FIELDS = DISCOVERY_SELECT.split(',')
 
-export interface DiscoveryPair { brand: string; domain: string; country: DiscoveryCountry }
+/** One paid call: a live BP site, every country. */
+export interface DiscoveryTarget { brand: string; domain: string }
 
 export interface DiscoveryRow {
   cycle:         string
   brand:         string
   domain:        string
-  country:       DiscoveryCountry
+  /** Upper-case ISO country code, any country (Ahrefs' keyword_country). */
+  country:       string
   keyword:       string
   position:      number
   /** Ahrefs' best_position_kind: 'organic', or a SERP feature such as 'ai_overview'. */
@@ -43,20 +53,13 @@ export interface DiscoveryRow {
   ahrefsChecked: string | null
 }
 
-/** Every BP domain × the brand's markets (all of them unless it lists its own), brand by brand, in brands.ts order. */
-export function discoveryPairs(
-  brands: ReadonlyArray<{ name: string; domains: readonly string[]; countries?: readonly string[] }>,
-): DiscoveryPair[] {
-  const pairs: DiscoveryPair[] = []
-  for (const brand of brands) {
-    const countries = DISCOVERY_COUNTRIES.filter((c) => !brand.countries || brand.countries.includes(c))
-    for (const domain of brand.domains) {
-      for (const country of countries) {
-        pairs.push({ brand: brand.name, domain: domain.toLowerCase(), country })
-      }
-    }
-  }
-  return pairs
+/**
+ * Every live BP site, brand by brand, in brands.ts order: one call each covers
+ * every country. A brand's market list does not narrow it — keywords outside
+ * the markets are listed on the page. Retired sites are not in `domains`.
+ */
+export function discoveryTargets(brands: ReadonlyArray<{ name: string; domains: readonly string[] }>): DiscoveryTarget[] {
+  return brands.flatMap((brand) => brand.domains.map((domain) => ({ brand: brand.name, domain: domain.toLowerCase() })))
 }
 
 export function pairKey(domain: string, country: string): string {
@@ -87,19 +90,20 @@ export function normalizeKeyword(keyword: string): string {
 }
 
 /**
- * One organic-keywords response → rows to store. A missing field, or a
- * response in which no row is readable, means Ahrefs changed shape: it throws
- * rather than saving blanks (the job then halts). A single odd row — no
- * position, a blank keyword, a value of the wrong type — is skipped, so one
- * bad row cannot stop the job. Keywords that differ only in case or spacing
- * collapse to the best position.
+ * One organic-keywords response (every country) → rows to store, each in the
+ * country Ahrefs gives it. A missing field, or a response in which no row is
+ * readable, means Ahrefs changed shape: it throws rather than saving blanks
+ * (the job then halts). A single odd row — no position, no country, a blank
+ * keyword, a value of the wrong type — is skipped, so one bad row cannot stop
+ * the job. Keywords that differ only in case or spacing collapse, per
+ * country, to the best position.
  */
 export function mapOrganicKeywords(
   body: unknown,
-  ctx: { cycle: string; brand: string; domain: string; country: DiscoveryCountry },
+  ctx: { cycle: string; brand: string; domain: string },
 ): DiscoveryRow[] {
   const unexpected = () =>
-    new Error(`Ahrefs returned an unexpected organic-keywords response for ${ctx.domain} (${ctx.country})`)
+    new Error(`Ahrefs returned an unexpected organic-keywords response for ${ctx.domain}`)
 
   const list = (body as { keywords?: unknown } | null)?.keywords
   if (!Array.isArray(list)) throw unexpected()
@@ -117,9 +121,11 @@ export function mapOrganicKeywords(
 
     const { keyword, best_position: position, best_position_url: url, volume, last_update: checked } = r
     const kind = r.best_position_kind
-    if (position === null || keyword === null) continue
+    const rawCountry = r.keyword_country
+    if (position === null || keyword === null || rawCountry === null || rawCountry === '') continue
     if (
       typeof keyword !== 'string' || typeof position !== 'number' || !Number.isFinite(position) ||
+      typeof rawCountry !== 'string' ||
       (volume !== null && (typeof volume !== 'number' || !Number.isFinite(volume)))
     ) {
       unreadable += 1
@@ -131,7 +137,7 @@ export function mapOrganicKeywords(
       cycle:         ctx.cycle,
       brand:         ctx.brand,
       domain:        ctx.domain,
-      country:       ctx.country,
+      country:       rawCountry.trim().toUpperCase(),
       keyword:       keyword.trim(),
       position,
       positionKind:  typeof kind === 'string' ? kind : null,
@@ -139,7 +145,7 @@ export function mapOrganicKeywords(
       volume:        volume as number | null,
       ahrefsChecked: typeof checked === 'string' ? checked : null,
     }
-    const key = normalizeKeyword(keyword)
+    const key = `${normalizeKeyword(keyword)}|${row.country}`
     const seen = best.get(key)
     if (!seen || row.position < seen.position) best.set(key, row)
   }
@@ -170,15 +176,4 @@ export function trackedIndex(
     set.add(keyword)
   }
   return index
-}
-
-/**
- * The organic-keywords `where` that leaves out keywords already tracked.
- * Ahrefs' `eq` is case-sensitive and its keywords are lower-case, so the
- * keywords go out normalized. Undefined when there is nothing to exclude.
- */
-export function excludeKeywordsWhere(keywords: Iterable<string>): string | undefined {
-  const unique = [...new Set([...keywords].map(normalizeKeyword).filter(Boolean))].sort()
-  if (unique.length === 0) return undefined
-  return JSON.stringify({ not: { or: unique.map((keyword) => ({ field: 'keyword', is: ['eq', keyword] })) } })
 }

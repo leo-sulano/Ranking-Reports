@@ -1,13 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useOutletContext, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Brand, EditCellMatcher, EditCellPatch, RankingRecord, RROutletContext, Snapshot, SnapshotMeta } from '../types'
-import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, brandCountries, brandToSlug, isReported } from '../lib/brands'
+import { BRANDS, BRAND_BY_NAME, BRAND_BY_SLUG, BRAND_LOGO_COLORS, BRAND_FAVICONS, COUNTRY_LABELS, DOMAIN_TO_BRAND, brandCountries, brandToSlug, isReported } from '../lib/brands'
 import { PosBadge } from '../components/PosBadge'
 import { PinButton } from '../components/PinButton'
 import { usePinnedGroups } from '../lib/usePinnedGroups'
 import { StatsRow, CardFilterKey } from '../components/StatsRow'
 import { OtherRankingKeywords } from '../components/OtherRankingKeywords'
-import { computeStats, parsePosition, parseChange, effectiveDelta } from '../lib/parser'
+import { computeStats, parsePosition, parseChange, effectiveDelta, formatDisplayDate } from '../lib/parser'
+import { useDiscovery } from '../lib/useDiscovery'
+import { trackedIndex } from '../lib/keywordDiscovery'
+import { buildFoundRows, type FoundRow } from '../lib/discoveryList'
+import { nrLabelFor } from '../lib/nrLabel'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
@@ -479,6 +483,19 @@ function BrandView({
   // Country columns honor the chip filter, but preserve canonical order
   const visibleCountries = countryOrder.filter((c) => activeCountries.includes(c))
 
+  // Ranking keywords from Ahrefs' index: the untracked ones in the brand's
+  // markets join the latest table; other countries are listed under it.
+  const discovery = useDiscovery(brand)
+  const tracked = useMemo(() => trackedIndex(latestSnap?.records ?? [], DOMAIN_TO_BRAND), [latestSnap])
+  const found = useMemo(() => {
+    // They are not tracked keywords, so a position or card filter hides them.
+    if (discovery.status !== 'ready' || posFilter !== 'all' || cardFilter !== null) return null
+    const countries = countryOrder.filter((c) => activeCountries.includes(c))
+    const sites = showMain ? [mainDomain, ...visibleBpDomains] : visibleBpDomains
+    const rows = buildFoundRows({ rows: discovery.rows, tracked, brand, sites, countries, kwFilter, kwExact })
+    return { rows, asOf: discovery.completedAt }
+  }, [discovery, tracked, brand, showMain, mainDomain, visibleBpDomains, countryOrder, activeCountries, kwFilter, kwExact, posFilter, cardFilter])
+
   return (
     <>
       {/* Back + brand header */}
@@ -693,6 +710,7 @@ function BrandView({
                         cardFilter={cardFilter}
                         onEditCell={onEditCell}
                         isLatest={snap.id === latestSnap?.id}
+                        found={snap.id === latestSnap?.id ? found : null}
                         pinnedDomains={pinnedDomains}
                         onTogglePin={togglePinnedDomain}
                       />
@@ -722,8 +740,8 @@ function BrandView({
             })()}
             <OtherRankingKeywords
               brand={brand}
+              discovery={discovery}
               trackedRecords={latestSnap?.records ?? []}
-              countries={activeCountries}
               kwFilter={kwFilter}
               kwExact={kwExact}
             />
@@ -1084,6 +1102,7 @@ function SnapshotMatrix({
   cardFilter,
   onEditCell,
   isLatest,
+  found,
   pinnedDomains,
   onTogglePin,
 }: {
@@ -1100,6 +1119,8 @@ function SnapshotMatrix({
   cardFilter: CardFilterKey | null
   onEditCell: EditCellFn
   isLatest: boolean
+  /** Untracked keywords from Ahrefs' index, shown under the tracked ones (latest week only). */
+  found: { rows: FoundRow[]; asOf: string | null } | null
   pinnedDomains: string[]
   onTogglePin: (domainKey: string) => void
 }) {
@@ -1151,6 +1172,8 @@ function SnapshotMatrix({
   })
 
   const borderStyle = `1px solid ${TABLE_BORDER}`
+  // Ahrefs weeks say "Not on page 1"; earlier weeks keep "Not in top 100".
+  const nrLabel = nrLabelFor(snapshot)
 
   // ── Domain groups, pinned ones first — pinned groups freeze beside the
   //    keyword column, mirroring the fixed TOTALS pattern on Reg & FTDs. ──
@@ -1447,13 +1470,70 @@ function SnapshotMatrix({
                           ...pinStyle(gi, ci, 4),
                         }}
                       >
-                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
+                        {rec ? <PosBadge record={rec} crossSnapPrevPos={crossSnapPrevPos} nrLabel={nrLabel} /> : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
                       </td>
                     )
                   })
                 )}
               </tr>
             ))}
+
+            {found && found.rows.length > 0 && (
+              <>
+                <tr>
+                  <td
+                    colSpan={1 + groups.length * colsPerGroup}
+                    className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ background: 'var(--mx-bg)', color: 'var(--mx-dash)', borderBottom: borderStyle }}
+                  >
+                    <span className="sticky left-3">
+                      Also ranking · from Ahrefs' index, monthly
+                      {found.asOf ? ` · as of ${formatDisplayDate(found.asOf.slice(0, 10))}` : ''}
+                    </span>
+                  </td>
+                </tr>
+                {found.rows.map((fr) => (
+                  <tr key={`found-${fr.keyword}`}>
+                    <td
+                      className="sticky left-0 z-[5] px-3 py-2 whitespace-nowrap"
+                      style={{
+                        background: STICKY_KW_BG,
+                        color: 'var(--mx-ink)',
+                        borderRight: borderStyle,
+                        borderBottom: borderStyle,
+                        boxShadow: scrolled && pinnedCount === 0 ? '4px 0 8px -2px rgba(0,0,0,0.18)' : undefined,
+                      }}
+                    >
+                      {fr.keyword}
+                    </td>
+                    {groups.map((g, gi) =>
+                      visibleCountries.map((c, ci) => {
+                        const cell = fr.cells[g.dk]?.[c]
+                        const checked = cell?.ahrefsChecked ? ` · Ahrefs checked ${formatDisplayDate(cell.ahrefsChecked.slice(0, 10))}` : ''
+                        return (
+                          <td
+                            key={`found-cell-${fr.keyword}-${g.dk}-${c}`}
+                            className={`px-2 py-1.5 text-center align-middle ${g.isMain ? 'min-w-[90px]' : ''}`}
+                            title={cell ? `${cell.url}${checked}` : undefined}
+                            style={{
+                              background: g.cellBg,
+                              borderLeft: g.isMain && ci === 0 ? undefined : borderStyle,
+                              borderRight: ci === colsPerGroup - 1 ? borderStyle : undefined,
+                              borderBottom: borderStyle,
+                              ...pinStyle(gi, ci, 4),
+                            }}
+                          >
+                            {cell
+                              ? <span className="text-[12px]">{cell.position}</span>
+                              : <span className="text-[var(--mx-dash)] text-[11px]">–</span>}
+                          </td>
+                        )
+                      })
+                    )}
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
         </table>
       </div>
@@ -1759,7 +1839,7 @@ function ClassificationChartModal({ onClose }: { onClose: () => void }) {
               </span>
             </div>
             <ChartRow
-              condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not in top 100"</span></>}
+              condition={<>Position is <span className="font-semibold text-[var(--ink)]">"Not on page 1"</span> (weeks from Nov 3, 2026 on; earlier weeks say "Not in top 100")</>}
               badge="NOT RANKED"
               badgeColor="var(--mx-muted)"
             />

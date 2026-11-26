@@ -6,66 +6,36 @@
  * Tables: supabase/keyword-discovery.sql.
  */
 import { chunk, RECORD_CHUNK, type AdminClient } from './snapshotStore.js'
-import { pairKey, type DiscoveryCountry, type DiscoveryRow } from './keywordDiscovery.js'
+import { ALL_COUNTRIES_FETCH, pairKey, type DiscoveryRow } from './keywordDiscovery.js'
 
-/** PostgREST returns at most this many rows per request. */
-const PAGE = 1000
-
-/** The cycle's already-fetched pairs, as pairKey values. */
+/**
+ * The cycle's fetches, as pairKey values: `domain|ALL` for a site fetched in
+ * every country at once, `domain|AU` and so on for cycles fetched per country.
+ */
 export async function loadFetchedPairs(admin: AdminClient, cycle: string): Promise<Set<string>> {
   const { data, error } = await admin.from('keyword_discovery_fetches').select('domain,country').eq('cycle', cycle)
   if (error) throw new Error(`Could not read keyword discovery progress: ${error.message}`)
   return new Set(((data ?? []) as Array<{ domain: string; country: string }>).map((r) => pairKey(r.domain, r.country)))
 }
 
-/** Every record of the newest BP Sites snapshot: what the report tracks now. */
-export async function loadTrackedRecords(
-  admin: AdminClient,
-): Promise<Array<{ domain: string; keyword: string; country: string }>> {
-  const { data: snapshots, error } = await admin
-    .from('snapshots')
-    .select('id')
-    .eq('category', 'bp-sites')
-    .order('raw_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(1)
-  if (error) throw new Error(`Could not read the tracked keywords: ${error.message}`)
-  const id = (snapshots as Array<{ id: string }> | null)?.[0]?.id
-  if (!id) return []
-
-  const records: Array<{ domain: string; keyword: string; country: string }> = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error: pageError } = await admin
-      .from('ranking_records')
-      .select('domain,keyword,country')
-      .eq('snapshot_id', id)
-      .order('id', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (pageError) throw new Error(`Could not read the tracked keywords: ${pageError.message}`)
-    const page = (data ?? []) as Array<{ domain: string; keyword: string; country: string }>
-    records.push(...page)
-    if (page.length < PAGE) return records
-  }
-}
-
 /**
- * Replace one pair's rows for the cycle, then record the fetch — last, so a
- * pair only counts as fetched once its rows are in. A failure part-way leaves
- * no fetch record, and the next run fetches that pair again.
+ * Replace one site's rows for the cycle, in every country, then record its
+ * ALL fetch — last, so a site only counts as fetched once its rows are in. A
+ * failure part-way leaves no fetch record, and the next run fetches that site
+ * again. Clearing every country also removes the site's rows from an earlier,
+ * per-country pull of the same cycle, so the two never mix.
  */
 export async function saveFetch(
   admin: AdminClient,
-  input: { cycle: string; domain: string; country: DiscoveryCountry; rows: DiscoveryRow[]; units: number },
+  input: { cycle: string; domain: string; rows: DiscoveryRow[]; units: number },
 ): Promise<void> {
-  const fail = (message: string) =>
-    new Error(`Could not save keyword discovery for ${input.domain} (${input.country}): ${message}`)
+  const fail = (message: string) => new Error(`Could not save keyword discovery for ${input.domain}: ${message}`)
 
   const { error: clearError } = await admin
     .from('keyword_discovery')
     .delete()
     .eq('cycle', input.cycle)
     .eq('domain', input.domain)
-    .eq('country', input.country)
   if (clearError) throw fail(clearError.message)
 
   for (const slice of chunk(input.rows, RECORD_CHUNK)) {
@@ -90,7 +60,7 @@ export async function saveFetch(
     {
       cycle:      input.cycle,
       domain:     input.domain,
-      country:    input.country,
+      country:    ALL_COUNTRIES_FETCH,
       row_count:  input.rows.length,
       units:      input.units,
       fetched_at: new Date().toISOString(),

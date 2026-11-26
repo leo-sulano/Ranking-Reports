@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { DiscoveryRow } from '../../api/_lib/keywordDiscovery.js'
 import {
-  buildDiscoveryList, completeCycles, cycleCompletedAt, newEligibleCountries, positionKindLabel, previousCycle,
+  buildDiscoveryList, buildFoundRows, completeCycles, cycleCompletedAt, newEligibility, positionKindLabel, previousCycle,
   type DiscoveryFetchInfo,
 } from './discoveryList'
 
@@ -30,6 +30,24 @@ describe('completeCycles', () => {
     expect(completeCycles(BRAND.domains, noDe)).toEqual([])
   })
 
+  it('counts a cycle where every site has an ALL fetch', () => {
+    const all = BRAND.domains.map((d) => fetched('2026-12-05', d, 'ALL'))
+    expect(completeCycles(BRAND.domains, all)).toEqual(['2026-12-05'])
+  })
+
+  it('counts a mixed cycle: one site ALL, the other every country', () => {
+    const mixed = [
+      fetched('2026-11-05', 'spinsup.com', 'ALL'),
+      ...COUNTRIES.map((c) => fetched('2026-11-05', 'spinsup.io', c)),
+    ]
+    expect(completeCycles(BRAND.domains, mixed)).toEqual(['2026-11-05'])
+  })
+
+  it('does not count a cycle where one site has neither', () => {
+    const partial = [fetched('2026-11-05', 'spinsup.com', 'ALL'), fetched('2026-11-05', 'spinsup.io', 'AU')]
+    expect(completeCycles(BRAND.domains, partial)).toEqual([])
+  })
+
   it("is not fooled by another brand's fetches", () => {
     const almost = fullCycle('2026-11-05').filter((f) => !(f.domain === 'spinsup.com' && f.country === 'AU'))
     expect(completeCycles(BRAND.domains, [...almost, fetched('2026-11-05', 'spinjo.com', 'AU')])).toEqual([])
@@ -48,13 +66,14 @@ describe('previousCycle', () => {
   })
 })
 
-describe('newEligibleCountries', () => {
+describe('newEligibility', () => {
   it('allows NEW only where the previous cycle has every domain', () => {
     const fetches = [
       fetched('2026-11-05', 'spinsup.com', 'AU'), fetched('2026-11-05', 'spinsup.io', 'AU'),
       fetched('2026-11-05', 'spinsup.com', 'CA'),
     ]
-    expect(newEligibleCountries('2026-11-05', BRAND.domains, fetches)).toEqual(new Set(['AU']))
+    const eligible = newEligibility('2026-11-05', BRAND.domains, fetches)
+    expect([eligible('AU'), eligible('CA')]).toEqual([true, false])
   })
 
   // Each pair stores at most 50 keywords: when last month's list was cut off,
@@ -64,11 +83,35 @@ describe('newEligibleCountries', () => {
       fetched('2026-11-05', 'spinsup.com', 'AU', undefined, 50), fetched('2026-11-05', 'spinsup.io', 'AU', undefined, 12),
       fetched('2026-11-05', 'spinsup.com', 'CA', undefined, 49), fetched('2026-11-05', 'spinsup.io', 'CA', undefined, 0),
     ]
-    expect(newEligibleCountries('2026-11-05', BRAND.domains, fetches)).toEqual(new Set(['CA']))
+    const eligible = newEligibility('2026-11-05', BRAND.domains, fetches)
+    expect([eligible('AU'), eligible('CA')]).toEqual([false, true])
   })
 
   it('allows none without a previous cycle', () => {
-    expect(newEligibleCountries(null, BRAND.domains, fullCycle('2026-11-05'))).toEqual(new Set())
+    expect(newEligibility(null, BRAND.domains, fullCycle('2026-11-05'))('AU')).toBe(false)
+  })
+
+  it('lets an uncut ALL fetch for every site cover every country', () => {
+    const eligible = newEligibility('2026-12-05', BRAND.domains, BRAND.domains.map((d) => fetched('2026-12-05', d, 'ALL')))
+    expect([eligible('NO'), eligible('AU')]).toEqual([true, true])
+  })
+
+  it('covers nothing for a site whose ALL list hit the 200-row limit', () => {
+    const fetches = [fetched('2026-12-05', 'spinsup.com', 'ALL', undefined, 200), fetched('2026-12-05', 'spinsup.io', 'ALL')]
+    expect(newEligibility('2026-12-05', BRAND.domains, fetches)('NO')).toBe(false)
+  })
+
+  it("lets a per-country cycle cover only its own countries", () => {
+    const eligible = newEligibility('2026-11-05', BRAND.domains, fullCycle('2026-11-05'))
+    expect([eligible('AU'), eligible('NO')]).toEqual([true, false])
+  })
+
+  it("lets a site's ALL fetch supersede its cut per-country fetch in the same cycle", () => {
+    const fetches = [
+      fetched('2026-11-05', 'spinsup.com', 'AU', undefined, 50), fetched('2026-11-05', 'spinsup.com', 'ALL'),
+      fetched('2026-11-05', 'spinsup.io', 'ALL'),
+    ]
+    expect(newEligibility('2026-11-05', BRAND.domains, fetches)('AU')).toBe(true)
   })
 })
 
@@ -99,8 +142,8 @@ describe('buildDiscoveryList', () => {
     positionKind: 'organic', url: 'https://spinsup.com/bonus', volume: 450, ahrefsChecked: '2026-12-01T00:00:00Z', ...over,
   })
   const input = (over: Partial<Parameters<typeof buildDiscoveryList>[0]>) => ({
-    rows: [] as DiscoveryRow[], prevRows: [] as DiscoveryRow[], newEligible: new Set<string>(),
-    tracked: new Map<string, Set<string>>(), brand: BRAND, countries: COUNTRIES,
+    rows: [] as DiscoveryRow[], prevRows: [] as DiscoveryRow[], newEligible: (_country: string) => false,
+    tracked: new Map<string, Set<string>>(), brand: BRAND, country: (code: string) => COUNTRIES.includes(code),
     kwFilter: '', kwExact: false, ...over,
   })
   const keywords = (items: Array<{ keyword: string; country: string }>) => items.map((i) => `${i.keyword}|${i.country}`)
@@ -155,7 +198,7 @@ describe('buildDiscoveryList', () => {
 
   it('follows the Countries filter', () => {
     const rows = [row({ keyword: 'spinsup app' }), row({ keyword: 'spinsup casino', country: 'CA' })]
-    expect(keywords(buildDiscoveryList(input({ rows, countries: ['CA'] })))).toEqual(['spinsup casino|CA'])
+    expect(keywords(buildDiscoveryList(input({ rows, country: (c) => c === 'CA' })))).toEqual(['spinsup casino|CA'])
   })
 
   it('follows the keyword search, contains or exact, ignoring case', () => {
@@ -180,15 +223,83 @@ describe('buildDiscoveryList', () => {
         row({ keyword: 'spinsup bonus' }), row({ keyword: 'spinsup app' }), row({ keyword: 'spinsup app', country: 'CA' }),
       ],
       prevRows: [row({ cycle: '2026-11-05', keyword: 'SpinsUp  Bonus', domain: 'spinsup.io' })],
-      newEligible: new Set(['AU']),
+      newEligible: (c) => c === 'AU',
     }))
     expect(list.map((i) => [i.keyword, i.country, i.isNew])).toEqual(expect.arrayContaining([
       ['spinsup bonus', 'AU', false], ['spinsup app', 'AU', true], ['spinsup app', 'CA', false],
     ]))
   })
 
+  // Review Focus 2, list side: the brand's markets never land here, whatever the chips show.
+  it("lists other countries only, when told the brand's markets", () => {
+    const markets = ['AU', 'CA', 'IT', 'NZ']
+    const list = buildDiscoveryList(input({
+      rows: [row({ keyword: 'a', country: 'DE' }), row({ keyword: 'b', country: 'NO' }), row({ keyword: 'c', country: 'IT' })],
+      country: (c) => !markets.includes(c),
+    }))
+    expect(keywords(list).sort()).toEqual(['a|DE', 'b|NO'])
+  })
+
   it('marks nothing NEW without a previous cycle', () => {
     const list = buildDiscoveryList(input({ rows: [row({ keyword: 'spinsup app' }), row({ keyword: 'spinsup bonus' })] }))
     expect(list.every((i) => !i.isNew)).toBe(true)
+  })
+})
+
+describe('buildFoundRows', () => {
+  const ROOSTER = { name: 'RoosterBet', domains: ['rooster.bet', 'roosters.bet'] }
+  const row = (over: Partial<DiscoveryRow>): DiscoveryRow => ({
+    cycle: '2026-11-05', brand: 'RoosterBet', domain: 'rooster.bet', country: 'AU', keyword: 'rooster bet login', position: 2,
+    positionKind: 'organic', url: 'https://rooster.bet/login', volume: 100, ahrefsChecked: '2026-11-20T00:00:00Z', ...over,
+  })
+  const found = (over: Partial<Parameters<typeof buildFoundRows>[0]>) => buildFoundRows({
+    rows: [], tracked: new Map(), brand: ROOSTER, countries: ['AU', 'IT'], kwFilter: '', kwExact: false, ...over,
+  })
+
+  it('makes one row per keyword, a cell per site and country', () => {
+    const rows = found({ rows: [
+      row({}), row({ domain: 'roosters.bet', country: 'IT', keyword: 'Rooster Bet Login', position: 4, volume: 300 }),
+    ] })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].cells['rooster.bet'].AU.position).toBe(2)
+    expect(rows[0].cells['roosters.bet'].IT.position).toBe(4)
+    expect(rows[0].volume).toBe(300)
+  })
+
+  it("keeps only the brand's markets and its live sites", () => {
+    const rows = found({ rows: [row({ country: 'NO' }), row({ domain: 'casinoroosters.com' })] })
+    expect(rows).toEqual([])
+  })
+
+  it('keeps a keyword tracked in one market where it is not tracked', () => {
+    const rows = found({
+      rows: [row({ keyword: 'rooster casino', country: 'IT' }), row({ keyword: 'rooster casino', country: 'AU' })],
+      tracked: new Map([['RoosterBet|IT', new Set(['rooster casino'])]]),
+    })
+    expect(Object.keys(rows[0].cells['rooster.bet'])).toEqual(['AU'])
+  })
+
+  it('drops a market switched off in the Countries chips', () => {
+    const rows = found({ rows: [row({}), row({ country: 'IT' })], countries: ['AU'] })
+    expect(Object.keys(rows[0].cells['rooster.bet'])).toEqual(['AU'])
+  })
+
+  // Final review #1: the page hides the main site by default; a keyword found
+  // only there must not become a row of dashes.
+  it('follows the Sites filter, dropping keywords found only on hidden sites', () => {
+    const rows = found({
+      rows: [row({ keyword: 'main only' }), row({ keyword: 'both' }), row({ keyword: 'both', domain: 'roosters.bet' })],
+      sites: ['roosters.bet'],
+    })
+    expect(rows.map((r) => r.keyword)).toEqual(['both'])
+    expect(Object.keys(rows[0].cells)).toEqual(['roosters.bet'])
+  })
+
+  it('follows the keyword search and sorts by search volume', () => {
+    const rows = found({ rows: [
+      row({ keyword: 'rooster login', volume: 50 }), row({ keyword: 'rooster bet login', volume: 900 }),
+      row({ keyword: 'rooster casino', volume: 5000 }),
+    ], kwFilter: 'login' })
+    expect(rows.map((r) => r.keyword)).toEqual(['rooster bet login', 'rooster login'])
   })
 })

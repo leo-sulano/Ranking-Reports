@@ -5,7 +5,7 @@
  * shared logic the page needs from api/_lib.
  */
 import { supabase } from './supabase'
-import type { DiscoveryCountry, DiscoveryRow } from '../../api/_lib/keywordDiscovery.js'
+import type { DiscoveryRow } from '../../api/_lib/keywordDiscovery.js'
 import type { DiscoveryFetchInfo } from './discoveryList'
 
 export { DISCOVERY_COUNTRIES, normalizeKeyword, trackedIndex, trackedKey } from '../../api/_lib/keywordDiscovery.js'
@@ -65,7 +65,7 @@ export async function loadDiscoveryRows(domains: readonly string[], cycles: read
         cycle:         r.cycle,
         brand:         r.brand,
         domain:        r.domain,
-        country:       r.country as DiscoveryCountry,
+        country:       r.country,
         keyword:       r.keyword,
         position:      r.position,
         positionKind:  r.position_kind,

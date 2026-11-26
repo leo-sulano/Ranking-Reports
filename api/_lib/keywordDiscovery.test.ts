@@ -2,47 +2,36 @@
 import { describe, it, expect } from 'vitest'
 import { BRANDS, DOMAIN_TO_BRAND, LP_DOMAIN_TO_BRAND, RETIRED_DOMAINS } from './brands.js'
 import {
-  cycleStart, discoveryPairs, excludeKeywordsWhere, mapOrganicKeywords, normalizeKeyword, pairKey, trackedIndex,
+  ROWS_PER_CALL, UNITS_PER_ROW, WORST_CASE_CALL_UNITS,
+  cycleStart, discoveryTargets, mapOrganicKeywords, normalizeKeyword, pairKey, trackedIndex,
 } from './keywordDiscovery.js'
 
-describe('discoveryPairs', () => {
-  it("covers exactly the 36 BP domains in each brand's markets, brand by brand, and no LP-only domain", () => {
-    const pairs = discoveryPairs(BRANDS)
-    // 36 domains × 5 countries, less DE for RoosterBet's 3 sites.
-    expect(pairs).toHaveLength(177)
-    expect(new Set(pairs.map((p) => pairKey(p.domain, p.country))).size).toBe(177)
-    expect(pairs.slice(0, 5)).toEqual(
-      ['AU', 'CA', 'DE', 'IT', 'NZ'].map((country) => ({ brand: 'Lucky 7even', domain: 'lucky7even.com', country })),
-    )
-    for (const p of pairs) expect(DOMAIN_TO_BRAND[p.domain]).toBe(p.brand)
-
+describe('discoveryTargets', () => {
+  it('lists every live BP site once, brand by brand, and no retired or LP-only site', () => {
+    const targets = discoveryTargets(BRANDS)
+    expect(targets).toHaveLength(36)
+    expect(targets[0]).toEqual({ brand: 'Lucky 7even', domain: 'lucky7even.com' })
+    expect(targets.some((t) => t.domain === 'casinoroosters.com')).toBe(false)
+    for (const t of targets) expect(DOMAIN_TO_BRAND[t.domain]).toBe(t.brand)
     // brands.ts lists lucky7evencasino.org as both a BP and an LP domain, so
     // it belongs here; a domain that is ONLY an LP domain never does.
-    const domains = new Set(pairs.map((p) => p.domain))
-    // Retired sites are still stored (DOMAIN_TO_BRAND) but never bought.
+    const domains = targets.map((t) => t.domain)
     expect([...domains].sort()).toEqual(Object.keys(DOMAIN_TO_BRAND).filter((d) => !RETIRED_DOMAINS.has(d)).sort())
     const lpOnly = Object.keys(LP_DOMAIN_TO_BRAND).filter((d) => !(d in DOMAIN_TO_BRAND))
     expect(lpOnly.length).toBeGreaterThan(0)
-    for (const d of lpOnly) expect(domains.has(d)).toBe(false)
-  })
-
-  it('buys nothing for RoosterBet in DE or for the retired casinoroosters.com', () => {
-    const pairs = discoveryPairs(BRANDS)
-    const rooster = pairs.filter((p) => p.brand === 'RoosterBet')
-    expect(rooster.map((p) => pairKey(p.domain, p.country))).toEqual(
-      ['rooster.bet', 'roosters.bet', 'roostersbet.com'].flatMap((d) => ['AU', 'CA', 'IT', 'NZ'].map((c) => `${d}|${c}`)),
-    )
-    expect(pairs.some((p) => p.domain === 'casinoroosters.com')).toBe(false)
-  })
-
-  it("asks only for a brand's own markets when it lists them", () => {
-    expect(discoveryPairs([{ name: 'X', domains: ['x.com'], countries: ['IT', 'AU'] }]))
-      .toEqual([{ brand: 'X', domain: 'x.com', country: 'AU' }, { brand: 'X', domain: 'x.com', country: 'IT' }])
+    for (const d of lpOnly) expect(domains).not.toContain(d)
   })
 
   it('lower-cases the domains it is given', () => {
-    expect(discoveryPairs([{ name: 'X', domains: ['Example.COM'] }])[0])
-      .toEqual({ brand: 'X', domain: 'example.com', country: 'AU' })
+    expect(discoveryTargets([{ name: 'X', domains: ['Example.COM'] }])).toEqual([{ brand: 'X', domain: 'example.com' }])
+  })
+})
+
+describe('call sizing', () => {
+  it('asks for up to 200 keywords a site at 16 units a row', () => {
+    expect(ROWS_PER_CALL).toBe(200)
+    expect(UNITS_PER_ROW).toBe(16)
+    expect(WORST_CASE_CALL_UNITS).toBe(ROWS_PER_CALL * UNITS_PER_ROW)
   })
 })
 
@@ -80,11 +69,32 @@ describe('normalizeKeyword', () => {
 })
 
 describe('mapOrganicKeywords', () => {
-  const CTX = { cycle: '2026-11-05', brand: 'SpinsUp', domain: 'spinsup.com', country: 'AU' } as const
+  const CTX = { cycle: '2026-11-05', brand: 'SpinsUp', domain: 'spinsup.com' } as const
   const ROW = {
-    keyword: 'spinsup login', best_position: 3, best_position_url: 'https://spinsup.com/login', volume: 900,
-    last_update: '2026-11-01T10:00:00Z', best_position_kind: 'organic',
+    keyword: 'spinsup login', keyword_country: 'au', best_position: 3, best_position_url: 'https://spinsup.com/login',
+    volume: 900, last_update: '2026-11-01T10:00:00Z', best_position_kind: 'organic',
   }
+
+  it("takes each row's country from Ahrefs, upper-cased, whatever the country", () => {
+    const rows = mapOrganicKeywords({ keywords: [{ ...ROW, keyword_country: 'no' }, { ...ROW, keyword: 'spinsup app' }] }, CTX)
+    expect(rows.map((r) => [r.keyword, r.country])).toEqual([['spinsup login', 'NO'], ['spinsup app', 'AU']])
+  })
+
+  it('collapses duplicates per country, not across countries', () => {
+    const rows = mapOrganicKeywords({ keywords: [
+      { ...ROW, keyword: 'Rooster Bet', keyword_country: 'it', best_position: 5 },
+      { ...ROW, keyword: 'rooster  bet', keyword_country: 'it', best_position: 2 },
+      { ...ROW, keyword: 'rooster bet', keyword_country: 'au', best_position: 7 },
+    ] }, CTX)
+    expect(rows.map((r) => [r.country, r.position]).sort()).toEqual([['AU', 7], ['IT', 2]])
+  })
+
+  it('skips a row whose country is null or blank, keeping the rest', () => {
+    const rows = mapOrganicKeywords({ keywords: [
+      { ...ROW, keyword: 'a', keyword_country: null }, { ...ROW, keyword: 'b', keyword_country: '' }, ROW,
+    ] }, CTX)
+    expect(rows.map((r) => r.keyword)).toEqual(['spinsup login'])
+  })
 
   it('maps an Ahrefs row to a stored row', () => {
     expect(mapOrganicKeywords({ keywords: [ROW] }, CTX)).toEqual([{
@@ -131,15 +141,17 @@ describe('mapOrganicKeywords', () => {
 
   const { best_position: _omitted, ...rowWithoutPosition } = ROW
   const { volume: _alsoOmitted, ...rowWithoutVolume } = ROW
+  const { keyword_country: _countryOmitted, ...rowWithoutCountry } = ROW
   it.each([
     ['no keywords array', {}],
     ['keywords that are not an array', { keywords: 'x' }],
     ['no body at all', null],
     ['a row without best_position', { keywords: [rowWithoutPosition] }],
     ['a row without volume', { keywords: [rowWithoutVolume] }],
+    ['a row without keyword_country', { keywords: [rowWithoutCountry] }],
     ['a position that is not a number', { keywords: [{ ...ROW, best_position: '3' }] }],
   ])('throws on %s', (_label, body) => {
-    expect(() => mapOrganicKeywords(body, CTX)).toThrow(/unexpected organic-keywords response for spinsup.com \(AU\)/)
+    expect(() => mapOrganicKeywords(body, CTX)).toThrow(/unexpected organic-keywords response for spinsup\.com$/)
   })
 })
 
@@ -152,18 +164,5 @@ describe('trackedIndex', () => {
     ], DOMAIN_TO_BRAND)
     expect([...index.keys()]).toEqual(['SpinsUp|AU'])
     expect([...index.get('SpinsUp|AU')!].sort()).toEqual(['spinsup', 'spinsup casino'])
-  })
-})
-
-describe('excludeKeywordsWhere', () => {
-  it('is undefined when nothing is tracked', () => {
-    expect(excludeKeywordsWhere([])).toBeUndefined()
-  })
-
-  it('excludes each normalized keyword once, in a stable order', () => {
-    const expected =
-      '{"not":{"or":[{"field":"keyword","is":["eq","rooster casino"]},{"field":"keyword","is":["eq","rooster.bet"]}]}}'
-    expect(excludeKeywordsWhere(['Rooster Casino', 'rooster casino', 'rooster.bet'])).toBe(expected)
-    expect(excludeKeywordsWhere(new Set(['rooster.bet', 'rooster casino']))).toBe(expected)
   })
 })

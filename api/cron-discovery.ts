@@ -2,36 +2,37 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { bearerToken } from './_lib/requestAuth.js'
 import { formatDisplayDate } from './_lib/displayDate.js'
 import { isAbortLike } from './_lib/ahrefs.js'
-import { BRANDS, DOMAIN_TO_BRAND } from './_lib/brands.js'
+import { BRANDS } from './_lib/brands.js'
 import { createAdminClient, logCronActivity, type AdminClient } from './_lib/snapshotStore.js'
 import {
   DiscoveryError, discoveryConfig, fetchKeyLimits, fetchOrganicKeywords, sharesSyncKey, type DiscoveryConfig,
 } from './_lib/ahrefsDiscovery.js'
 import {
-  WORST_CASE_CALL_UNITS, cycleStart, discoveryPairs, excludeKeywordsWhere, mapOrganicKeywords, pairKey, trackedIndex,
-  trackedKey, type DiscoveryRow,
+  ALL_COUNTRIES_FETCH, ROWS_PER_CALL, WORST_CASE_CALL_UNITS, cycleStart, discoveryTargets, mapOrganicKeywords, pairKey,
+  type DiscoveryRow,
 } from './_lib/keywordDiscovery.js'
 import {
-  acquireRunLock, cycleTotals, haltDiscovery, loadFetchedPairs, loadTrackedRecords, releaseRunLock, saveFetch,
+  acquireRunLock, cycleTotals, haltDiscovery, loadFetchedPairs, releaseRunLock, saveFetch,
 } from './_lib/discoveryStore.js'
 
 /**
- * Cron, three times a day: pulls one Ahrefs billing month ("cycle") of other
- * ranking keywords — the keywords Ahrefs sees each BP site ranking for in its
- * brand's markets (AU, CA, DE, IT, NZ; RoosterBet has no DE), minus the ones
- * already tracked — into Supabase for the BP Sites brand pages.
+ * Cron, three times a day: pulls one Ahrefs billing month ("cycle") of ranking
+ * keywords — every keyword Ahrefs' index has each live BP site ranking for, in
+ * every country, one call per site — into Supabase for the BP Sites brand
+ * pages, which leave out what the newest snapshot already tracks.
  *
- * A cycle is 177 calls (36 domains × each brand's markets) and Ahrefs allows 60 a
- * minute, so one run cannot finish it: each run fetches whatever pairs the
- * cycle still lacks, saving each as it goes, until its time budget runs low.
- * Once every pair is in, runs return at once without calling Site Explorer and
- * without a /log line, until the next cycle starts.
+ * A cycle is one call per live site (36 today) and Ahrefs allows 60 a minute;
+ * each run fetches whatever sites the cycle still lacks, saving each as it
+ * goes, until its time budget runs low. Once every site is in, runs return at
+ * once without calling Site Explorer and without a /log line, until the next
+ * cycle starts. Cycles before 2026-11-25 were fetched per site × market.
  *
  * These calls SPEND Ahrefs API units, so they use their own capped key
  * (AHREFS_DISCOVERY_API_KEY), stop before the key's monthly limit, hold a run
  * lease so overlapping runs never buy the same pairs, and halt — no more paid
  * calls until a person clears it — when Ahrefs' pricing or response shape
- * changes. Design: docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md
+ * changes. Design: docs/superpowers/specs/2026-11-13-other-ranking-keywords-design.md and
+ * docs/superpowers/specs/2026-11-25-all-countries-keywords-design.md
  */
 
 /** Hobby caps functions at 60 s. */
@@ -68,12 +69,16 @@ export function runSummary(r: {
   total: number
   cycleUnits?: number
   unitsLeftAtStop?: number
+  /** Sites whose list filled ROWS_PER_CALL, so lower-volume keywords may be missing. */
+  cutOff?: string[]
 }): string {
   const from = formatDisplayDate(r.cycle)
+  const cutOffNote = r.cutOff && r.cutOff.length > 0 ? `; ${listOf(r.cutOff)} hit the ${ROWS_PER_CALL}-keyword limit` : ''
   if (r.left === 0 && r.cycleUnits !== undefined) {
-    return `Keyword discovery — cycle from ${from} complete (${r.total}/${r.total}), ${r.cycleUnits.toLocaleString('en-US')} units in total`
+    return `Keyword discovery — cycle from ${from} complete (${r.total}/${r.total}), ${r.cycleUnits.toLocaleString('en-US')} units in total${cutOffNote}`
   }
   let summary = `Keyword discovery — ${r.calls} call${r.calls === 1 ? '' : 's'}, ${r.units.toLocaleString('en-US')} units`
+  summary += cutOffNote
   if (r.completedBrands.length > 0) summary += `; ${listOf(r.completedBrands)} complete`
   summary += ` for the cycle from ${from}; ${r.left} call${r.left === 1 ? '' : 's'} left`
   if (r.unitsLeftAtStop !== undefined) {
@@ -166,9 +171,9 @@ async function pull(admin: AdminClient, ahrefs: DiscoveryConfig): Promise<Outcom
     }
 
     const cycle = cycleStart(limits.resetDate)
-    const all = discoveryPairs(BRANDS)
+    const all = discoveryTargets(BRANDS)
     const fetched = await loadFetchedPairs(admin, cycle)
-    const missing = all.filter((p) => !fetched.has(pairKey(p.domain, p.country)))
+    const missing = all.filter((t) => !fetched.has(pairKey(t.domain, ALL_COUNTRIES_FETCH)))
     if (missing.length === 0) return { status: 200, body: { ok: true, outcome: 'idle' } }
 
     let unitsLeft = limits.limit - limits.usage
@@ -177,11 +182,11 @@ async function pull(admin: AdminClient, ahrefs: DiscoveryConfig): Promise<Outcom
       return await logged(admin, 200, summary, { ok: true, outcome: 'capped', summary })
     }
 
-    const tracked = trackedIndex(await loadTrackedRecords(admin), DOMAIN_TO_BRAND)
     const today = new Date().toISOString().slice(0, 10)
     let saved = 0
     let lastStart = 0
     let unitsLeftAtStop: number | undefined
+    const cutOff: string[] = []
 
     for (const pair of missing) {
       if (timing.budgetMs - (Date.now() - started) < timing.minStartMs) break
@@ -194,25 +199,21 @@ async function pull(admin: AdminClient, ahrefs: DiscoveryConfig): Promise<Outcom
       lastStart = Date.now()
 
       calls += 1
-      const response = await fetchOrganicKeywords(ahrefs, {
-        domain:       pair.domain,
-        country:      pair.country,
-        date:         today,
-        excludeWhere: excludeKeywordsWhere(tracked.get(trackedKey(pair.brand, pair.country)) ?? []),
-      }, callOptions)
+      const response = await fetchOrganicKeywords(ahrefs, { domain: pair.domain, date: today }, callOptions)
       units += response.unitsActual
       unitsLeft -= response.unitsActual
 
       let rows: DiscoveryRow[]
       try {
-        rows = mapOrganicKeywords(response.body, { cycle, brand: pair.brand, domain: pair.domain, country: pair.country })
+        rows = mapOrganicKeywords(response.body, { cycle, brand: pair.brand, domain: pair.domain })
       } catch (err) {
         // The answer no longer reads as organic keywords: every run would buy
         // and fail on this same pair, so stop paid calls until a person looks.
         throw new DiscoveryError((err as Error).message, { halt: true })
       }
-      await saveFetch(admin, { cycle, domain: pair.domain, country: pair.country, rows, units: response.unitsActual })
+      await saveFetch(admin, { cycle, domain: pair.domain, rows, units: response.unitsActual })
       saved += 1
+      if (response.rowCount >= ROWS_PER_CALL) cutOff.push(pair.domain)
     }
 
     // Pairs are saved in order, so the first `saved` of `missing` are done.
@@ -221,7 +222,7 @@ async function pull(admin: AdminClient, ahrefs: DiscoveryConfig): Promise<Outcom
     const completedBrands = [...new Set(missing.map((p) => p.brand))].filter((brand) => !stillMissing.has(brand))
     const cycleUnits = left === 0 ? (await cycleTotals(admin, cycle)).units : undefined
 
-    const summary = runSummary({ cycle, calls, units, completedBrands, left, total: all.length, cycleUnits, unitsLeftAtStop })
+    const summary = runSummary({ cycle, calls, units, completedBrands, left, total: all.length, cycleUnits, unitsLeftAtStop, cutOff })
     return await logged(admin, 200, summary, {
       ok: true, outcome: left === 0 ? 'complete' : 'progress', calls, units, left, summary,
     })

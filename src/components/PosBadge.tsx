@@ -1,4 +1,5 @@
 import { parsePosition } from '../lib/parser'
+import type { NrLabel } from '../lib/nrLabel'
 import type { RankingRecord } from '../types'
 
 interface Props {
@@ -7,6 +8,8 @@ interface Props {
   // undefined → no prev snapshot available; fall back to within-file change field.
   // null       → prev snapshot exists but this key wasn't in it; show no color.
   crossSnapPrevPos?: number | 'NR' | null
+  /** What a not-ranking cell says (nrLabelFor); "Not in top 100" when omitted, as on LP Sites. */
+  nrLabel?: NrLabel
 }
 
 /**
@@ -21,7 +24,7 @@ interface Props {
  * back to the within-file change field — "⇑ (6)" style for BP matrix,
  * plain numeric for legacy flat-format rows.
  */
-export function PosBadge({ record, crossSnapPrevPos }: Props) {
+export function PosBadge({ record, crossSnapPrevPos, nrLabel }: Props) {
   const pos = parsePosition(record.position)
 
   if (pos === null) {
@@ -29,7 +32,7 @@ export function PosBadge({ record, crossSnapPrevPos }: Props) {
   }
 
   if (pos === 'NR') {
-    return <span className="text-[10px] whitespace-nowrap">Not in top 100</span>
+    return <span className="text-[10px] whitespace-nowrap" title={nrLabel?.title}>{nrLabel?.text ?? 'Not in top 100'}</span>
   }
 
   // ── Cross-snapshot path ───────────────────────────────────────────────────

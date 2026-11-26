@@ -1,13 +1,15 @@
 /**
- * The "Other ranking keywords" list on a BP Sites brand page: which stored
- * cycle to show, which countries may mark keywords NEW, and one item per
- * keyword × country. Pure; the loader is src/lib/keywordDiscovery.ts.
+ * Ranking keywords from Ahrefs' index on a BP Sites brand page: which stored
+ * cycle to show, where keywords may be marked NEW, the rows that join the
+ * brand's table (its markets) and the list under it (other countries). Pure;
+ * the loader is src/lib/keywordDiscovery.ts, the hook src/lib/useDiscovery.ts.
  *
  * Imports the shared logic straight from api/_lib (not via
  * src/lib/keywordDiscovery.ts, which imports a type from here).
  */
 import {
-  DISCOVERY_COUNTRIES, ROWS_PER_CALL, normalizeKeyword, trackedKey, type DiscoveryRow,
+  ALL_COUNTRIES_FETCH, DISCOVERY_COUNTRIES, LEGACY_ROWS_PER_CALL, ROWS_PER_CALL, normalizeKeyword, trackedKey,
+  type DiscoveryRow,
 } from '../../api/_lib/keywordDiscovery.js'
 
 export interface DiscoveryFetchInfo {
@@ -15,7 +17,7 @@ export interface DiscoveryFetchInfo {
   domain:    string
   country:   string
   fetchedAt: string
-  /** Keywords that fetch stored: ROWS_PER_CALL means Ahrefs' list was cut off there. */
+  /** Keywords that fetch stored: ROWS_PER_CALL (an ALL fetch) or LEGACY_ROWS_PER_CALL (one country) means Ahrefs' list was cut off. */
   rowCount:  number
 }
 
@@ -51,15 +53,21 @@ function brandFetchesByCycle(brandDomains: readonly string[], fetches: readonly 
   return byCycle
 }
 
-/** Cycles in which every one of the brand's domains has each of its markets, newest first. */
+/**
+ * Cycles in which every one of the brand's domains is fetched, newest first: a
+ * domain counts with an ALL fetch, or — for cycles fetched per country — with
+ * a fetch for each of `countries`.
+ */
 export function completeCycles(
   brandDomains: readonly string[],
   fetches: readonly DiscoveryFetchInfo[],
   countries: readonly string[] = DISCOVERY_COUNTRIES,
 ): string[] {
-  const needed = [...lowerSet(brandDomains)].flatMap((d) => countries.map((c) => `${d}|${c.toUpperCase()}`))
+  const domains = [...lowerSet(brandDomains)]
+  const complete = (have: Set<string>, d: string) =>
+    have.has(`${d}|${ALL_COUNTRIES_FETCH}`) || countries.every((c) => have.has(`${d}|${c.toUpperCase()}`))
   return [...brandFetchesByCycle(brandDomains, fetches)]
-    .filter(([, have]) => needed.every((pair) => have.has(pair)))
+    .filter(([, have]) => domains.every((d) => complete(have, d)))
     .map(([cycle]) => cycle)
     .sort()
     .reverse()
@@ -72,27 +80,35 @@ export function previousCycle(cycle: string, brandDomains: readonly string[], fe
 }
 
 /**
- * Countries where a keyword missing from the previous cycle really was absent,
- * so NEW can be shown there: every one of the brand's domains was fetched for
- * that country, and no fetch was cut off at ROWS_PER_CALL. A cut-off list only
- * holds the top keywords by volume, so a keyword missing from it may simply
- * have ranked below the cut.
+ * Where a keyword missing from the previous cycle really was absent, so NEW can
+ * be shown: every one of the brand's domains covers the country there. A
+ * domain's ALL fetch under ROWS_PER_CALL covers every country and makes its
+ * per-country fetches irrelevant; without one, a per-country fetch under
+ * LEGACY_ROWS_PER_CALL covers its country. A cut-off list only holds the top
+ * keywords by volume, so a keyword missing from it may simply have ranked
+ * below the cut.
  */
-export function newEligibleCountries(
+export function newEligibility(
   prevCycle: string | null,
   brandDomains: readonly string[],
   fetches: readonly DiscoveryFetchInfo[],
-): Set<string> {
-  if (!prevCycle) return new Set()
+): (country: string) => boolean {
+  if (!prevCycle) return () => false
   const mine = lowerSet(brandDomains)
-  const complete = new Set<string>()
+  const all = new Map<string, boolean>()          // domain -> its ALL list was complete
+  const perCountry = new Set<string>()             // domain|COUNTRY with a complete list
   for (const f of fetches) {
     const domain = f.domain.toLowerCase()
     if (f.cycle !== prevCycle || !mine.has(domain)) continue
-    if (f.rowCount < ROWS_PER_CALL) complete.add(`${domain}|${f.country.toUpperCase()}`)
+    const country = f.country.toUpperCase()
+    if (country === ALL_COUNTRIES_FETCH) all.set(domain, f.rowCount < ROWS_PER_CALL)
+    else if (f.rowCount < LEGACY_ROWS_PER_CALL) perCountry.add(`${domain}|${country}`)
   }
   const domains = [...mine]
-  return new Set(DISCOVERY_COUNTRIES.filter((c) => domains.every((d) => complete.has(`${d}|${c}`))))
+  return (country: string) => {
+    const c = country.toUpperCase()
+    return domains.every((d) => (all.has(d) ? all.get(d) === true : perCountry.has(`${d}|${c}`)))
+  }
 }
 
 /** When the brand's part of a cycle was finished: its latest fetch in that cycle. */
@@ -119,17 +135,17 @@ export function positionKindLabel(kind: string | null): string | null {
 export function buildDiscoveryList(input: {
   rows:            readonly DiscoveryRow[]
   prevRows:        readonly DiscoveryRow[]
-  newEligible:     ReadonlySet<string>
+  newEligible:     (country: string) => boolean
   tracked:         ReadonlyMap<string, ReadonlySet<string>>
   brand:           { name: string; mainDomain: string; domains: readonly string[] }
-  countries:       readonly string[]
+  /** Which countries this list shows. */
+  country:         (code: string) => boolean
   kwFilter:        string
   kwExact:         boolean
 }): DiscoveryListItem[] {
   // Every one of the brand's sites, whatever the page's Sites filter shows:
   // that filter hides the main site by default.
   const brandSites = lowerSet(input.brand.domains)
-  const countries = new Set(input.countries.map((c) => c.toUpperCase()))
   // Same matching as the BP Sites keyword search.
   const filter = input.kwFilter.trim().toLowerCase()
   const mainDomain = input.brand.mainDomain.toLowerCase()
@@ -140,7 +156,7 @@ export function buildDiscoveryList(input: {
 
   const groups = new Map<string, DiscoveryRow[]>()
   for (const row of input.rows) {
-    if (!brandSites.has(row.domain.toLowerCase()) || !countries.has(row.country)) continue
+    if (!brandSites.has(row.domain.toLowerCase()) || !input.country(row.country)) continue
     const normalized = normalizeKeyword(row.keyword)
     if (input.tracked.get(trackedKey(input.brand.name, row.country))?.has(normalized)) continue
     const keyword = row.keyword.toLowerCase()
@@ -164,10 +180,77 @@ export function buildDiscoveryList(input: {
       volume:        volumes.length > 0 ? Math.max(...volumes) : null,
       url:           best.url,
       ahrefsChecked: best.ahrefsChecked,
-      isNew:         input.newEligible.has(best.country) && !previous.has(key),
+      isNew:         input.newEligible(best.country) && !previous.has(key),
     }
   })
 
   return items.sort((a, b) =>
     (b.volume ?? -1) - (a.volume ?? -1) || a.position - b.position || a.keyword.localeCompare(b.keyword))
+}
+
+/** One site's position for one country, from Ahrefs' index. */
+export interface FoundCell {
+  position:      number
+  positionKind:  string | null
+  url:           string
+  ahrefsChecked: string | null
+}
+
+/** A keyword the brand's table doesn't track: cells[domain][country]. */
+export interface FoundRow {
+  keyword: string
+  volume:  number | null
+  /** Lower-case domain → upper-case country → that site's position there. */
+  cells:   Record<string, Record<string, FoundCell>>
+}
+
+/**
+ * Rows that join the brand's table: keywords Ahrefs' index has the brand's
+ * live sites (those the Sites filter shows) ranking for in `countries` (its
+ * markets, as the page's chips show them), not tracked there for the brand,
+ * matching the keyword search — so no row is all dashes.
+ * One row per keyword; each (site, country) cell keeps that site's best
+ * position. Sorted by search volume (missing last), then best position.
+ */
+export function buildFoundRows(input: {
+  rows:     readonly DiscoveryRow[]
+  tracked:  ReadonlyMap<string, ReadonlySet<string>>
+  brand:    { name: string; domains: readonly string[] }
+  /** The sites the page's Sites filter shows; every live site of the brand when omitted. */
+  sites?:   readonly string[]
+  countries: readonly string[]
+  kwFilter: string
+  kwExact:  boolean
+}): FoundRow[] {
+  const live = lowerSet(input.brand.domains)
+  const shown = input.sites ? lowerSet(input.sites) : live
+  const sites = new Set([...live].filter((d) => shown.has(d)))
+  const countries = new Set(input.countries.map((c) => c.toUpperCase()))
+  const filter = input.kwFilter.trim().toLowerCase()
+  const groups = new Map<string, { row: FoundRow; best: number }>()
+  for (const r of input.rows) {
+    const domain = r.domain.toLowerCase()
+    if (!sites.has(domain) || !countries.has(r.country)) continue
+    const normalized = normalizeKeyword(r.keyword)
+    if (input.tracked.get(trackedKey(input.brand.name, r.country))?.has(normalized)) continue
+    const keyword = r.keyword.toLowerCase()
+    if (filter && (input.kwExact ? keyword !== filter : !keyword.includes(filter))) continue
+
+    let group = groups.get(normalized)
+    if (!group) {
+      group = { row: { keyword: r.keyword, volume: null, cells: {} }, best: Infinity }
+      groups.set(normalized, group)
+    }
+    const byCountry = (group.row.cells[domain] ??= {})
+    const seen = byCountry[r.country]
+    if (!seen || r.position < seen.position) {
+      byCountry[r.country] = { position: r.position, positionKind: r.positionKind, url: r.url, ahrefsChecked: r.ahrefsChecked }
+    }
+    if (r.volume !== null && (group.row.volume === null || r.volume > group.row.volume)) group.row.volume = r.volume
+    group.best = Math.min(group.best, r.position)
+  }
+  return [...groups.values()]
+    .sort((a, b) =>
+      (b.row.volume ?? -1) - (a.row.volume ?? -1) || a.best - b.best || a.row.keyword.localeCompare(b.row.keyword))
+    .map((g) => g.row)
 }

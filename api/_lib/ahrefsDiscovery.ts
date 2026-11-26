@@ -13,7 +13,7 @@
  */
 import { AHREFS_API_BASE, isAbortLike } from './ahrefs.js'
 import {
-  DISCOVERY_SELECT, MIN_CALL_UNITS, ROWS_PER_CALL, UNITS_PER_ROW, WORST_CASE_CALL_UNITS, type DiscoveryCountry,
+  DISCOVERY_SELECT, MIN_CALL_UNITS, ROWS_PER_CALL, UNITS_PER_ROW, WORST_CASE_CALL_UNITS,
 } from './keywordDiscovery.js'
 
 export const DISCOVERY_KEY_REJECTED =
@@ -237,13 +237,11 @@ export async function fetchKeyLimits(config: DiscoveryConfig, opts?: CallOptions
   return { limit: limit as number | null, usage, resetDate }
 }
 
+/** One site, every country. */
 export interface OrganicRequest {
-  domain:        string
-  country:       DiscoveryCountry
+  domain: string
   /** YYYY-MM-DD: the latest data on or before it. */
-  date:          string
-  /** From excludeKeywordsWhere: the keywords already tracked, left out of the response. */
-  excludeWhere?: string
+  date:   string
 }
 
 export interface OrganicResponse {
@@ -265,7 +263,8 @@ function numericHeader(headers: Headers, name: string): number | undefined {
 }
 
 /**
- * One domain × country: the top ROWS_PER_CALL keywords by search volume.
+ * One site, every country (no country parameter: Ahrefs then fills each row's
+ * keyword_country): the top ROWS_PER_CALL keywords by search volume.
  * `unitsActual` is what Ahrefs actually charged; a response that does not say
  * counts at the nominal cost, then at the worst case — never as free.
  */
@@ -274,17 +273,15 @@ export async function fetchOrganicKeywords(
   req: OrganicRequest,
   opts?: CallOptions,
 ): Promise<OrganicResponse> {
-  const subject = `${req.domain} (${req.country})`
+  const subject = req.domain
   const params: Record<string, string> = {
     target:   req.domain,
-    country:  req.country.toLowerCase(),
     date:     req.date,
     mode:     'subdomains',
     select:   DISCOVERY_SELECT,
     order_by: 'volume:desc',
     limit:    String(ROWS_PER_CALL),
   }
-  if (req.excludeWhere) params.where = req.excludeWhere
 
   const { headers, body } = await getWithRetry(
     config, 'site-explorer/organic-keywords', params, subject, resolved(opts), true,
