@@ -161,4 +161,13 @@ describe('api/gsc-callback', () => {
     await run({ code: 'auth-code', state: state() })
     expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal)
   })
+
+  it('a malformed GSC_TOKEN_KEY redirects reason=config and stores nothing', async () => {
+    process.env.GSC_TOKEN_KEY = Buffer.alloc(31, 7).toString('base64')
+    const res = await run({ code: 'auth-code', state: state() })
+    expect(res.redirected).toEqual([302, 'https://app.example.com/bp-sites?gsc=error&reason=config'])
+    expect(res.headers['Set-Cookie']).toBe(CLEAR)
+    expect(fake.connection).toBeNull()
+    expect(fake.writes).toEqual([])
+  })
 })

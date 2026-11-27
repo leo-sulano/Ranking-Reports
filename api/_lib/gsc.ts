@@ -115,7 +115,7 @@ export function consentUrl(cfg: GscConfig, state: string): string {
 
 function keyBytes(keyB64: string): Buffer {
   const k = Buffer.from(String(keyB64 ?? ''), 'base64')
-  if (k.length !== 32) throw new Error('GSC_TOKEN_KEY must be base64 of exactly 32 bytes.')
+  if (k.length !== 32) throw new GscConfigError('GSC_TOKEN_KEY must be base64 of exactly 32 bytes (see docs/integrations/gsc.md).')
   return k
 }
 

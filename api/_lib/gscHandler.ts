@@ -89,7 +89,8 @@ export async function googleAccess(db: AdminClient): Promise<Access> {
   } catch (err) {
     // A different GSC_TOKEN_KEY is this environment's configuration, not a dead connection: never
     // mark the one shared row broken for everyone because of it.
-    if (err instanceof GscKeyMismatchError) throw err
+    // A malformed key is the same kind of thing: this environment's configuration.
+    if (err instanceof GscKeyMismatchError || err instanceof GscConfigError) throw err
     // Right key, unreadable token (row damaged): same as a revoked grant.
     await markBroken(db)
     throw new GscReconnectError('The stored Google token cannot be read.')

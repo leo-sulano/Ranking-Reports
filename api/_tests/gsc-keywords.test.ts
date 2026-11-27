@@ -356,4 +356,16 @@ describe('final review: merging, caching and the data date (I-1, M-1, M-3, M-4, 
     const dims = queryBodies.filter((b) => (b.body.dimensions as string[]).length === 2)
     expect(dims[0].body).toMatchObject({ startDate: '2026-10-28', endDate: '2026-11-24' })
   })
+
+  it('a malformed GSC_TOKEN_KEY is a 500 config error: the connection is not marked broken and Google is not called', async () => {
+    const bad = Buffer.alloc(31, 7).toString('base64')
+    process.env.GSC_TOKEN_KEY = bad
+    const res = await get(hit)
+    expect(res.statusCode).toBe(500)
+    expect(res.body.error).toContain('GSC_TOKEN_KEY must be base64 of exactly 32 bytes')
+    expect(JSON.stringify(res.body)).not.toContain(bad)
+    expect(fake.writes).not.toContain('connection.broken')
+    expect((fake.connection as Record<string, string>).status).toBe('ok')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

@@ -124,6 +124,22 @@ describe('encryptToken', () => {
   })
 })
 
+describe('malformed GSC_TOKEN_KEY', () => {
+  const short = Buffer.alloc(31, 9).toString('base64')
+  it('encryptToken throws GscConfigError for a 31-byte key, without the key value', () => {
+    const err = (() => { try { encryptToken(short, 'x') } catch (e) { return e } })()
+    expect(err).toBeInstanceOf(GscConfigError)
+    expect(String((err as Error).message)).toContain('GSC_TOKEN_KEY')
+    expect(String((err as Error).message)).not.toContain(short)
+  })
+  it('decryptToken throws GscConfigError for a 31-byte key, without the key value', () => {
+    const blob = encryptToken(randomBytes(32).toString('base64'), 'x')
+    const err = (() => { try { decryptToken(short, blob) } catch (e) { return e } })()
+    expect(err).toBeInstanceOf(GscConfigError)
+    expect(String((err as Error).message)).not.toContain(short)
+  })
+})
+
 describe('exchangeCode', () => {
   it('posts the code and returns token and email', async () => {
     const idToken = `h.${b64u({ email: 'a@b.com' })}.s`
