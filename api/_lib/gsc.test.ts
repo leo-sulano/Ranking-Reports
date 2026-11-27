@@ -89,6 +89,14 @@ describe('encryptToken', () => {
     expect(() => decryptToken(key, [v, iv, tag, flip(ct)].join('.'))).toThrow()
     expect(() => decryptToken(key, [v, iv, flip(tag), ct].join('.'))).toThrow()
   })
+  it('rejects malformed blobs', () => {
+    const [v, iv, tag, ct] = encryptToken(key, 'refresh-123').split('.')
+    const cut = (s: string, n: number) => Buffer.from(s, 'base64url').subarray(0, n).toString('base64url')
+    expect(() => decryptToken(key, [v, iv, cut(tag, 4), ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, iv, tag, ct, 'x'].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, ['v2', iv, tag, ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, cut(iv, 8), tag, ct].join('.'))).toThrow(/expected format/)
+  })
   it('throws with a different key', () => {
     expect(() => decryptToken(randomBytes(32).toString('base64'), encryptToken(key, 'x'))).toThrow()
   })

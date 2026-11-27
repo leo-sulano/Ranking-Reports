@@ -82,17 +82,21 @@ function keyBytes(keyB64: string): Buffer {
 
 export function encryptToken(keyB64: string, plain: string): string {
   const iv = randomBytes(12)
-  const c = createCipheriv('aes-256-gcm', keyBytes(keyB64), iv)
+  const c = createCipheriv('aes-256-gcm', keyBytes(keyB64), iv, { authTagLength: 16 })
   const ct = Buffer.concat([c.update(plain, 'utf8'), c.final()])
   return ['v1', iv.toString('base64url'), c.getAuthTag().toString('base64url'), ct.toString('base64url')].join('.')
 }
 
 export function decryptToken(keyB64: string, blob: string): string {
-  const [v, iv, tag, ct] = String(blob).split('.')
-  if (v !== 'v1' || !iv || !tag || ct === undefined) throw new Error('Stored token is not in the expected format.')
-  const d = createDecipheriv('aes-256-gcm', keyBytes(keyB64), Buffer.from(iv, 'base64url'))
-  d.setAuthTag(Buffer.from(tag, 'base64url'))
-  return Buffer.concat([d.update(Buffer.from(ct, 'base64url')), d.final()]).toString('utf8')
+  const bad = () => new Error('Stored token is not in the expected format.')
+  const parts = String(blob).split('.')
+  if (parts.length !== 4 || parts[0] !== 'v1') throw bad()
+  const iv = Buffer.from(parts[1], 'base64url')
+  const tag = Buffer.from(parts[2], 'base64url')
+  if (iv.length !== 12 || tag.length !== 16) throw bad()
+  const d = createDecipheriv('aes-256-gcm', keyBytes(keyB64), iv, { authTagLength: 16 })
+  d.setAuthTag(tag)
+  return Buffer.concat([d.update(Buffer.from(parts[3], 'base64url')), d.final()]).toString('utf8')
 }
 
 // ---- OAuth calls ---------------------------------------------------------------
