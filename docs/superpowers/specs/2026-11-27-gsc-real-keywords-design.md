@@ -241,7 +241,46 @@ The `sites.list` cache is one row with `domain = '*'`.
 
 ## Builder check: the answers
 
-*(filled in after the builder check)*
+A reviewer read this as the builder would. Every question was answerable from the code, or was settled as my call; none needed the user. These answers bind the plan.
+
+1. **Which properties exist, and how to match them.** Nobody knows until the login is connected, so the first thing an admin sees afterwards is a coverage list (see 5 below).
+   - **Matching:** a domain property (`sc-domain:<domain without www>`) wins, because it is the whole site.
+   - **No domain property:** every URL-prefix property for the domain (`https://`, `https://www.`, `http://`, `http://www.`) is queried, and the rows are merged per (search, country):
+     - clicks and impressions are summed;
+     - position is averaged, weighted by impressions.
+   - Each alias domain is its own site in the selector and looks up its own property.
+2. **The Google Cloud app's status.**
+   - The setup steps cover both cases:
+     - an **Internal** consent screen if the account that owns the Cloud project is in a Google Workspace;
+     - otherwise **External, In production**, with the unverified-app warning clicked through once.
+   - The 100-user cap of an unverified app doesn't matter: one account connects.
+   - Testing mode, with its 7-day expiry, must not be used. The setup doc says why.
+3. **Local development.**
+   - The Vite dev middleware that serves `/api/sites` also serves the four new endpoints: `gsc-connect`, `gsc-callback`, `gsc-disconnect` and `gsc-keywords`.
+   - The registered redirect URIs are production plus `http://localhost:5173/api/gsc-callback`.
+   - Preview deployments can show the tab once production holds a connection, but they can't run Connect: their URLs can't be registered.
+4. **The callback's identity.**
+   - `POST /api/gsc-connect` also sets a single-use nonce cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/api/gsc-callback`, 10 minutes).
+   - The callback checks four things before going on:
+     - the state's HMAC;
+     - its expiry;
+     - that the nonce equals the cookie, which it then clears;
+     - that the user id in the state is still an admin.
+   - The admin lookup reads `user_access.is_admin` with the service-role client: a new small helper in `api/_lib/requestAuth.ts`, beside `isApprovedUser`.
+5. **Storage.**
+   - The refresh token is **encrypted at rest** (AES-256-GCM, key from a new env var `GSC_TOKEN_KEY`, 32 random bytes, base64). A leaked database row is then not a usable Google token.
+   - The `sites.list` cache row uses `domain = '*'`, `days = 0`.
+   - The admin panel shows the coverage after Connect: "N of 36 BP sites found in Search Console", listing each site with its matched property, or "not found".
+6. **The default site and the URL.**
+   - The Rankings tab's filter lives in the path (`/bp-sites/:brandSlug/:domainFilter`) or in `?site=`.
+   - The Google tab defaults to that domain when exactly one is set; otherwise it uses the brand's main domain.
+   - Switching tabs only adds or removes `?view=google` and keeps the path and every other parameter.
+   - The site selector lists the brand's BP domains that `isReported` keeps. Retired domains such as `casinoroosters.com` stay hidden, as they are elsewhere.
+7. **Countries.**
+   - The Google tab shows every country Google reports, including those outside a narrowed brand's markets (RoosterBet's DE, for example). That is Meny's "every country".
+   - The Rankings tab's market narrowing does not apply here.
+
+Also noted: each new function sets `export const config = { maxDuration: 60 }`, as `api/sites.ts` does. No `vercel.json` change is needed.
 
 ## Left to the builder
 
