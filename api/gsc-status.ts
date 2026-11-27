@@ -3,10 +3,10 @@ import { GscReconnectError, matchProperties } from './_lib/gsc.js'
 import { BRAND_BY_NAME, DOMAIN_TO_BRAND, brandCountries, isReported } from './_lib/brands.js'
 import { loadConnection } from './_lib/gscStore.js'
 import {
-  GSC_CONFIG, cachedSites, gate, gscFailure, googleAccess, guardMethod, markIfRejected, withRetry,
+  cachedSites, gate, gscFailure, googleAccess, guardMethod, markIfRejected, withRetry,
 } from './_lib/gscHandler.js'
 
-export const config = GSC_CONFIG
+export const config = { maxDuration: 60 }
 
 /** Whether Google is connected; for admins also who connected it and which brand sites have a property. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {

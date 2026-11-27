@@ -6,11 +6,13 @@ import {
 import { DOMAIN_TO_BRAND } from './_lib/brands.js'
 import { readCache, writeCache } from './_lib/gscStore.js'
 import {
-  GSC_CONFIG, KEYWORDS_TTL_MS, NOT_CONNECTED_BODY, RECONNECT_BODY, cachedSites, gate, gscFailure, googleAccess,
+  KEYWORDS_TTL_MS, NOT_CONNECTED_BODY, RECONNECT_BODY, cachedSites, gate, gscFailure, googleAccess,
   guardMethod, markIfRejected, withRetry,
 } from './_lib/gscHandler.js'
 
-export const config = GSC_CONFIG
+// 60 s so the timeout budget in api/_lib/gsc.ts (TIMEOUT: 5+5+4+12 s an attempt, one retry = 52 s) can run;
+// Vercel's default is 10-15 s. Written as a literal because Vercel does not see a re-exported constant.
+export const config = { maxDuration: 60 }
 
 const DAY = 86_400_000
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)

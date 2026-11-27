@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { decryptToken, revokeToken } from './_lib/gsc.js'
 import { clearCache, deleteConnection, loadConnection } from './_lib/gscStore.js'
-import { GSC_CONFIG, gate, guardMethod } from './_lib/gscHandler.js'
+import { gate, guardMethod } from './_lib/gscHandler.js'
 
-export const config = GSC_CONFIG
+export const config = { maxDuration: 60 }
 
 /** Admin only. Revokes the token at Google (best effort), then forgets the connection and the cache. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {

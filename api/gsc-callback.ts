@@ -3,9 +3,9 @@ import { GscScopeError, encryptToken, exchangeCode, gscConfig, revokeToken, veri
 import { clearCache, saveConnection } from './_lib/gscStore.js'
 import { isAdminUser } from './_lib/requestAuth.js'
 import { createAdminClient } from './_lib/snapshotStore.js'
-import { GSC_CONFIG, guardMethod, requireEnv } from './_lib/gscHandler.js'
+import { guardMethod, requireEnv } from './_lib/gscHandler.js'
 
-export const config = GSC_CONFIG
+export const config = { maxDuration: 60 }
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
