@@ -85,7 +85,7 @@ export function BPSites() {
       <div className="flex min-h-0 flex-1 flex-col">
         <BrandTabs view={view} onChange={(v) => setSearchParams(withView(searchParams, v))} />
         {view === 'google' ? (
-          <RealKeywordsTab key={activeBrand.name} brand={activeBrand} domainFilter={domainFilter} />
+          <RealKeywordsTab key={activeBrand.name} brand={activeBrand} domainFilter={domainFilter} onBack={() => navigate('/bp-sites')} />
         ) : (
           <BrandView
             key={`${activeBrand.name}|${domainFilter ?? ''}`}
