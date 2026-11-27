@@ -1,3 +1,4 @@
+import type { AdminClient } from './snapshotStore.js'
 import { createClient } from '@supabase/supabase-js'
 
 /**
@@ -148,6 +149,25 @@ export async function isApprovedUser(resolver: AccessResolver, userId: string): 
       .maybeSingle()
     if (error || !data) return false
     return data.status === 'approved'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Whether `userId` is an admin, read from `user_access.is_admin` with the
+ * service-role client (the Google callback has no browser session to act as).
+ * Fails closed: a missing row, a query error or a thrown failure all say false.
+ */
+export async function isAdminUser(admin: AdminClient, userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await admin
+      .from('user_access')
+      .select('is_admin')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error || !data) return false
+    return (data as { is_admin?: boolean | null }).is_admin === true
   } catch {
     return false
   }
