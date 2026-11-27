@@ -46,6 +46,12 @@ the account that owns Search Console.
 Set these in Vercel (Production and Preview) and in `.env.local`. None has a
 `VITE_` prefix, and none is ever pasted into chat, a ticket or a commit.
 
+**Use the same `GSC_TOKEN_KEY` in every environment that uses this Supabase
+project (Production, Preview, .env.local).** The connection is one shared row.
+A different key cannot read it, so that environment answers "GSC_TOKEN_KEY here
+doesn't match the key that stored the Google connection". It does not break the
+connection for everyone else, but it cannot use it until the keys match.
+
 | Variable | Value |
 |---|---|
 | `GOOGLE_OAUTH_CLIENT_ID` | The OAuth client's ID |
@@ -62,7 +68,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 It also needs the existing `APP_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 and `SUPABASE_ANON_KEY`. A missing variable is a 500 whose message names it
 (never its value). Changing `GSC_TOKEN_KEY` later makes the stored token
-unreadable: reconnect.
+unreadable: reconnect. The stored token carries the first 8 hex characters of
+the key's SHA-256 (not the key), which is how a mismatch is told apart from a
+damaged token.
 
 ### 3. Database
 
@@ -75,7 +83,15 @@ on and no policies; only the Vercel functions (service role) touch them.
 
 After the deploy, as an admin open **Users** and click **Connect Google Search
 Console**. Sign in with the account that has the properties and click Allow
-(click through the unverified-app warning if it shows). You land back on BP
+(click through the unverified-app warning if it shows). **Leave the Search
+Console permission ticked** on Google's consent screen: if it is unticked the
+app stores nothing and shows "Google didn't grant Search Console access" (the
+`reason=scope` toast); click Connect again and allow it.
+
+Connect works only from production or from `localhost:5173`, because those are
+the redirect URIs registered in step 1. On a Preview URL, Google refuses the
+sign-in. Connect from production once and every environment that shares this
+Supabase project and the same `GSC_TOKEN_KEY` reads the same connection. You land back on BP
 Sites with "Google Search Console connected." The Users panel then shows who
 is connected and "N of M BP sites found in Search Console", with each domain's
 matched property or "not found".
@@ -89,7 +105,7 @@ Open a brand's page and choose **Real keywords (Google)**.
 | Endpoint | Who | Does |
 |---|---|---|
 | `POST /api/gsc-connect` | admin | Returns the Google consent URL; sets the nonce cookie |
-| `GET /api/gsc-callback` | the browser, from Google | Checks the signed state, the cookie and that the user is an admin, stores the encrypted token, redirects to `/bp-sites?gsc=connected` or `?gsc=error&reason=` one of `state`, `nonce`, `admin`, `denied`, `google`, `config` |
+| `GET /api/gsc-callback` | the browser, from Google | Checks the signed state, the cookie and that the user is an admin, stores the encrypted token, redirects to `/bp-sites?gsc=connected` or `?gsc=error&reason=` one of `state`, `nonce`, `admin`, `denied`, `scope`, `google`, `config` |
 | `POST /api/gsc-disconnect` | admin | Revokes the token at Google (best effort), deletes the stored row and the cache |
 | `GET /api/gsc-status` | approved users | Connected or not and ok or broken; admins also get who/when and the coverage list |
 | `GET /api/gsc-keywords?domain=&days=7\|28\|90` | approved users | One Search Console page for the domain, cached 6 hours |
@@ -107,6 +123,20 @@ docs/integrations/gsc.md." means this setup is wrong somewhere: a missing env
 var, a redirect URI that does not match `${APP_URL}/api/gsc-callback`, or a
 secret that does not match the client.
 
+## What the messages mean
+
+| Message | Meaning | What to do |
+|---|---|---|
+| "Google Search Console did not answer. Try again in a minute." | Google was slow, down or rate limiting (a 429, a 5xx, a network error or a timeout). Retried once already. | Wait and try again |
+| "Google refused access to this site's Search Console data. Check that the connected Google account still has access to it." | Search Console answered 403 for this site. The connection itself is fine. | Add the connected account as a user of that property, or connect a different account |
+| "Google rejected the app's OAuth client. Check GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET (docs/integrations/gsc.md)." | Google answered `invalid_client` or `unauthorized_client`: the client ID or secret is wrong or was rotated. The connection is not marked broken. | Fix the two variables in Vercel and redeploy |
+| "GSC_TOKEN_KEY here doesn't match the key that stored the Google connection. Use the same GSC_TOKEN_KEY everywhere that uses this Supabase project." | This environment's key differs from the one used at Connect. The connection is not marked broken. | Set the same `GSC_TOKEN_KEY` here |
+| "Could not check which BP sites are in Search Console: ..." (Users page) | The coverage list could not be read; the reason follows. The rest of the panel still works. | See the row above that matches the reason |
+| "Google didn't grant Search Console access. Click Connect again and allow it when Google asks." | The Search Console permission was unticked at consent. Nothing was stored and the grant was revoked. | Click Connect again and leave it ticked |
+
+A Search Console 401 (the token is no longer accepted) is treated like a
+revoked grant: the connection is marked broken and the tab says reconnect.
+
 ## Limits
 
 - **Average position.** Google reports the average position over the period,
@@ -118,7 +148,12 @@ secret that does not match the client.
   rare searches never appear and the totals are lower than the site's real
   traffic.
 - **25,000 rows.** One page per site and period; when it comes back full the tab
-  says it shows the top 25,000 searches by clicks.
+  says it shows the top 25,000 searches by clicks. When a site has several
+  root properties (`https://x.com/` and `https://www.x.com/`) they are merged
+  and cut to the top 25,000 by clicks. Path-scoped properties such as
+  `https://x.com/au/` are ignored: the root property already counts them.
+- **Timeouts.** Each Google call has its own timeout (5 to 12 seconds) so a slow
+  answer ends as "did not answer" before Vercel's 60 second limit.
 - Results are cached for 6 hours per site and period; connecting or
   disconnecting clears the cache.
 - A site only shows data if the connected account has a Search Console property
