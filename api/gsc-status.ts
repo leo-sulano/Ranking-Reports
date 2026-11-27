@@ -3,7 +3,7 @@ import { GscReconnectError, GscUpstreamError, matchProperties } from './_lib/gsc
 import { BRAND_BY_NAME, DOMAIN_TO_BRAND, brandCountries, isReported } from './_lib/brands.js'
 import { loadConnection } from './_lib/gscStore.js'
 import {
-  GSC_CONFIG, RECONNECT_BODY, cachedSites, gate, googleAccess, guardMethod, withRetry,
+  GSC_CONFIG, cachedSites, gate, googleAccess, guardMethod, withRetry,
 } from './_lib/gscHandler.js'
 
 export const config = GSC_CONFIG
@@ -35,8 +35,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .filter(([domain, brand]) => brandCountries(BRAND_BY_NAME[brand]).some((c) => isReported(domain, c)))
           .map(([domain, brand]) => ({ domain, brand, properties: matchProperties(domain, sites) }))
       } catch (err) {
-        if (err instanceof GscReconnectError) return res.status(409).json(RECONNECT_BODY)
-        if (!(err instanceof GscUpstreamError)) throw err
+        // googleAccess has already marked the connection broken: report it as state.
+        if (err instanceof GscReconnectError) {
+          body.status = 'broken'
+        } else if (!(err instanceof GscUpstreamError)) throw err
         // Google is down: the connection state is still worth showing, coverage is not.
       }
     }

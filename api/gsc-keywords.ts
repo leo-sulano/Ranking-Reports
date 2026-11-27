@@ -18,7 +18,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 type Payload = {
   ok: true
   property: string | null
-  startDate?: string
+  startDate?: string | null
   dataUpTo?: string | null
   truncated?: boolean
   rows?: GscRow[]
@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const dataUpTo = await latestDataDate(fetch, a.token, properties[0], now)
       const property = properties.join(' + ')
       if (!dataUpTo) {
-        return { ok: true, property, startDate: '', dataUpTo: null, truncated: false, rows: [] }
+        return { ok: true, property, startDate: null, dataUpTo: null, truncated: false, rows: [] }
       }
       const startDate = new Date(Date.parse(dataUpTo) - (days - 1) * DAY).toISOString().slice(0, 10)
       const parts = await Promise.all(properties.map((p) => queryRows(fetch, a.token, p, startDate, dataUpTo)))

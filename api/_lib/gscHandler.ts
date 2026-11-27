@@ -81,7 +81,15 @@ export async function googleAccess(db: AdminClient): Promise<Access> {
   if (!connection) return { kind: 'not_connected' }
   if (connection.status === 'broken') return { kind: 'broken', connection }
   const cfg = gscConfig(process.env)
-  const refresh = decryptToken(requireEnv('GSC_TOKEN_KEY'), connection.refreshTokenEnc)
+  const key = requireEnv('GSC_TOKEN_KEY')
+  let refresh: string
+  try {
+    refresh = decryptToken(key, connection.refreshTokenEnc)
+  } catch {
+    // The stored token cannot be read (key changed, row damaged): same as a revoked grant.
+    await markBroken(db)
+    throw new GscReconnectError('The stored Google token cannot be read.')
+  }
   try {
     return { kind: 'ok', connection, token: await accessToken(fetch, cfg, refresh) }
   } catch (err) {

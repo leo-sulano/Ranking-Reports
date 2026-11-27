@@ -88,15 +88,30 @@ describe('api/gsc-status', () => {
     expect(fetchMock.mock.calls.every((c) => isToken(c[0]))).toBe(true)
   })
 
-  it('REVIEW 3: invalid_grant while computing coverage marks the connection broken and answers reconnect', async () => {
+  it('REVIEW 3: invalid_grant while computing coverage marks the connection broken and reports it as state', async () => {
     setConnection()
     fake.isAdmin = true
     fetchMock.mockResolvedValue(json({ error: 'invalid_grant' }, 400))
     const res = makeRes()
     await handler(makeReq('GET'), res as never)
-    expect(res.statusCode).toBe(409)
-    expect(res.body).toEqual({ ok: false, code: 'reconnect' })
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, connected: true, status: 'broken', googleEmail: 'seo@example.com' })
+    expect(res.body.coverage).toBeUndefined()
     expect(fake.connection?.status).toBe('broken')
+  })
+
+  it('an undecryptable stored token marks the connection broken and reports it as state, leaking nothing', async () => {
+    setConnection()
+    fake.connection!.refresh_token_enc = 'v1.not.a.token'
+    fake.isAdmin = true
+    const res = makeRes()
+    await handler(makeReq('GET'), res as never)
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, connected: true, status: 'broken' })
+    expect(res.body.coverage).toBeUndefined()
+    expect(fake.connection?.status).toBe('broken')
+    expect(JSON.stringify(res.body)).not.toMatch(/v1\.not|secret|GSC_TOKEN_KEY/)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('reports a broken connection without calling Google', async () => {

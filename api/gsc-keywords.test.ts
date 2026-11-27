@@ -106,6 +106,15 @@ describe('api/gsc-keywords', () => {
     expect(fake.connection?.status).toBe('broken')
   })
 
+  it('an undecryptable stored token marks the connection broken and answers reconnect, leaking nothing', async () => {
+    fake.connection!.refresh_token_enc = 'v1.not.a.token'
+    const res = await get(hit)
+    expect(res.statusCode).toBe(409)
+    expect(res.body).toEqual({ ok: false, code: 'reconnect' })
+    expect(fake.connection?.status).toBe('broken')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('a domain property makes one query for the range ending at the latest data date', async () => {
     const res = await get(hit)
     expect(res.statusCode).toBe(200)
@@ -155,7 +164,7 @@ describe('api/gsc-keywords', () => {
     dateRows = []
     const res = await get(hit)
     expect(res.statusCode).toBe(200)
-    expect(res.body).toMatchObject({ ok: true, property: 'sc-domain:roostersbet.com', dataUpTo: null, rows: [] })
+    expect(res.body).toMatchObject({ ok: true, property: 'sc-domain:roostersbet.com', dataUpTo: null, startDate: null, rows: [] })
   })
 
   it('serves a fresh cache hit with no Google call, and writes the cache on a miss', async () => {
