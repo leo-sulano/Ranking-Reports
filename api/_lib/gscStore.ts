@@ -88,8 +88,9 @@ export async function readCache<T>(
   if (error) throw fail('read the Search Console cache', error)
   const row = ((data ?? []) as Array<{ payload: T; fetched_at: string }>)[0]
   if (!row) return null
+  // A future-dated row (clock skew) is not trusted as fresh.
   const age = now.getTime() - new Date(row.fetched_at).getTime()
-  return Number.isFinite(age) && age < maxAgeMs ? row.payload : null
+  return Number.isFinite(age) && age >= 0 && age < maxAgeMs ? row.payload : null
 }
 
 export async function writeCache(
