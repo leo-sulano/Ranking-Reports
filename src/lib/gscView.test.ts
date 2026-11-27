@@ -99,5 +99,21 @@ describe('reportedBpDomains / defaultSite', () => {
     expect(defaultSite(rb, undefined, 'all', null)).toBe(rb.mainDomain)
     expect(defaultSite(rb, 'casinoroosters.com', null, 'casinoroosters.com')).toBe(rb.mainDomain)
   })
+  it('?site= wins over the path filter when both are present', () => {
+    const d = reportedBpDomains(rb)
+    expect(defaultSite(rb, d[1], d[2], null)).toBe(d[2])
+  })
+  it('a ?site= comma list beats a single path filter and gives main', () => {
+    const d = reportedBpDomains(rb)
+    expect(defaultSite(rb, d[1], `${d[1]},${d[2]}`, null)).toBe(rb.mainDomain)
+  })
+  it('an unreported ?site= does not fall back to the path filter (Rankings shows all sites)', () => {
+    const d = reportedBpDomains(rb)
+    expect(defaultSite(rb, d[1], 'casinoroosters.com', null)).toBe(rb.mainDomain)
+  })
+  it('gsite wins over both', () => {
+    const d = reportedBpDomains(rb)
+    expect(defaultSite(rb, d[1], d[2], d[0])).toBe(d[0])
+  })
   it('exports PAGE_STEP', () => expect(PAGE_STEP).toBe(200))
 })

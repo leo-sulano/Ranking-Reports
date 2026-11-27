@@ -58,7 +58,9 @@ export function reportedBpDomains(brand: Brand): string[] {
 
 /**
  * Which site the Google tab opens on: ?gsite= if reported, else the one site the
- * Rankings tab is narrowed to (path filter or ?site=), else the main domain.
+ * Rankings tab is showing, else the main domain. Like BPSites, it picks ONE source
+ * first (?site= over the path filter) and does not fall back to the other when that
+ * source matches nothing (the Rankings tab then shows every site).
  */
 export function defaultSite(
   brand: Brand,
@@ -67,15 +69,12 @@ export function defaultSite(
   gsite: string | null,
 ): string {
   const reported = reportedBpDomains(brand)
-  const pick = (v: string | null | undefined): string | null => {
-    const s = v?.trim().toLowerCase()
-    return s && reported.includes(s) ? s : null
+  const g = gsite?.trim().toLowerCase()
+  if (g && reported.includes(g)) return g
+  const src = siteParam ?? domainFilter
+  if (src) {
+    const matched = reported.filter((d) => src.split(',').map((x) => x.trim().toLowerCase()).includes(d))
+    if (matched.length === 1) return matched[0]
   }
-  const g = pick(gsite)
-  if (g) return g
-  const single = (v: string | null | undefined): string | null => {
-    if (!v || v.includes(',')) return null
-    return pick(v)
-  }
-  return single(domainFilter) ?? single(siteParam) ?? brand.mainDomain
+  return brand.mainDomain
 }
