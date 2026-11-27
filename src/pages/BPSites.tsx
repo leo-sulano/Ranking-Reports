@@ -13,6 +13,9 @@ import { trackedIndex } from '../lib/keywordDiscovery'
 import { buildFoundRows, type FoundRow } from '../lib/discoveryList'
 import { nrLabelFor } from '../lib/nrLabel'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
+import { BrandTabs } from '../components/BrandTabs'
+import { RealKeywordsTab } from '../components/RealKeywordsTab'
+import { readGscParams, withView } from '../lib/gscView'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
 
@@ -51,6 +54,7 @@ export function BPSites() {
   const { snapshots, onEditCell } = ctx
   const { brandSlug, domainFilter } = useParams<{ brandSlug: string; domainFilter: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const bpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'bp-sites'),
@@ -63,18 +67,26 @@ export function BPSites() {
   const activeBrand = brandSlug ? (BRAND_BY_SLUG[brandSlug] ?? null) : null
 
   if (activeBrand) {
+    const { view } = readGscParams(searchParams)
     return (
-      <BrandView
-        key={`${activeBrand.name}|${domainFilter ?? ''}`}
-        brand={activeBrand}
-        snapshots={bpSnapshots}
-        snapshotMeta={bpSnapshotMeta}
-        onLoadOlder={() => ctx.onLoadOlderSnapshots('bp-sites')}
-        loadingOlder={ctx.loadingOlderSnapshots}
-        domainFilter={domainFilter}
-        onBack={() => navigate('/bp-sites')}
-        onEditCell={onEditCell}
-      />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BrandTabs view={view} onChange={(v) => setSearchParams(withView(searchParams, v))} />
+        {view === 'google' ? (
+          <RealKeywordsTab key={activeBrand.name} brand={activeBrand} domainFilter={domainFilter} />
+        ) : (
+          <BrandView
+            key={`${activeBrand.name}|${domainFilter ?? ''}`}
+            brand={activeBrand}
+            snapshots={bpSnapshots}
+            snapshotMeta={bpSnapshotMeta}
+            onLoadOlder={() => ctx.onLoadOlderSnapshots('bp-sites')}
+            loadingOlder={ctx.loadingOlderSnapshots}
+            domainFilter={domainFilter}
+            onBack={() => navigate('/bp-sites')}
+            onEditCell={onEditCell}
+          />
+        )}
+      </div>
     )
   }
 
