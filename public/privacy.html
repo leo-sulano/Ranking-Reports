@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500..700&family=Public+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <title>Privacy policy — Ranking Reports</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --rule: #e2e8f0;
+        --link: #2563eb;
+        --code-bg: #f1f5f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #07090f;
+          --text: #e2e8f0;
+          --muted: #94a3b8;
+          --rule: #1c2b3a;
+          --link: #60a5fa;
+          --code-bg: #111827;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
+      h1, h2 { font-family: Outfit, system-ui, sans-serif; line-height: 1.25; }
+      h1 { font-size: 32px; margin: 0 0 4px; }
+      h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 20px; border-top: 1px solid var(--rule); }
+      .meta { color: var(--muted); margin: 0 0 28px; }
+      p, ul { margin: 0 0 12px; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 8px; }
+      a { color: var(--link); }
+      code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 14px; overflow-wrap: anywhere; }
+      footer { margin-top: 40px; color: var(--muted); font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy policy</h1>
+      <p class="meta">Ranking Reports · Last updated 27 November 2026</p>
+
+      <p>
+        Ranking Reports is the internal dashboard Rooster Partners' SEO team uses to track how its own
+        websites rank on Google. It is not open to the public: only staff whose access has been approved
+        can sign in.
+      </p>
+
+      <h2>What it collects</h2>
+      <ul>
+        <li>
+          <strong>Staff sign-in.</strong> The email address you sign in with, and whether your access is
+          approved. This is used only to decide who can see the dashboard.
+        </li>
+        <li>
+          <strong>Google Search Console, read-only.</strong> When an administrator connects a Google
+          account, the dashboard asks Google for read-only Search Console access
+          (<code>webmasters.readonly</code>) and that account's email address. It reads search
+          performance for the team's own websites: the searches they appeared for, by country, with
+          clicks, impressions and average position. It cannot change anything in Search Console.
+        </li>
+      </ul>
+
+      <h2>How it is stored</h2>
+      <ul>
+        <li>The Google access token is stored encrypted on the server and is never sent to anyone's browser.</li>
+        <li>Search Console results are kept for up to 6 hours, so that every page view doesn't ask Google again.</li>
+        <li>The connected account's email address is shown to administrators, so they can see which account is connected.</li>
+      </ul>
+
+      <h2>How it is used</h2>
+      <p>
+        Google data is shown only inside the dashboard, to approved staff. It is not sold, not shared with
+        anyone else, not used for advertising and not used to train AI models.
+      </p>
+      <p>
+        Ranking Reports' use and transfer of information received from Google APIs adheres to the
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+        including the Limited Use requirements.
+      </p>
+
+      <h2>Removing access</h2>
+      <ul>
+        <li>
+          An administrator can click Disconnect at any time. That revokes the access at Google and deletes
+          the stored token and every saved result.
+        </li>
+        <li>
+          The Google account's owner can also remove the access from their Google account, at
+          <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+        </li>
+      </ul>
+
+      <h2>Questions</h2>
+      <p>Ask the Ranking Reports administrators.</p>
+
+      <footer><a href="/">Ranking Reports</a></footer>
+    </main>
+  </body>
+</html>
