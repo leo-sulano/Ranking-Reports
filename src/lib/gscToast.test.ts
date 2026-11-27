@@ -20,6 +20,11 @@ describe('gscToastFor', () => {
     expect(msg('config')?.message).toBe('Google sign-in failed. Check the setup in docs/integrations/gsc.md.')
     expect(msg('state')?.type).toBe('error')
   })
+  it('I-2: scope says Search Console was not allowed and how to fix it', () => {
+    expect(gscToastFor(p('gsc=error&reason=scope'))).toEqual({
+      message: "Google didn't grant Search Console access. Click Connect again and allow it when Google asks.", type: 'error',
+    })
+  })
   it('unknown or missing reason uses the google copy', () => {
     const want = 'Google sign-in failed. Check the setup in docs/integrations/gsc.md.'
     expect(gscToastFor(p('gsc=error&reason=weird'))?.message).toBe(want)

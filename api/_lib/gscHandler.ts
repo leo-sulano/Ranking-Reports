@@ -10,7 +10,8 @@ import {
 } from './requestAuth.js'
 import { createAdminClient, type AdminClient } from './snapshotStore.js'
 import {
-  GscReconnectError, GscUpstreamError, accessToken, decryptToken, gscConfig, listSites,
+  FORBIDDEN, GscConfigError, GscForbiddenError, GscKeyMismatchError, GscNetworkError, GscReconnectError,
+  GscUnauthorizedError, GscUpstreamError, NO_ANSWER, accessToken, decryptToken, gscConfig, listSites,
   type GscSite,
 } from './gsc.js'
 import { loadConnection, markBroken, readCache, writeCache, type GscConnection } from './gscStore.js'
@@ -85,8 +86,11 @@ export async function googleAccess(db: AdminClient): Promise<Access> {
   let refresh: string
   try {
     refresh = decryptToken(key, connection.refreshTokenEnc)
-  } catch {
-    // The stored token cannot be read (key changed, row damaged): same as a revoked grant.
+  } catch (err) {
+    // A different GSC_TOKEN_KEY is this environment's configuration, not a dead connection: never
+    // mark the one shared row broken for everyone because of it.
+    if (err instanceof GscKeyMismatchError) throw err
+    // Right key, unreadable token (row damaged): same as a revoked grant.
     await markBroken(db)
     throw new GscReconnectError('The stored Google token cannot be read.')
   }
@@ -103,14 +107,20 @@ export async function cachedSites(db: AdminClient, token: string, now: Date): Pr
   const hit = await readCache<GscSite[]>(db, '*', 0, SITES_TTL_MS, now)
   if (hit) return hit
   const sites = await listSites(fetch, token)
-  await writeCache(db, '*', 0, sites, now)
+  try {
+    await writeCache(db, '*', 0, sites, now)
+  } catch (err) {
+    // Best effort: a failed cache write must not turn Google's answer into a 500.
+    console.error('[gsc] site list cache write failed:', (err as Error).message)
+  }
   return sites
 }
 
 const retryable = (e: unknown) =>
-  e instanceof GscUpstreamError && (e.status === 429 || (e.status !== undefined && e.status >= 500))
+  e instanceof GscNetworkError
+  || (e instanceof GscUpstreamError && (e.status === 429 || (e.status !== undefined && e.status >= 500)))
 
-/** Runs `fn`, once more if Google answered 429 or 5xx. */
+/** Runs `fn`, once more if Google answered 429 or 5xx, or did not answer at all (network error, timeout). */
 export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn()
@@ -122,3 +132,19 @@ export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 export const RECONNECT_BODY = { ok: false, code: 'reconnect' } as const
 export const NOT_CONNECTED_BODY = { ok: false, code: 'not_connected' } as const
+
+/**
+ * Search Console answered 401: the token is no longer accepted, so the shared connection is dead.
+ * (A refresh-token invalid_grant is marked inside googleAccess.) Call before answering reconnect.
+ */
+export async function markIfRejected(db: AdminClient, err: unknown): Promise<void> {
+  if (err instanceof GscUnauthorizedError) await markBroken(db)
+}
+
+/** The status and plain wording for a Google failure that is not a reconnect, or null for anything else. */
+export function gscFailure(err: unknown): { status: number; error: string } | null {
+  if (err instanceof GscConfigError || err instanceof GscKeyMismatchError) return { status: 500, error: err.message }
+  if (err instanceof GscForbiddenError) return { status: 502, error: FORBIDDEN }
+  if (err instanceof GscUpstreamError) return { status: 502, error: NO_ANSWER }
+  return null
+}

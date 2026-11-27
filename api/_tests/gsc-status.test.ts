@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import handler, { config } from '../gsc-status.js'
+import { encryptToken } from '../_lib/gsc.js'
 import { GOOD_ENV, fake, json, makeReq, makeRes, setConnection } from '../_lib/gscTestKit.js'
 
 vi.mock('@supabase/supabase-js', async () => (await import('../_lib/gscTestKit.js')).supabaseMock)
@@ -122,5 +123,55 @@ describe('api/gsc-status', () => {
     expect(res.body).toMatchObject({ connected: true, status: 'broken' })
     expect(res.body.coverage).toBeUndefined()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['Search Console is down', () => json({}, 503), 'Google Search Console did not answer. Try again in a minute.', 'ok'],
+    ['Search Console refuses the account', () => json({}, 403), "Google refused access to this site's Search Console data. Check that the connected Google account still has access to it.", 'ok'],
+  ])('I-2: when %s the status is 200 with coverageError and no coverage', async (_n, answer, message, status) => {
+    setConnection()
+    fake.isAdmin = true
+    fetchMock.mockImplementation(async (url: unknown) => (isToken(url) ? json({ access_token: 'at-secret' }) : answer()))
+    const res = makeRes()
+    await handler(makeReq('GET'), res as never)
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, connected: true, status, googleEmail: 'seo@example.com', coverageError: message })
+    expect(res.body.coverage).toBeUndefined()
+    expect(JSON.stringify(res.body)).not.toContain('at-secret')
+  })
+
+  it('I-2: a rejected OAuth client shows the operator wording as coverageError and does not mark the connection broken', async () => {
+    setConnection()
+    fake.isAdmin = true
+    fetchMock.mockResolvedValue(json({ error: 'invalid_client' }, 401))
+    const res = makeRes()
+    await handler(makeReq('GET'), res as never)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.coverageError).toContain('GOOGLE_OAUTH_CLIENT_SECRET')
+    expect(res.body.status).toBe('ok')
+    expect(fake.connection?.status).toBe('ok')
+  })
+
+  it('I-3: a different GSC_TOKEN_KEY shows the key wording as coverageError and never marks the connection broken', async () => {
+    setConnection()
+    fake.connection!.refresh_token_enc = encryptToken(Buffer.alloc(32, 9).toString('base64'), 'refresh-token-abc')
+    fake.isAdmin = true
+    const res = makeRes()
+    await handler(makeReq('GET'), res as never)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.status).toBe('ok')
+    expect(res.body.coverageError).toContain('same GSC_TOKEN_KEY everywhere')
+    expect(fake.writes).not.toContain('connection.broken')
+  })
+
+  it('I-2: a Search Console 401 marks the connection broken and reports it as state', async () => {
+    setConnection()
+    fake.isAdmin = true
+    fetchMock.mockImplementation(async (url: unknown) => (isToken(url) ? json({ access_token: 'at' }) : json({}, 401)))
+    const res = makeRes()
+    await handler(makeReq('GET'), res as never)
+    expect(res.body).toMatchObject({ ok: true, connected: true, status: 'broken' })
+    expect(res.body.coverage).toBeUndefined()
+    expect(fake.connection?.status).toBe('broken')
   })
 })

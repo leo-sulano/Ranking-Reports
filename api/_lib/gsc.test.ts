@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import {
-  GscReconnectError, GscUpstreamError, gscConfig, signState, verifyState, consentUrl,
+  GscReconnectError, GscUpstreamError, GscConfigError, GscKeyMismatchError, GscNetworkError, GscForbiddenError,
+  GscUnauthorizedError, GscScopeError, capMerged, gscConfig, signState, verifyState, consentUrl,
   encryptToken, decryptToken, exchangeCode, accessToken, revokeToken, listSites,
   matchProperties, latestDataDate, queryRows, mergeRows, type GscConfig, type GscRow,
 } from './gsc.js'
@@ -10,6 +11,7 @@ import {
 const CFG: GscConfig = { clientId: 'cid', clientSecret: 'csecret', redirectUri: 'https://app.test/api/gsc-callback' }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+const SCOPES = 'openid email https://www.googleapis.com/auth/webmasters.readonly'
 const b64u = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url')
 
 function stub(respond: (url: string, init: RequestInit) => Response | Promise<Response>) {
@@ -76,29 +78,45 @@ describe('encryptToken', () => {
     const b = encryptToken(key, 'refresh-123')
     expect(a).not.toBe(b)
     expect(a.startsWith('v1.')).toBe(true)
-    expect(a.split('.')).toHaveLength(4)
+    expect(a.split('.')).toHaveLength(5)
     expect(decryptToken(key, a)).toBe('refresh-123')
   })
+  it('I-3: carries a key id: the first 8 hex characters of sha256 over the key bytes', () => {
+    const kid = encryptToken(key, 'x').split('.')[1]
+    expect(kid).toMatch(/^[0-9a-f]{8}$/)
+    expect(kid).toBe(createHash('sha256').update(Buffer.from(key, 'base64')).digest('hex').slice(0, 8))
+  })
   it('throws on a flipped ciphertext or tag byte', () => {
-    const [v, iv, tag, ct] = encryptToken(key, 'refresh-123').split('.')
+    const [v, kid, iv, tag, ct] = encryptToken(key, 'refresh-123').split('.')
     const flip = (s: string) => {
       const buf = Buffer.from(s, 'base64url')
       buf[0] ^= 1
       return buf.toString('base64url')
     }
-    expect(() => decryptToken(key, [v, iv, tag, flip(ct)].join('.'))).toThrow()
-    expect(() => decryptToken(key, [v, iv, flip(tag), ct].join('.'))).toThrow()
+    for (const blob of [[v, kid, iv, tag, flip(ct)], [v, kid, iv, flip(tag), ct]]) {
+      const err = (() => { try { decryptToken(key, blob.join('.')) } catch (e) { return e } })()
+      expect(err).toBeInstanceOf(Error)
+      expect(err).not.toBeInstanceOf(GscKeyMismatchError)
+    }
   })
   it('rejects malformed blobs', () => {
-    const [v, iv, tag, ct] = encryptToken(key, 'refresh-123').split('.')
+    const [v, kid, iv, tag, ct] = encryptToken(key, 'refresh-123').split('.')
     const cut = (s: string, n: number) => Buffer.from(s, 'base64url').subarray(0, n).toString('base64url')
-    expect(() => decryptToken(key, [v, iv, cut(tag, 4), ct].join('.'))).toThrow(/expected format/)
-    expect(() => decryptToken(key, [v, iv, tag, ct, 'x'].join('.'))).toThrow(/expected format/)
-    expect(() => decryptToken(key, ['v2', iv, tag, ct].join('.'))).toThrow(/expected format/)
-    expect(() => decryptToken(key, [v, cut(iv, 8), tag, ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, kid, iv, cut(tag, 4), ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, kid, iv, tag, ct, 'x'].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, ['v2', kid, iv, tag, ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, kid, cut(iv, 8), tag, ct].join('.'))).toThrow(/expected format/)
+    expect(() => decryptToken(key, [v, iv, tag, ct].join('.'))).toThrow(/expected format/)
   })
-  it('throws with a different key', () => {
-    expect(() => decryptToken(randomBytes(32).toString('base64'), encryptToken(key, 'x'))).toThrow()
+  it('I-3: a malformed key id is rejected as a bad format, not as a key mismatch', () => {
+    const [v, kid, iv, tag, ct] = encryptToken(key, 'x').split('.')
+    for (const bad of [kid.replace(/[0-9]/g, 'A').toUpperCase(), kid.slice(0, 7), `${kid}0`, 'zzzzzzzz']) {
+      const err = (() => { try { decryptToken(key, [v, bad, iv, tag, ct].join('.')) } catch (e) { return e } })()
+      expect(String(err)).toMatch(/expected format/)
+    }
+  })
+  it('I-3: a different key gives GscKeyMismatchError', () => {
+    expect(() => decryptToken(randomBytes(32).toString('base64'), encryptToken(key, 'x'))).toThrow(GscKeyMismatchError)
   })
   it('names GSC_TOKEN_KEY for a bad key, not its value', () => {
     expect(() => encryptToken('c2hvcnQ=', 'x')).toThrow(/GSC_TOKEN_KEY/)
@@ -109,7 +127,7 @@ describe('encryptToken', () => {
 describe('exchangeCode', () => {
   it('posts the code and returns token and email', async () => {
     const idToken = `h.${b64u({ email: 'a@b.com' })}.s`
-    const { f, calls } = stub(() => json({ refresh_token: 'rt', access_token: 'at', id_token: idToken }))
+    const { f, calls } = stub(() => json({ refresh_token: 'rt', access_token: 'at', id_token: idToken, scope: SCOPES }))
     expect(await exchangeCode(f, CFG, 'CODE')).toEqual({ refreshToken: 'rt', email: 'a@b.com' })
     expect(calls[0].url).toBe('https://oauth2.googleapis.com/token')
     expect(calls[0].init.method).toBe('POST')
@@ -121,12 +139,27 @@ describe('exchangeCode', () => {
     expect(body.get('redirect_uri')).toBe(CFG.redirectUri)
   })
   it('gives a null email without an id_token', async () => {
-    const { f } = stub(() => json({ refresh_token: 'rt' }))
+    const { f } = stub(() => json({ refresh_token: 'rt', scope: SCOPES }))
     expect((await exchangeCode(f, CFG, 'c')).email).toBeNull()
   })
   it('throws GscUpstreamError without a refresh_token', async () => {
-    const { f } = stub(() => json({ access_token: 'at' }))
+    const { f } = stub(() => json({ access_token: 'at', scope: SCOPES }))
     await expect(exchangeCode(f, CFG, 'c')).rejects.toBeInstanceOf(GscUpstreamError)
+  })
+  it('I-2: a token response without the Search Console scope throws GscScopeError carrying the token to revoke', async () => {
+    for (const scope of ['openid email', undefined]) {
+      const { f } = stub(() => json({ refresh_token: 'rt', access_token: 'at', scope }))
+      const err = await exchangeCode(f, CFG, 'c').catch((e) => e)
+      expect(err).toBeInstanceOf(GscScopeError)
+      expect(err.token).toBe('rt')
+    }
+  })
+  it('I-4: a network failure is a GscNetworkError and the call carries a timeout signal', async () => {
+    const { f, calls } = stub(() => json({ refresh_token: 'rt', scope: SCOPES }))
+    await exchangeCode(f, CFG, 'c')
+    expect(calls[0].init.signal).toBeInstanceOf(AbortSignal)
+    const down = (() => { throw new TypeError('fetch failed') }) as unknown as typeof fetch
+    await expect(exchangeCode(down, CFG, 'c')).rejects.toBeInstanceOf(GscNetworkError)
   })
   it('throws GscUpstreamError on a failed response', async () => {
     const { f } = stub(() => json({ error: 'invalid_request' }, 400))
@@ -149,12 +182,35 @@ describe('accessToken', () => {
     await expect(accessToken(f, CFG, 'rt')).rejects.toBeInstanceOf(GscReconnectError)
   })
   it('maps other failures to GscUpstreamError', async () => {
-    for (const [body, status] of [[{ error: 'invalid_client' }, 400], [{}, 500]] as const) {
+    for (const [body, status] of [[{ error: 'invalid_request' }, 400], [{}, 500]] as const) {
       const { f } = stub(() => json(body, status))
       const err = await accessToken(f, CFG, 'rt').catch((e) => e)
       expect(err).toBeInstanceOf(GscUpstreamError)
       expect(err).not.toBeInstanceOf(GscReconnectError)
       expect(err.status).toBe(status)
+    }
+  })
+})
+
+describe('accessToken: permanent and network failures (I-2, I-4)', () => {
+  it('invalid_client and unauthorized_client are a GscConfigError naming the env vars', async () => {
+    for (const [error, status] of [['invalid_client', 401], ['invalid_client', 400], ['unauthorized_client', 400]] as const) {
+      const { f } = stub(() => json({ error }, status))
+      const err = await accessToken(f, CFG, 'rt').catch((e) => e)
+      expect(err).toBeInstanceOf(GscConfigError)
+      expect(err).not.toBeInstanceOf(GscUpstreamError)
+      expect(err.message).toBe("Google rejected the app's OAuth client. Check GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET (docs/integrations/gsc.md).")
+    }
+  })
+  it('a network error or timeout is a GscNetworkError and the call carries a signal', async () => {
+    const { f, calls } = stub(() => json({ access_token: 'at' }))
+    await accessToken(f, CFG, 'rt')
+    expect(calls[0].init.signal).toBeInstanceOf(AbortSignal)
+    for (const e of [new TypeError('fetch failed'), new DOMException('timed out', 'TimeoutError')]) {
+      const down = (() => { throw e }) as unknown as typeof fetch
+      const err = await accessToken(down, CFG, 'rt').catch((x) => x)
+      expect(err).toBeInstanceOf(GscNetworkError)
+      expect(err).toBeInstanceOf(GscUpstreamError)
     }
   })
 })
@@ -165,6 +221,7 @@ describe('revokeToken', () => {
     await revokeToken(f, 'tok')
     expect(calls[0].url).toBe('https://oauth2.googleapis.com/revoke')
     expect(new URLSearchParams(String(calls[0].init.body)).get('token')).toBe('tok')
+    expect(calls[0].init.signal).toBeInstanceOf(AbortSignal)
   })
   it('swallows a network error', async () => {
     const f = (async () => { throw new Error('down') }) as unknown as typeof fetch
@@ -191,6 +248,33 @@ describe('listSites', () => {
   })
 })
 
+describe('Search Console 401 / 403 (I-2)', () => {
+  it('401 is a GscUnauthorizedError (a reconnect) from the site list and from a query', async () => {
+    const { f } = stub(() => json({}, 401))
+    const a = await listSites(f, 't').catch((e) => e)
+    const b = await queryRows(f, 't', 'p', 's', 'e').catch((e) => e)
+    for (const err of [a, b]) {
+      expect(err).toBeInstanceOf(GscUnauthorizedError)
+      expect(err).toBeInstanceOf(GscReconnectError)
+    }
+  })
+  it('403 is a GscForbiddenError', async () => {
+    const { f } = stub(() => json({}, 403))
+    const err = await listSites(f, 't').catch((e) => e)
+    expect(err).toBeInstanceOf(GscForbiddenError)
+    expect(err.status).toBe(403)
+  })
+  it('I-4: a network error is a GscNetworkError and every Search Console call has a timeout signal', async () => {
+    const { f, calls } = stub(() => json({}))
+    await listSites(f, 't'); await queryRows(f, 't', 'p', 's', 'e'); await latestDataDate(f, 't', 'p', new Date())
+    expect(calls).toHaveLength(3)
+    for (const c of calls) expect(c.init.signal).toBeInstanceOf(AbortSignal)
+    const down = (() => { throw new TypeError('fetch failed') }) as unknown as typeof fetch
+    await expect(queryRows(down, 't', 'p', 's', 'e')).rejects.toBeInstanceOf(GscNetworkError)
+    await expect(listSites(down, 't')).rejects.toBeInstanceOf(GscNetworkError)
+  })
+})
+
 describe('matchProperties', () => {
   const s = (siteUrl: string, permissionLevel = 'siteOwner') => ({ siteUrl, permissionLevel })
   it('prefers the domain property', () => {
@@ -199,6 +283,11 @@ describe('matchProperties', () => {
   it('returns url-prefix properties for both hosts', () => {
     expect(matchProperties('x.com', [s('https://x.com/'), s('https://www.x.com/')]))
       .toEqual(['https://x.com/', 'https://www.x.com/'])
+  })
+  it('I-1: a path-scoped URL-prefix property is not matched, the root ones still are', () => {
+    expect(matchProperties('x.com', [s('https://x.com/au/'), s('https://x.com/'), s('https://www.x.com/blog'), s('https://www.x.com/')]))
+      .toEqual(['https://x.com/', 'https://www.x.com/'])
+    expect(matchProperties('x.com', [s('https://x.com/au/')])).toEqual([])
   })
   it('returns [] with no match', () => {
     expect(matchProperties('x.com', [s('sc-domain:y.com')])).toEqual([])
@@ -252,6 +341,22 @@ describe('mergeRows', () => {
   it('keeps distinct keys apart', () => {
     const out = mergeRows([[r('q', 'AU', 2, 1, 100), r('q', 'CA', 2, 1, 100)], [r('p', 'AU', 2, 1, 100)]])
     expect(out).toHaveLength(3)
+  })
+})
+
+describe('capMerged (M-4)', () => {
+  const r = (i: number, clicks: number): GscRow => ({ query: `q${i}`, country: 'AU', position: 1, clicks, impressions: 10 })
+  it('keeps the top 25,000 by clicks and says it cut', () => {
+    const rows = Array.from({ length: 25_001 }, (_, i) => r(i, i === 0 ? 0 : 5))
+    const out = capMerged(rows)
+    expect(out.cut).toBe(true)
+    expect(out.rows).toHaveLength(25_000)
+    expect(out.rows.some((x) => x.query === 'q0')).toBe(false)
+  })
+  it('leaves a short list alone', () => {
+    const out = capMerged([r(1, 1), r(2, 9)])
+    expect(out.cut).toBe(false)
+    expect(out.rows.map((x) => x.query)).toEqual(['q2', 'q1'])
   })
 })
 

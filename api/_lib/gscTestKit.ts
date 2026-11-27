@@ -20,6 +20,8 @@ export const fake = {
   connection: null as Row | null,
   cache: [] as Row[],
   writes: [] as string[],
+  /** Makes every gsc_cache write answer with a database error. */
+  failCacheWrite: false,
   reset() {
     this.userId = 'user-1'
     this.status = 'approved'
@@ -28,13 +30,14 @@ export const fake = {
     this.connection = null
     this.cache = []
     this.writes = []
+    this.failCacheWrite = false
   },
 }
 
 function builder(table: string, key: string) {
   const filters: Array<[string, unknown, 'eq' | 'neq']> = []
   let op: { kind: 'select' | 'upsert' | 'update' | 'delete'; row?: Row } = { kind: 'select' }
-  const run = (): { data: unknown; error: null } => {
+  const run = (): { data: unknown; error: { message: string } | null } => {
     if (table === 'gsc_connection') {
       if (op.kind === 'select') return { data: fake.connection ? [fake.connection] : [], error: null }
       if (op.kind === 'upsert') { fake.connection = op.row!; fake.writes.push('connection.save') }
@@ -45,6 +48,7 @@ function builder(table: string, key: string) {
     if (table === 'gsc_cache') {
       const match = (r: Row) => filters.every(([c, v, k]) => (k === 'eq' ? r[c] === v : r[c] !== v))
       if (op.kind === 'select') return { data: fake.cache.filter(match), error: null }
+      if (op.kind === 'upsert' && fake.failCacheWrite) return { data: null, error: { message: 'cache write failed' } }
       if (op.kind === 'upsert') {
         fake.cache = fake.cache.filter((r) => !(r.domain === op.row!.domain && r.days === op.row!.days))
         fake.cache.push(op.row!)

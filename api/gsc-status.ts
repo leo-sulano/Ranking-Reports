@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { GscReconnectError, GscUpstreamError, matchProperties } from './_lib/gsc.js'
+import { GscReconnectError, matchProperties } from './_lib/gsc.js'
 import { BRAND_BY_NAME, DOMAIN_TO_BRAND, brandCountries, isReported } from './_lib/brands.js'
 import { loadConnection } from './_lib/gscStore.js'
 import {
-  GSC_CONFIG, cachedSites, gate, googleAccess, guardMethod, withRetry,
+  GSC_CONFIG, cachedSites, gate, gscFailure, googleAccess, guardMethod, markIfRejected, withRetry,
 } from './_lib/gscHandler.js'
 
 export const config = GSC_CONFIG
@@ -35,11 +35,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .filter(([domain, brand]) => brandCountries(BRAND_BY_NAME[brand]).some((c) => isReported(domain, c)))
           .map(([domain, brand]) => ({ domain, brand, properties: matchProperties(domain, sites) }))
       } catch (err) {
-        // googleAccess has already marked the connection broken: report it as state.
+        // googleAccess has already marked the connection broken (a Search Console 401 is marked here):
+        // report it as state.
         if (err instanceof GscReconnectError) {
+          await markIfRejected(g.db, err)
           body.status = 'broken'
-        } else if (!(err instanceof GscUpstreamError)) throw err
-        // Google is down: the connection state is still worth showing, coverage is not.
+        } else {
+          // Anything else Google-side: the connection state is still worth showing. Say why coverage
+          // is missing, in plain words, instead of leaving the panel looking healthy.
+          const failure = gscFailure(err)
+          if (!failure) throw err
+          body.coverageError = failure.error
+        }
       }
     }
     res.setHeader('Cache-Control', 'no-store')

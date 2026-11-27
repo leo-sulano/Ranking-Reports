@@ -8,6 +8,7 @@ vi.mock('@supabase/supabase-js', async () => (await import('../_lib/gscTestKit.j
 
 let fetchMock: ReturnType<typeof vi.fn>
 const saved: Record<string, string | undefined> = {}
+const SCOPES = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/webmasters.readonly'
 const CLEAR = 'gsc_nonce=; HttpOnly; SameSite=Lax; Path=/api/gsc-callback; Max-Age=0'
 
 const idToken = () => `h.${Buffer.from(JSON.stringify({ email: 'seo@example.com' })).toString('base64url')}.s`
@@ -32,7 +33,7 @@ beforeEach(() => {
   for (const k of Object.keys(GOOD_ENV)) { saved[k] = process.env[k]; process.env[k] = GOOD_ENV[k] }
   fake.reset()
   fake.admins.add('admin-1')
-  fetchMock = vi.fn(async () => json({ refresh_token: 'refresh-token-abc', id_token: idToken(), access_token: 'at' }))
+  fetchMock = vi.fn(async () => json({ refresh_token: 'refresh-token-abc', id_token: idToken(), access_token: 'at', scope: SCOPES }))
   vi.stubGlobal('fetch', fetchMock)
 })
 afterEach(() => {
@@ -114,5 +115,50 @@ describe('api/gsc-callback', () => {
     const res = await run({ code: 'c', state: state() })
     expect(res.statusCode).toBe(500)
     expect(res.body.error).toContain('APP_URL')
+  })
+
+  it('I-2: a token response without the Search Console scope stores nothing, revokes the token and redirects reason=scope', async () => {
+    fake.cache.push({ domain: 'roostersbet.com', days: 28, payload: {}, fetched_at: new Date().toISOString() })
+    fetchMock.mockImplementation(async (url: unknown) =>
+      (String(url).includes('/revoke')
+        ? new Response(null, { status: 200 })
+        : json({ refresh_token: 'refresh-token-abc', id_token: idToken(), access_token: 'at', scope: 'openid email' })))
+    const res = await run({ code: 'auth-code', state: state() })
+    expect(res.redirected).toEqual([302, 'https://app.example.com/bp-sites?gsc=error&reason=scope'])
+    expect(res.headers['Set-Cookie']).toBe(CLEAR)
+    expect(fake.connection).toBeNull()
+    expect(fake.writes).toEqual([])
+    expect(fake.cache).toHaveLength(1)
+    const revoke = fetchMock.mock.calls.find((c) => String(c[0]).includes('/revoke'))
+    expect(revoke).toBeTruthy()
+    expect(String((revoke![1] as RequestInit).body)).toContain('token=refresh-token-abc')
+  })
+
+  it('I-2: a failing revoke does not change the redirect', async () => {
+    fetchMock.mockImplementation(async (url: unknown) => {
+      if (String(url).includes('/revoke')) throw new TypeError('fetch failed')
+      return json({ refresh_token: 'refresh-token-abc', access_token: 'at', scope: 'openid' })
+    })
+    const res = await run({ code: 'auth-code', state: state() })
+    expect(res.redirected![1]).toBe('https://app.example.com/bp-sites?gsc=error&reason=scope')
+    expect(fake.connection).toBeNull()
+  })
+
+  it.each([
+    ['a network error', () => new TypeError('fetch failed')],
+    ['a timeout', () => new DOMException('The operation timed out.', 'TimeoutError')],
+  ])('I-4: %s on the code exchange redirects reason=google and stores nothing', async (_n, thrown) => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockImplementation(async () => { throw thrown() })
+    const res = await run({ code: 'auth-code', state: state() })
+    expect(res.redirected).toEqual([302, 'https://app.example.com/bp-sites?gsc=error&reason=google'])
+    expect(res.headers['Set-Cookie']).toBe(CLEAR)
+    expect(fake.connection).toBeNull()
+    err.mockRestore()
+  })
+
+  it('I-4: the exchange call carries a timeout signal', async () => {
+    await run({ code: 'auth-code', state: state() })
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal)
   })
 })

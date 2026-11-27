@@ -11,6 +11,8 @@ export type GscStatus = {
   googleEmail?: string
   connectedBy?: string
   connectedAt?: string
+  /** Plain words for why the coverage list is missing (admins only). */
+  coverageError?: string
   coverage?: { domain: string; brand: string; properties: string[] }[]
 }
 

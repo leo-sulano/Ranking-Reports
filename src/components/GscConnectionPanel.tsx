@@ -95,6 +95,12 @@ export function GscConnectionPanel({ userEmails }: { userEmails: Record<string, 
 
         {actionError && <p className="mt-2 text-[12px] text-[var(--neg)]">{actionError}</p>}
 
+        {status?.coverageError && (
+          <p className="mt-3 pt-3 border-t border-[var(--border-3)] text-[12px] text-[var(--neg)]">
+            Could not check which BP sites are in Search Console: {status.coverageError}
+          </p>
+        )}
+
         {status?.coverage && cov && (
           <div className="mt-3 pt-3 border-t border-[var(--border-3)]">
             <div className="text-[12px] font-semibold text-[var(--ink)] mb-2">

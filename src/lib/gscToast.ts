@@ -8,6 +8,7 @@ const REASON_COPY: Record<string, string> = {
   nonce: EXPIRED,
   admin: 'Only admins can connect Google.',
   denied: 'Google access was not granted.',
+  scope: "Google didn't grant Search Console access. Click Connect again and allow it when Google asks.",
   google: FAILED,
   config: FAILED,
 }

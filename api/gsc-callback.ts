@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { encryptToken, exchangeCode, gscConfig, verifyState } from './_lib/gsc.js'
+import { GscScopeError, encryptToken, exchangeCode, gscConfig, revokeToken, verifyState } from './_lib/gsc.js'
 import { clearCache, saveConnection } from './_lib/gscStore.js'
 import { isAdminUser } from './_lib/requestAuth.js'
 import { createAdminClient } from './_lib/snapshotStore.js'
@@ -64,6 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     await clearCache(db)
   } catch (err) {
+    if (err instanceof GscScopeError) {
+      // Search Console was unticked on the consent screen. Nothing is stored; take back what Google issued.
+      if (err.token) await revokeToken(fetch, err.token)
+      return fail('scope')
+    }
     // Only the reason code leaves here; the message carries no secret.
     console.error('[gsc-callback] connect failed:', (err as Error).message)
     return fail('google')
