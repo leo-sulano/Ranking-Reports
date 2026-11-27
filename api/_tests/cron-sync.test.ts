@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import handler from './cron-sync.js'
-import { KEY_REJECTED } from './_lib/ahrefs.js'
+import handler from '../cron-sync.js'
+import { KEY_REJECTED } from '../_lib/ahrefs.js'
 
 // Several of these tests stop at the auth gate, but the rest deliberately get
 // past it, so the stub has to survive a full run: findSnapshot's select chain

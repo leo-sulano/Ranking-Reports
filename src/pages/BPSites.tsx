@@ -13,6 +13,10 @@ import { trackedIndex } from '../lib/keywordDiscovery'
 import { buildFoundRows, type FoundRow } from '../lib/discoveryList'
 import { nrLabelFor } from '../lib/nrLabel'
 import { ChevronDown, Check, CalendarDays } from 'lucide-react'
+import { BrandTabs } from '../components/BrandTabs'
+import { RealKeywordsTab } from '../components/RealKeywordsTab'
+import { readGscParams, withView } from '../lib/gscView'
+import { gscToastFor, withoutGscParams } from '../lib/gscToast'
 
 type EditCellFn = (snapshotId: string, matcher: EditCellMatcher, patch: EditCellPatch) => Promise<void>
 
@@ -51,6 +55,7 @@ export function BPSites() {
   const { snapshots, onEditCell } = ctx
   const { brandSlug, domainFilter } = useParams<{ brandSlug: string; domainFilter: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const bpSnapshots = useMemo(
     () => snapshots.filter((s) => s.category === 'bp-sites'),
@@ -62,19 +67,39 @@ export function BPSites() {
   )
   const activeBrand = brandSlug ? (BRAND_BY_SLUG[brandSlug] ?? null) : null
 
+  // gsc-callback lands here with ?gsc=connected or ?gsc=error&reason=...: say it once, then clean the URL.
+  const { addToast } = ctx
+  const toastedFor = useRef<string | null>(null)
+  useEffect(() => {
+    const toast = gscToastFor(searchParams)
+    if (!toast) { toastedFor.current = null; return }
+    if (toastedFor.current === searchParams.toString()) return // dev StrictMode runs effects twice
+    toastedFor.current = searchParams.toString()
+    addToast(toast.message, toast.type)
+    setSearchParams(withoutGscParams(searchParams), { replace: true })
+  }, [searchParams, setSearchParams, addToast])
+
   if (activeBrand) {
+    const { view } = readGscParams(searchParams)
     return (
-      <BrandView
-        key={`${activeBrand.name}|${domainFilter ?? ''}`}
-        brand={activeBrand}
-        snapshots={bpSnapshots}
-        snapshotMeta={bpSnapshotMeta}
-        onLoadOlder={() => ctx.onLoadOlderSnapshots('bp-sites')}
-        loadingOlder={ctx.loadingOlderSnapshots}
-        domainFilter={domainFilter}
-        onBack={() => navigate('/bp-sites')}
-        onEditCell={onEditCell}
-      />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BrandTabs view={view} onChange={(v) => setSearchParams(withView(searchParams, v))} />
+        {view === 'google' ? (
+          <RealKeywordsTab key={activeBrand.name} brand={activeBrand} domainFilter={domainFilter} onBack={() => navigate('/bp-sites')} />
+        ) : (
+          <BrandView
+            key={`${activeBrand.name}|${domainFilter ?? ''}`}
+            brand={activeBrand}
+            snapshots={bpSnapshots}
+            snapshotMeta={bpSnapshotMeta}
+            onLoadOlder={() => ctx.onLoadOlderSnapshots('bp-sites')}
+            loadingOlder={ctx.loadingOlderSnapshots}
+            domainFilter={domainFilter}
+            onBack={() => navigate('/bp-sites')}
+            onEditCell={onEditCell}
+          />
+        )}
+      </div>
     )
   }
 

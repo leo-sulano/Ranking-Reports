@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useOutletContext } from 'react-router-dom'
 import { Check, RotateCcw, ShieldPlus, ShieldMinus, Trash2 } from 'lucide-react'
 import { listUserAccess, updateUserStatus, updateUserAdmin, deleteUser } from '../lib/userAccess'
+import { GscConnectionPanel } from '../components/GscConnectionPanel'
 import type { RROutletContext, UserAccessRow, UserAccessStatus } from '../types'
 
 function formatError(err: unknown): string {
@@ -91,6 +92,7 @@ export function AdminUsers() {
     addToast('✓ User deleted')
   }, [addToast, requireAuth])
 
+  const userEmails = Object.fromEntries(rows.map((r) => [r.userId, r.email]))
   const pending  = rows.filter((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
   // Revoked users are deliberately NOT in the pending queue — that queue should
@@ -109,6 +111,7 @@ export function AdminUsers() {
 
   return (
     <div className="flex-1 overflow-auto px-3 sm:px-7 pb-7 pt-5">
+      <GscConnectionPanel userEmails={userEmails} />
       <h2 className="font-display text-[16px] tracking-wider text-[var(--ink)] mb-4">
         Pending approval ({pending.length})
       </h2>
