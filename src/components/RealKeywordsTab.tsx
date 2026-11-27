@@ -180,7 +180,8 @@ export function RealKeywordsTab({ brand, domainFilter }: { brand: Brand; domainF
             {sorted.length.toLocaleString()} of {allRows.length.toLocaleString()} searches
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Countries">
+        <div className="flex items-start gap-2">
+        <div className="flex max-h-24 flex-wrap items-center gap-1.5 overflow-y-auto" role="group" aria-label="Countries">
           {countryList.map((c) => {
             const on = countries.includes(c)
             return (
@@ -199,6 +200,15 @@ export function RealKeywordsTab({ brand, domainFilter }: { brand: Brand; domainF
               </button>
             )
           })}
+        </div>
+        {countries.length > 0 && (
+          <button
+            onClick={() => setCountries([])}
+            className="shrink-0 rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-2)] hover:text-[var(--ink)]"
+          >
+            Clear
+          </button>
+        )}
         </div>
         {result?.truncated && (
           <p className="text-[12px] text-[var(--muted)]">Showing the top 25,000 searches by clicks</p>
