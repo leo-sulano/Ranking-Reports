@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import handler, { config } from './gsc-connect.js'
-import { verifyState } from './_lib/gsc.js'
-import { GOOD_ENV, STATE_SECRET, fake, makeReq, makeRes } from './_lib/gscTestKit.js'
+import handler, { config } from '../gsc-connect.js'
+import { verifyState } from '../_lib/gsc.js'
+import { GOOD_ENV, STATE_SECRET, fake, makeReq, makeRes } from '../_lib/gscTestKit.js'
 
-vi.mock('@supabase/supabase-js', async () => (await import('./_lib/gscTestKit.js')).supabaseMock)
+vi.mock('@supabase/supabase-js', async () => (await import('../_lib/gscTestKit.js')).supabaseMock)
 
 let fetchMock: ReturnType<typeof vi.fn>
 const saved: Record<string, string | undefined> = {}

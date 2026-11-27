@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import handler, { runSummary, timing } from './cron-discovery.js'
-import { BRANDS } from './_lib/brands.js'
-import { ALL_COUNTRIES_FETCH, discoveryTargets, pairKey } from './_lib/keywordDiscovery.js'
+import handler, { runSummary, timing } from '../cron-discovery.js'
+import { BRANDS } from '../_lib/brands.js'
+import { ALL_COUNTRIES_FETCH, discoveryTargets, pairKey } from '../_lib/keywordDiscovery.js'
 
 const { inserts, store } = vi.hoisted(() => ({
   inserts: [] as { table: string; rows: unknown }[],
@@ -19,7 +19,7 @@ const { inserts, store } = vi.hoisted(() => ({
 
 // The store is tested on its own (api/_lib/discoveryStore.test.ts); here it is
 // the boundary. The Supabase client only ever sees the activity_log insert.
-vi.mock('./_lib/discoveryStore.js', () => store)
+vi.mock('../_lib/discoveryStore.js', () => store)
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: (table: string) => ({

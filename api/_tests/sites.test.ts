@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import handler, { config } from './sites.js'
-import { KEY_REJECTED } from './_lib/ahrefs.js'
+import handler, { config } from '../sites.js'
+import { KEY_REJECTED } from '../_lib/ahrefs.js'
 
 // The handler resolves the caller's Supabase token through supabase-js, then
 // reads their user_access row through it. Stub the SDK so the tests never touch
