@@ -107,7 +107,7 @@ describe('reportedBpDomains / defaultSite', () => {
     const d = reportedBpDomains(rb)
     expect(defaultSite(rb, d[1], `${d[1]},${d[2]}`, null)).toBe(rb.mainDomain)
   })
-  it('an unreported ?site= does not fall back to the path filter (Rankings shows all sites)', () => {
+  it('an unmatched ?site= opens the main domain (Rankings shows BP sites without main; the Google tab needs one site)', () => {
     const d = reportedBpDomains(rb)
     expect(defaultSite(rb, d[1], 'casinoroosters.com', null)).toBe(rb.mainDomain)
   })

@@ -60,7 +60,9 @@ export function reportedBpDomains(brand: Brand): string[] {
  * Which site the Google tab opens on: ?gsite= if reported, else the one site the
  * Rankings tab is showing, else the main domain. Like BPSites, it picks ONE source
  * first (?site= over the path filter) and does not fall back to the other when that
- * source matches nothing (the Rankings tab then shows every site).
+ * source matches nothing. When no single site is chosen (no filter, an unmatched
+ * ?site=, several sites) the Google tab uses the main domain, whereas the Rankings
+ * tab would show the BP sites without the main one; the tab needs exactly one site.
  */
 export function defaultSite(
   brand: Brand,
