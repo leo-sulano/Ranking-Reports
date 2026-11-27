@@ -46,6 +46,9 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
    `src/lib/useDiscovery.ts`) untracked keywords in the brand's markets join the
    latest table ("Also ranking"), and other countries are listed under it
    (`src/components/OtherRankingKeywords.tsx`). See `docs/integrations/ahrefs.md`.
+6. **Real keywords (Google)** — `?view=google` on a BP Sites brand page: one admin connects a
+   Google account once (Users page); `api/gsc-keywords.ts` reads Search Console live (cached 6 h)
+   for any approved user. See `docs/integrations/gsc.md`.
 
 ### Key Files
 
@@ -64,6 +67,10 @@ This is a React + TypeScript + Tailwind v4 SPA (Vite) for tracking SEO keyword r
 | `api/_lib/ahrefsDiscovery.ts` | Server-only client for the PAID Site Explorer call: its own key (refuses the rankings key), the key's limits, cost read from `x-api-units-cost-total-actual`, an over-charge stop, one retry. `scripts/ahrefs-discovery-check.mts` exercises it at 0 units on a free test target. |
 | `api/cron-discovery.ts` | Cron (05:00, 11:00, 17:00 UTC): takes a run lease, refuses while halted, fetches the cycle's missing sites (every country each) within a 45 s budget, saves each through `api/_lib/discoveryStore.ts`, stops before the key's limit, halts on an Ahrefs pricing or response-shape change, and writes one /log line per run that did work. |
 | `src/components/OtherRankingKeywords.tsx` | The "Ranking in other countries · not tracked" list under each BP Sites brand table; the in-market "Also ranking" rows render in `src/pages/BPSites.tsx`. Shaping in `src/lib/discoveryList.ts` (`buildFoundRows`, `buildDiscoveryList`), loading in `src/lib/useDiscovery.ts` / `src/lib/keywordDiscovery.ts`. |
+| `src/components/GscConnectionPanel.tsx` | Admin-only Google connection panel on the Users page: Connect / Reconnect / Disconnect and the "N of M BP sites found" coverage list. |
+| `src/components/RealKeywordsTab.tsx` | The "Real keywords (Google)" tab body; helpers in `src/lib/gscView.ts`, client in `src/lib/gscApi.ts`, callback toast in `src/lib/gscToast.ts`. |
+| `api/_lib/gsc.ts` | Search Console logic: OAuth state, token encryption, property matching, query rows. Google calls only via an injected `fetch`. |
+| `api/gsc-*.ts` | `gsc-connect`, `gsc-callback`, `gsc-disconnect`, `gsc-status`, `gsc-keywords`. All but the callback need the caller's Supabase session; connect, disconnect and status details are admin-only. |
 | `src/lib/nrLabel.ts` | What a not-ranking cell says: "Not on page 1" for Ahrefs-era BP weeks (from 2026-11-03; Ahrefs saves only Google's first page), "Not in top 100" for older BP weeks and LP Sites. |
 
 ### Brands
