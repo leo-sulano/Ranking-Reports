@@ -222,7 +222,8 @@ The `sites.list` cache is one row with `domain = '*'`.
 **Env vars, Vercel and `.env.local`:**
 - `GOOGLE_OAUTH_CLIENT_ID`;
 - `GOOGLE_OAUTH_CLIENT_SECRET`;
-- `GSC_STATE_SECRET` (random, 32+ bytes).
+- `GSC_STATE_SECRET` (random, 32+ bytes);
+- `GSC_TOKEN_KEY` (32 random bytes, base64; encrypts the stored refresh token).
 
 `APP_URL` builds the redirect URI.
 
@@ -234,7 +235,7 @@ The `sites.list` cache is one row with `domain = '*'`.
    - set the OAuth consent screen to External, with the app name "Ranking Reports" and the scopes above;
    - set it **In production**, so the access doesn't expire after 7 days;
    - create an OAuth client of type **Web application** with redirect URIs `https://<prod domain>/api/gsc-callback` and `http://localhost:5173/api/gsc-callback`.
-2. **Put the three env vars** in Vercel (Production and Preview) and in `.env.local`.
+2. **Put the four env vars** in Vercel (Production and Preview) and in `.env.local`.
 3. **Apply `supabase/gsc.sql`.**
 4. **After the deploy,** as an admin, click **Connect Google Search Console**. Sign in with Ramiel's login and click Allow, clicking through the "unverified app" warning if shown.
 5. **Open a Rooster brand's Google tab.**
@@ -298,3 +299,7 @@ Also noted: each new function sets `export const config = { maxDuration: 60 }`, 
 5. **The connected Google email is shown to admins.** It needs the extra `openid email` scope on the consent screen.
 6. **Disconnect revokes the access at Google,** not just in the dashboard.
 7. **The choice of tab, site and period lives in the URL,** so a link to a site's Google tab can be shared.
+8. **A domain property wins.** Without one, the site's URL-prefix properties are merged.
+9. **The stored Google access is encrypted at rest** (one more env var, `GSC_TOKEN_KEY`).
+10. **After Connect, admins see which of the 36 BP sites the login covers.**
+11. **The Google tab shows every country Google reports,** even outside a brand's tracked markets.
